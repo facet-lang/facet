@@ -28,15 +28,16 @@ data Term
   deriving (Eq, Ord, Show) via Quoting X.Term Term
 
 instance Quote Term X.Term where
-  quote d = \case
-    String s -> X.String s
-    Con n sp -> X.Con n (quote d <$> sp)
-    Lam cs   -> X.Lam (map (uncurry clause) cs)
-    Ne v sp  -> foldl' (\ h -> X.App h . quote d) (X.Var (toIndexed d v)) sp
-    Dict os  -> X.Dict (map (fmap (quote d)) os)
-    Comp p b -> X.Comp p (snd (clause (PDict p) b))
+  quote = \case
+    String s -> pure (X.String s)
+    Con n sp -> X.Con n <$> traverse quote sp
+    Lam cs   -> X.Lam <$> traverse (uncurry clause) cs
+    Ne v sp  -> foldl' (\ h t -> X.App <$> h <*> quote t) (Quoter (\ d -> X.Var (toIndexed d v))) sp
+    Dict os  -> X.Dict <$> traverse (traverse quote) os
+    Comp p b -> X.Comp p . snd <$> clause (PDict p) b
     where
-    clause p b = let (d', p') = mapAccumL (\ d n -> (succ d, n :=: Ne (Free (LName (getUsed d) n)) Nil)) d p in (p, quote d' (b p'))
+    clause :: Traversable t => t Name -> (t (Name :=: Term) -> Term) -> Quoter (t Name, X.Term)
+    clause p b = Quoter (\ d -> let (d', p') = mapAccumL (\ d n -> (succ d, n :=: Ne (Free (LName (getUsed d) n)) Nil)) d p in (p, runQuoter d' (quote (b p'))))
 
 norm :: Env Term -> X.Term -> Term
 norm env = \case

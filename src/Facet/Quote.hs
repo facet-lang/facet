@@ -30,30 +30,28 @@ import Facet.Name (Level, Used(..))
 class Quote v t | v -> t where
   -- | Quote a value back to an equivalent term.
   quote
-    :: Used -- ^ The level from which to start quoting. If the resulting term is to be used under @n :: 'Level'@ binders, pass @'Used' n@.
-    -> v    -- ^ The value to quote.
-    -> t    -- ^ An equivalent term.
+    :: v        -- ^ The value to quote.
+    -> Quoter t -- ^ A 'Quoter' producing an equivalent term.
 
-quoteBinder :: Quote v t => (Used -> u) -> (Used -> (u -> v) -> t)
+quoteBinder :: Quote v t => Quoter u -> ((u -> v) -> Quoter t)
 quoteBinder = quoteBinderWith quote
 
 -- | Quote binding syntax using the given a quotation function.
 quoteBinderWith
-  :: (Used -> v -> t) -- ^ Quotation of values back to termss.
-  -> (Used -> u)      -- ^ Variable construction.
-  -> Used             -- ^ The level that the term will be inserted at.
-  -> (u -> v)         -- ^ The higher-order function mapping variables to normalized values.
-  -> t                -- ^ A term representing the position in which the variable is bound.
-quoteBinderWith quote var d f = quote (succ d) (f (var d))
+  :: (v -> Quoter t) -- ^ Quotation of values back to termss.
+  -> Quoter u        -- ^ Variable construction.
+  -> (u -> v)        -- ^ The higher-order function mapping variables to normalized values.
+  -> Quoter t        -- ^ A term representing the position in which the variable is bound.
+quoteBinderWith quote var f = Quoter (\ d -> runQuoter (succ d) (quote (f (runQuoter d var))))
 
 
 class Quote1 v t | v -> t where
-  liftQuoteWith :: (Used -> u -> s) -> (Used -> v u -> t s)
+  liftQuoteWith :: (u -> Quoter s) -> (v u -> Quoter (t s))
 
-quote1 :: (Quote u s, Quote1 v t) => (Used -> v u -> t s)
+quote1 :: (Quote u s, Quote1 v t) => (v u -> Quoter (t s))
 quote1 = liftQuoteWith quote
 
-liftQuoteBinderWith :: Quote1 v t => (Used -> u -> s) -> (Used -> r) -> (Used -> (r -> v u) -> t s)
+liftQuoteBinderWith :: Quote1 v t => (u -> Quoter s) -> Quoter r -> ((r -> v u) -> Quoter (t s))
 liftQuoteBinderWith = quoteBinderWith . liftQuoteWith
 
 
@@ -62,13 +60,13 @@ liftQuoteBinderWith = quoteBinderWith . liftQuoteWith
 newtype Quoting t v = Quoting { getQuoting :: v }
 
 instance (Quote v t, Eq t) => Eq (Quoting t v) where
-  Quoting a == Quoting b = quote 0 a == quote 0 b
+  Quoting a == Quoting b = runQuoter 0 (quote a) == runQuoter 0 (quote b)
 
 instance (Quote v t, Ord t) => Ord (Quoting t v) where
-  Quoting a `compare` Quoting b = quote 0 a `compare` quote 0 b
+  Quoting a `compare` Quoting b = runQuoter 0 (quote a) `compare` runQuoter 0 (quote b)
 
 instance (Quote v t, Show t) => Show (Quoting t v) where
-  showsPrec p = showsPrec p . quote 0 . getQuoting
+  showsPrec p = showsPrec p . runQuoter 0 . quote . getQuoting
 
 
 -- Quoters
@@ -84,7 +82,7 @@ runQuoter d (Quoter f) = f d
 
 -- | Build quoted first-order syntax from a higher-order representation.
 binder
-  :: (Used -> Level -> a)   -- ^ Constructor for variables in @a@.
+  :: (Level -> Quoter a)   -- ^ Constructor for variables in @a@.
   -> (Quoter a -> Quoter b) -- ^ The binder's scope, represented as a Haskell function mapping variables' values to complete terms.
   -> Quoter b               -- ^ A 'Quoter' of the first-order term.
-binder with f = Quoter (\ d -> runQuoter (d + 1) (f (Quoter (`with` getUsed d))))
+binder with f = Quoter (\ d -> runQuoter (d + 1) (f (with (getUsed d))))

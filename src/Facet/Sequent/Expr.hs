@@ -38,7 +38,7 @@ data Coterm
 
 instance C.Term (Quoter Term) (Quoter Coterm) where
   var v = Quoter (\ d -> Var (toIndexed d v))
-  µR n b = MuR n <$> binder (\ d d' -> covar n (toIndexed d d')) (bisequenceA . b)
+  µR n b = MuR n <$> binder (\ d' -> Quoter (\ d -> covar n (toIndexed d d'))) (bisequenceA . b)
   funR ps = FunR <$> traverse (uncurry clause) ps
   conR n fs = ConR n <$> sequenceA fs
   stringR = pure . StringR
@@ -46,7 +46,7 @@ instance C.Term (Quoter Term) (Quoter Coterm) where
   compR i b = CompR i . snd <$> clause (PDict i) b
 
   covar v = Quoter (\ d -> Covar (toIndexed d v))
-  µL n b = MuL n <$> binder (\ d d' -> var n (toIndexed d d')) (bisequenceA . b)
+  µL n b = MuL n <$> binder (\ d' -> Quoter (\ d -> var n (toIndexed d d'))) (bisequenceA . b)
   funL a b = FunL <$> a <*> b
 
   (|||) = (C.:|:)

@@ -7,6 +7,7 @@ module Facet.Sequent.Class
 , (:|:)(..)
 ) where
 
+import Control.Applicative (liftA2)
 import Data.Bifoldable
 import Data.Bifunctor
 import Data.Bitraversable
@@ -44,7 +45,7 @@ class Term term coterm | coterm -> term, term -> coterm where
 data term :|: coterm = term :|: coterm
 
 instance (Quote term1 term2, Quote coterm1 coterm2) => Quote (term1 :|: coterm1) (term2 :|: coterm2) where
-  quote d (term :|: coterm) = quote d term :|: quote d coterm
+  quote (term :|: coterm) = liftA2 (:|:) (quote term) (quote coterm)
 
 instance Bifoldable (:|:) where
   bifoldMap = bifoldMapDefault

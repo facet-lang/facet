@@ -25,7 +25,6 @@ module Facet.Type.Norm
 
 import           Control.Effect.Empty
 import           Data.Foldable (foldl')
-import           Data.Function ((&))
 import           Data.Maybe (fromMaybe)
 import           Facet.Env hiding (empty)
 import           Facet.Interface
@@ -62,12 +61,12 @@ instance C.Type Type where
   (|-) = Comp
 
 instance Quote Type TX.Type where
-  quote d = \case
-    String        -> TX.String
-    ForAll n t b  -> TX.ForAll n t (quote (succ d) (b (free (LName (getUsed d) n))))
-    Arrow n q a b -> TX.Arrow n q (quote d a) (quote d b)
-    Comp s t      -> TX.Comp (mapSignature (quote d) s) (quote d t)
-    Ne n sp       -> foldl' (&) (TX.Var (toIndexed d n)) (flip TX.App . quote d <$> sp)
+  quote = \case
+    String        -> pure TX.String
+    ForAll n t b  -> Quoter (\ d -> TX.ForAll n t (runQuoter (succ d) (quote (b (free (LName (getUsed d) n))))))
+    Arrow n q a b -> TX.Arrow n q <$> quote a <*> quote b
+    Comp s t      -> TX.Comp <$> traverseSignature quote s <*> quote t
+    Ne n sp       -> foldl' (\ h t -> TX.App <$> h <*> quote t) (Quoter (\ d -> TX.Var (toIndexed d n))) sp
 
 
 _String :: Prism' Type ()
@@ -163,4 +162,4 @@ eval subst = go where
     TX.App  f a             -> go env f $$  go env a
 
 apply :: HasCallStack => Subst Type -> Env Type -> Type -> Type
-apply subst env = eval subst env . quote (level env)
+apply subst env = eval subst env . runQuoter (level env) . quote

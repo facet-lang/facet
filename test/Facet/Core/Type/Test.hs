@@ -19,4 +19,4 @@ tests = checkParallel $$(discover)
 
 prop_quotation_inverse = property $ do
   let init = ForAll (U "A") KType (Arrow (Just (U "x")) Many (Var (Free (Right (LName 0 (U "A"))))) (Comp mempty (Var (Free (Right (LName 0 (U "A")))))))
-  quote 0 (eval mempty empty init) === init
+  runQuoter 0 (quote (eval mempty empty init)) === init

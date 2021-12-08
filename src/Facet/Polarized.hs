@@ -19,6 +19,7 @@ module Facet.Polarized
 , eval1
 ) where
 
+import Control.Applicative (liftA2)
 import Control.Carrier.Reader
 import Data.Foldable (foldl')
 import Data.Function (on)
@@ -52,16 +53,16 @@ infixr 7 :><
 infixl 2 :>-
 
 instance Quote Type XType where
-  quote d = \case
-    TVar k d'  -> XTVar k (toIndexed d d')
-    Up t       -> XUp (quote d t)
-    Bot        -> XBot
-    a :-> b    -> quote d a :->: quote d b
-    ForAll k b -> XForAll k (quoteBinder (TVar k . getUsed) d b)
-    Down t     -> XDown (quote d t)
-    One        -> XOne
-    a :>< b    -> quote d a :><: quote d b
-    b :>- a    -> quote d b :>-: quote d a
+  quote = \case
+    TVar k d'  -> Quoter (\ d -> XTVar k (toIndexed d d'))
+    Up t       -> XUp <$> quote t
+    Bot        -> pure XBot
+    a :-> b    -> liftA2 (:->:) (quote a) (quote b)
+    ForAll k b -> XForAll k <$> quoteBinder (Quoter (TVar k . getUsed)) b
+    Down t     -> XDown <$> quote t
+    One        -> pure XOne
+    a :>< b    -> liftA2 (:><:) (quote a) (quote b)
+    b :>- a    -> liftA2 (:>-:) (quote b) (quote a)
 
 
 data XType
@@ -159,8 +160,8 @@ quoteV lv lk = \case
     App v  -> CApp (quoteV lv lk v)
     Inst t -> CInst t
     Ret i  -> const (CRet (toIndexed lk i))) (CRet (Index 0)) sp)
-  TLam k f -> CTLam k (quoteBinderWith (`quoteV` lk) (TVar k . getUsed) lv f)
-  Lam f    -> CLam (quoteBinderWith (`quoteV` lk) (vvar . getUsed) lv f)
+  TLam k f -> CTLam k (quoteV (succ lv) lk (f (TVar k (getUsed lv))))
+  Lam f    -> CLam (quoteV (succ lv) lk (f (vvar (getUsed lv))))
 
 
 vvar :: Level -> V

@@ -338,7 +338,7 @@ elabTerm :: Has (Reader Graph :+: Reader Module :+: Reader Source) sig m => Elab
 elabTerm = elabWith one (const pure)
 
 elabSynthTerm :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source) sig m) => Elab m (Term :==> Type) -> m (Term :==> Type)
-elabSynthTerm = elabWith one (\ subst (e :==> _T) -> pure (e :==> TN.eval subst Env.empty (quote 0 _T)))
+elabSynthTerm = elabWith one (\ subst (e :==> _T) -> pure (e :==> TN.eval subst Env.empty (runQuoter 0 (quote _T))))
 
 elabSynthType :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source) sig m) => Elab m (TX.Type :==> Kind) -> m (Type :==> Kind)
 elabSynthType = elabWith zero (\ subst (_T :==> _K) -> pure (TN.eval subst Env.empty _T :==> _K))

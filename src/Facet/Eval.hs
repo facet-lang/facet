@@ -133,14 +133,14 @@ data Value m
   | VComp [RName :=: Name] Term
 
 instance Monad m => Quote (Value m) (m Term) where
-  quote d = \case
-    VLam _ cs -> pure $ Lam cs
-    VCont k   -> quote (succ d) =<< k (VVar (Free (LName (getUsed d) __)))
-    VVar v    -> pure (Var (toIndexed d v))
-    VCon n fs -> Con n <$> traverse (quote d) fs
-    VString s -> pure $ String s
-    VDict os  -> Dict <$> traverse (traverse (quote d)) os
-    VComp p b -> pure $ Comp p b
+  quote = \case
+    VLam _ cs -> pure . pure $ Lam cs
+    VCont k   -> Quoter (\ d -> runQuoter (succ d) . quote =<< k (VVar (Free (LName (getUsed d) __))))
+    VVar v    -> Quoter (\ d -> pure (Var (toIndexed d v)))
+    VCon n fs -> fmap (Con n) . sequenceA <$> traverse quote fs
+    VString s -> pure . pure $ String s
+    VDict os  -> fmap Dict . traverse sequenceA <$> traverse (traverse quote) os
+    VComp p b -> pure . pure $ Comp p b
 
 unit :: Value m
 unit = VCon (NE.FromList ["Data", "Unit"] :.: U "unit") []

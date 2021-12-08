@@ -176,7 +176,7 @@ instance Printable Print where
   print _ _ = id
 
 instance (Quote v t, Printable t) => Printable (Quoting t v) where
-  print opts env = print opts env . quote (level env) . getQuoting
+  print opts env = print opts env . runQuoter (level env) . quote . getQuoting
 
 instance Printable TN.Classifier where
   print opts env = \case
