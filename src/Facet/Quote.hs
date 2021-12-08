@@ -34,7 +34,7 @@ class Quote v t | v -> t where
     -> v    -- ^ The value to quote.
     -> t    -- ^ An equivalent term.
 
-quoteBinder :: Quote v t => (Used -> u) -> Used -> (u -> v) -> t
+quoteBinder :: Quote v t => (Used -> u) -> (Used -> (u -> v) -> t)
 quoteBinder = quoteBinderWith quote
 
 -- | Quote binding syntax using the given a quotation function.
@@ -48,12 +48,12 @@ quoteBinderWith quote var d f = quote (succ d) (f (var d))
 
 
 class Quote1 v t | v -> t where
-  liftQuoteWith :: (Used -> u -> s) -> Used -> v u -> t s
+  liftQuoteWith :: (Used -> u -> s) -> (Used -> v u -> t s)
 
-quote1 :: (Quote u s, Quote1 v t) => Used -> v u -> t s
+quote1 :: (Quote u s, Quote1 v t) => (Used -> v u -> t s)
 quote1 = liftQuoteWith quote
 
-liftQuoteBinderWith :: Quote1 v t => (Used -> u -> s) -> (Used -> r) -> Used -> (r -> v u) -> t s
+liftQuoteBinderWith :: Quote1 v t => (Used -> u -> s) -> (Used -> r) -> (Used -> (r -> v u) -> t s)
 liftQuoteBinderWith = quoteBinderWith . liftQuoteWith
 
 
