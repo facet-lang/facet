@@ -134,7 +134,7 @@ tlam b = Check $ \ _T -> do
 lam :: (HasCallStack, Has (Throw Err) sig m) => [(Bind m (Pattern (Name :==> Type)), Type <==: Elab m Term)] -> Type <==: Elab m Term
 lam cs = Check $ \ _T -> do
   (_, q, _A, _B) <- assertTacitFunction _T
-  Lam <$> traverse (\ (p, b) -> bind (fmap (fmap CT) <$> p ::: (q, _A)) (check (b ::: _B))) cs
+  Lam <$> traverse (\ (p, b) -> bind (p ::: (q, _A)) (check (b ::: _B))) cs
 
 lam1 :: (HasCallStack, Has (Throw Err) sig m) => Bind m (Pattern (Name :==> Type)) -> Type <==: Elab m Term -> Type <==: Elab m Term
 lam1 p b = lam [(p, b)]
@@ -161,7 +161,7 @@ stringS :: S.Term t c => Text -> Elab m (t :==> Type)
 stringS s = pure $ S.stringR s :==> T.String
 
 
-let' :: (HasCallStack, Has (Throw Err) sig m) => Bind m (Pattern (Name :==> Classifier)) -> Elab m (Term :==> Type) -> Type <==: Elab m Term -> Type <==: Elab m Term
+let' :: (HasCallStack, Has (Throw Err) sig m) => Bind m (Pattern (Name :==> Type)) -> Elab m (Term :==> Type) -> Type <==: Elab m Term -> Type <==: Elab m Term
 let' p a b = Check $ \ _B -> do
   a' :==> _A <- a
   (p', b') <- bind (p ::: (Many, _A)) (check (b ::: _B))
@@ -423,8 +423,8 @@ check (m ::: _T) = case _T of
   _T            -> m <==: _T
 
 
-bind :: (HasCallStack, Has (Throw Err) sig m) => Bind m (Pattern (Name :==> Classifier)) ::: (Quantity, Type) -> Elab m b -> Elab m (Pattern Name, b)
-bind (p ::: (q, _T)) m = runBind p _T (\ p' -> (proof <$> p',) <$> ((q, p') |- m))
+bind :: (HasCallStack, Has (Throw Err) sig m) => Bind m (Pattern (Name :==> Type)) ::: (Quantity, Type) -> Elab m b -> Elab m (Pattern Name, b)
+bind (p ::: (q, _T)) m = runBind p _T (\ p' -> (proof <$> p',) <$> ((q, fmap (fmap CT) p') |- m))
 
 newtype Bind m a = Bind { runBind :: forall x . Type -> (a -> Elab m x) -> Elab m x }
   deriving (Functor)
