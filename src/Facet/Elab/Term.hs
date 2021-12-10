@@ -131,12 +131,12 @@ tlam b = Check $ \ _T -> do
   d <- depth
   (zero, PVar (n :==> CK _A)) |- check (b ::: _B (T.free (LName (getUsed d) n)))
 
-lam :: (HasCallStack, Has (Throw Err) sig m) => [(Bind m (Pattern (Name :==> Classifier)), Type <==: Elab m Term)] -> Type <==: Elab m Term
+lam :: (HasCallStack, Has (Throw Err) sig m) => [(Bind m (Pattern (Name :==> Type)), Type <==: Elab m Term)] -> Type <==: Elab m Term
 lam cs = Check $ \ _T -> do
   (_, q, _A, _B) <- assertTacitFunction _T
-  Lam <$> traverse (\ (p, b) -> bind (p ::: (q, _A)) (check (b ::: _B))) cs
+  Lam <$> traverse (\ (p, b) -> bind (fmap (fmap CT) <$> p ::: (q, _A)) (check (b ::: _B))) cs
 
-lam1 :: (HasCallStack, Has (Throw Err) sig m) => Bind m (Pattern (Name :==> Classifier)) -> Type <==: Elab m Term -> Type <==: Elab m Term
+lam1 :: (HasCallStack, Has (Throw Err) sig m) => Bind m (Pattern (Name :==> Type)) -> Type <==: Elab m Term -> Type <==: Elab m Term
 lam1 p b = lam [(p, b)]
 
 app :: (HasCallStack, Has (Throw Err) sig m) => (a -> b -> c) -> (HasCallStack => Elab m (a :==> Type)) -> (HasCallStack => Type <==: Elab m b) -> Elab m (c :==> Type)
@@ -182,17 +182,17 @@ comp b = Check $ \ _T -> do
 
 -- Pattern combinators
 
-wildcardP :: Bind m (Pattern (Name :==> Classifier))
+wildcardP :: Bind m (Pattern (Name :==> Type))
 wildcardP = Bind $ \ _T k -> k PWildcard
 
-varP :: Name -> Bind m (Pattern (Name :==> Classifier))
-varP n = Bind $ \ _A k -> k (PVar (n :==> CT (wrap _A)))
+varP :: Name -> Bind m (Pattern (Name :==> Type))
+varP n = Bind $ \ _A k -> k (PVar (n :==> wrap _A))
   where
   wrap = \case
     T.Comp sig _A -> T.Arrow Nothing Many (T.Ne (Global (NE.FromList ["Data", "Unit"] :.: U "Unit")) Nil) (T.Comp sig _A)
     _T            -> _T
 
-conP :: (HasCallStack, Has (Throw Err) sig m) => QName -> [Bind m (Pattern (Name :==> Classifier))] -> Bind m (Pattern (Name :==> Classifier))
+conP :: (HasCallStack, Has (Throw Err) sig m) => QName -> [Bind m (Pattern (Name :==> Type))] -> Bind m (Pattern (Name :==> Type))
 conP n fs = Bind $ \ _A k -> do
   n' :=: _ ::: _T <- resolveC n
   _T' <- maybe (pure _T) (foldl' (\ _T _A -> do t <- _T ; (_, _, b) <- assertQuantifier t ; pure (b _A)) (pure _T) . snd) (unNeutral _A)
@@ -208,10 +208,10 @@ fieldsP = foldr cons nil
   nil = Bind $ \ _T k -> k ([], _T)
 
 
-allP :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => Name -> Bind m (Pattern (Name :==> Classifier))
+allP :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => Name -> Bind m (Pattern (Name :==> Type))
 allP n = Bind $ \ _A k -> do
   (sig, _T) <- assertComp _A
-  k (PVar (n :==> CT (T.Arrow Nothing Many (T.Ne (Global (NE.FromList ["Data", "Unit"] :.: U "Unit")) Nil) (T.Comp sig _T))))
+  k (PVar (n :==> T.Arrow Nothing Many (T.Ne (Global (NE.FromList ["Data", "Unit"] :.: U "Unit")) Nil) (T.Comp sig _T)))
 
 
 -- Expression elaboration
@@ -244,14 +244,14 @@ checkExpr expr = let ?callStack = popCallStack GHC.Stack.callStack in withSpanC 
 checkLam :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => [S.Clause] -> Type <==: Elab m Term
 checkLam cs = lam (snd vs)
   where
-  vs :: Has (Throw Err :+: Write Warn) sig m => ([QName :=: (Type <==: Elab m Term)], [(Bind m (Pattern (Name :==> Classifier)), Type <==: Elab m Term)])
+  vs :: Has (Throw Err :+: Write Warn) sig m => ([QName :=: (Type <==: Elab m Term)], [(Bind m (Pattern (Name :==> Type)), Type <==: Elab m Term)])
   vs = partitionEithers (map (\ (S.Clause (S.Ann _ _ p) b) -> case p of
     S.PVal p                          -> Right (bindPattern p, checkExpr b)
     S.PEff (S.Ann s _ (S.POp n fs k)) -> Left $ n :=: Check (\ _T -> pushSpan s (foldr (lam1 . bindPattern) (checkExpr b) (fromList fs:>k) <==: _T))) cs)
 
 
 -- FIXME: check for unique variable names
-bindPattern :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.ValPattern -> Bind m (Pattern (Name :==> Classifier))
+bindPattern :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.ValPattern -> Bind m (Pattern (Name :==> Type))
 bindPattern = withSpanB $ \case
   S.PWildcard -> wildcardP
   S.PVar n    -> varP n
@@ -282,7 +282,7 @@ abstractTerm body = go Nil Nil
       d <- depth
       pure $ body (TX.Var . Free . Right . toIndexed d <$> ts) (fs <*> pure d)
 
-patternForArgType :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => Type -> Name -> Bind m (Pattern (Name :==> Classifier))
+patternForArgType :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => Type -> Name -> Bind m (Pattern (Name :==> Type))
 patternForArgType = \case
   T.Comp{} -> allP
   _        -> varP
