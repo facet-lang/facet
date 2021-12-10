@@ -5,6 +5,7 @@ module Facet.Sequent.Class
   Term(..)
   -- * Effectful abstractions
 , strengthen
+, µRA
   -- * Commands
 , (:|:)(..)
 ) where
@@ -15,6 +16,7 @@ import Data.Bifunctor
 import Data.Bitraversable
 import Data.Functor.Identity (Identity(runIdentity))
 import Data.Text (Text)
+import Facet.Functor.Compose
 import Facet.Name (LName, Level, Name, RName)
 import Facet.Pattern (Pattern)
 import Facet.Quote (Quote(..))
@@ -47,6 +49,14 @@ class Term term coterm | coterm -> term, term -> coterm where
 
 strengthen :: Applicative m => m (Identity a) -> m a
 strengthen = fmap runIdentity
+
+
+µRA
+  :: (Term t c, Applicative i, Applicative m)
+  => Name
+  -> (forall j . Applicative j => (forall x . i x -> j x) -> j c -> m (j (t :|: c)))
+  -> m (i t)
+µRA n f = fmap (µR n) . runC <$> f liftCOuter (liftCInner id)
 
 
 -- * Commands
