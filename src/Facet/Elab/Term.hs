@@ -172,11 +172,11 @@ comp :: Has (Throw Err) sig m => Type <==: Elab m Term -> Type <==: Elab m Term
 comp b = Check $ \ _T -> do
   (sig, _B) <- assertComp _T
   StaticContext{ graph, module' } <- ask
-  let interfacePattern :: Has (Throw Err) sig m => Interface Type -> Elab m (RName :=: (Name :==> Classifier))
-      interfacePattern (Interface n _) = maybe (freeVariable (toQ n)) (\ (n' :=: _T) -> pure ((n .:. n') :=: (n' :==> CT _T))) (listToMaybe (scopeToList . tm =<< unDInterface . def =<< lookupQ graph module' (toQ n)))
+  let interfacePattern :: Has (Throw Err) sig m => Interface Type -> Elab m (RName :=: (Name :==> Type))
+      interfacePattern (Interface n _) = maybe (freeVariable (toQ n)) (\ (n' :=: _T) -> pure ((n .:. n') :=: (n' :==> _T))) (listToMaybe (scopeToList . tm =<< unDInterface . def =<< lookupQ graph module' (toQ n)))
   p' <- traverse interfacePattern (interfaces sig)
   -- FIXME: can we apply quantities to dictionaries? what would they mean?
-  b' <- (Many, PDict p') |- check (b ::: _B)
+  b' <- (Many, PDict (map (fmap (fmap CT)) p')) |- check (b ::: _B)
   pure $ E.Comp (map (fmap proof) p') b'
 
 
