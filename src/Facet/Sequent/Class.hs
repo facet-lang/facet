@@ -3,6 +3,8 @@
 module Facet.Sequent.Class
 ( -- * Term abstraction
   Term(..)
+  -- * Effectful abstractions
+, strengthen
   -- * Commands
 , (:|:)(..)
 ) where
@@ -11,6 +13,7 @@ import Control.Applicative (liftA2)
 import Data.Bifoldable
 import Data.Bifunctor
 import Data.Bitraversable
+import Data.Functor.Identity (Identity(runIdentity))
 import Data.Text (Text)
 import Facet.Name (LName, Level, Name, RName)
 import Facet.Pattern (Pattern)
@@ -38,6 +41,12 @@ class Term term coterm | coterm -> term, term -> coterm where
   (|||) :: term -> coterm -> term :|: coterm
 
   infix 1 |||
+
+
+-- * Effectful abstractions
+
+strengthen :: Applicative m => m (Identity a) -> m a
+strengthen = fmap runIdentity
 
 
 -- * Commands
