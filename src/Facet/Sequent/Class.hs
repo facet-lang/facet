@@ -6,6 +6,7 @@ module Facet.Sequent.Class
   -- * Effectful abstractions
 , strengthen
 , µRA
+, µLA
   -- * Commands
 , (:|:)(..)
 ) where
@@ -57,6 +58,13 @@ strengthen = fmap runIdentity
   -> (forall j . Applicative j => (forall x . i x -> j x) -> j c -> m (j (t :|: c)))
   -> m (i t)
 µRA n f = fmap (µR n) . runC <$> f liftCOuter (liftCInner id)
+
+µLA
+  :: (Term t c, Applicative i, Applicative m)
+  => Name
+  -> (forall j . Applicative j => (forall x . i x -> j x) -> j t -> m (j (t :|: c)))
+  -> m (i c)
+µLA n f = fmap (µL n) . runC <$> f liftCOuter (liftCInner id)
 
 
 -- * Commands
