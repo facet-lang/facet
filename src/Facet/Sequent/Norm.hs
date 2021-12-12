@@ -55,7 +55,7 @@ instance Class.Term Term Coterm (Term Class.:|: Coterm) where
   µL = MuL
   funL = FunL
 
-  (|||) = (Class.:|:)
+  (.|.) = (Class.:|:)
 
 
 instance Quote Term X.Term where

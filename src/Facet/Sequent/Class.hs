@@ -43,9 +43,9 @@ class Term term coterm command | coterm -> term command, term -> coterm command,
   funL :: term -> coterm -> coterm
 
   -- Commands
-  (|||) :: term -> coterm -> command
+  (.|.) :: term -> coterm -> command
 
-  infix 1 |||
+  infix 1 .|.
 
 
 -- * Effectful abstractions

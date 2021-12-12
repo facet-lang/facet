@@ -152,7 +152,7 @@ appS f a = do
   f' :==> _F <- f
   (_, q, _A, _B) <- assertFunction _F
   a' <- censor @Usage (q ><<) $ check (a ::: _A)
-  pure $ SQ.µR __ (\ k -> f' SQ.||| SQ.funL a' k) :==> _B
+  pure $ SQ.µR __ (\ k -> f' SQ..|. SQ.funL a' k) :==> _B
 
 
 string :: Text -> Elab m (Term :==> Type)

@@ -49,7 +49,7 @@ instance C.Term (Quoter Term) (Quoter Coterm) (Quoter (Term C.:|: Coterm)) where
   µL n b = MuL n <$> binder (\ d' -> Quoter (\ d -> var n (toIndexed d d'))) b
   funL a b = FunL <$> a <*> b
 
-  (|||) = liftA2 (C.:|:)
+  (.|.) = liftA2 (C.:|:)
 
 var :: Name -> Index -> Term
 var n i = Var (Free (LName i n))
