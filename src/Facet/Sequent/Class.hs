@@ -6,6 +6,8 @@ module Facet.Sequent.Class
   -- * Effectful abstractions
 , strengthen
 , µRA
+, Clause(..)
+, funRA
 , µLA
   -- * Commands
 , (:|:)(..)
@@ -15,13 +17,13 @@ import Control.Applicative (liftA2)
 import Data.Bifoldable
 import Data.Bifunctor
 import Data.Bitraversable
-import Data.Functor.Identity (Identity(runIdentity))
+import Data.Functor.Identity (Identity(..))
 import Data.Text (Text)
 import Facet.Functor.Compose
 import Facet.Name (LName, Level, Name, RName)
 import Facet.Pattern (Pattern)
 import Facet.Quote (Quote(..))
-import Facet.Syntax (Var, (:=:))
+import Facet.Syntax (Var, (:=:)(..))
 
 -- * Term abstraction
 
@@ -58,6 +60,12 @@ strengthen = fmap runIdentity
   -> (forall j . Applicative j => (forall x . i x -> j x) -> j c -> m (j (t :|: c)))
   -> m (i t)
 µRA n f = fmap (µR n) . runC <$> f liftCOuter (liftCInner id)
+
+newtype Clause i m t = Clause { runClause :: forall j . Applicative j => (forall x . i x -> j x) -> j (Pattern (Name :=: t)) -> m (j t) }
+
+funRA :: (Term t c, Applicative i, Applicative m) => [(Pattern Name, Clause i m t)] -> m (i t)
+funRA cs = fmap funR <$> runC (traverse (\ (p, c) -> (p,) <$> C (runC <$> runClause c liftCOuter (liftCInner id))) cs)
+
 
 µLA
   :: (Term t c, Applicative i, Applicative m)
