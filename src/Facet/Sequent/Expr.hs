@@ -7,7 +7,7 @@ module Facet.Sequent.Expr
 , (C.:|:)(..)
 ) where
 
-import           Data.Bitraversable (bisequenceA)
+import           Control.Applicative (liftA2)
 import           Data.Text (Text)
 import           Data.Traversable (mapAccumL)
 import           Facet.Name
@@ -36,9 +36,9 @@ data Coterm
   | FunL Term Coterm
 
 
-instance C.Term (Quoter Term) (Quoter Coterm) where
+instance C.Term (Quoter Term) (Quoter Coterm) (Quoter (Term C.:|: Coterm)) where
   var v = Quoter (\ d -> Var (toIndexed d v))
-  µR n b = MuR n <$> binder (\ d' -> Quoter (\ d -> covar n (toIndexed d d'))) (bisequenceA . b)
+  µR n b = MuR n <$> binder (\ d' -> Quoter (\ d -> covar n (toIndexed d d'))) b
   funR ps = FunR <$> traverse (uncurry clause) ps
   conR n fs = ConR n <$> sequenceA fs
   stringR = pure . StringR
@@ -46,10 +46,10 @@ instance C.Term (Quoter Term) (Quoter Coterm) where
   compR i b = CompR i . snd <$> clause (PDict i) b
 
   covar v = Quoter (\ d -> Covar (toIndexed d v))
-  µL n b = MuL n <$> binder (\ d' -> Quoter (\ d -> var n (toIndexed d d'))) (bisequenceA . b)
+  µL n b = MuL n <$> binder (\ d' -> Quoter (\ d -> var n (toIndexed d d'))) b
   funL a b = FunL <$> a <*> b
 
-  (|||) = (C.:|:)
+  (|||) = liftA2 (C.:|:)
 
 var :: Name -> Index -> Term
 var n i = Var (Free (LName i n))

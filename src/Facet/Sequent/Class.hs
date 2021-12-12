@@ -27,10 +27,10 @@ import Facet.Syntax (Var, (:=:)(..))
 
 -- * Term abstraction
 
-class Term term coterm | coterm -> term, term -> coterm where
+class Term term coterm command | coterm -> term command, term -> coterm command, command -> term coterm where
   -- Terms
   var :: Var (LName Level) -> term
-  µR :: Name -> (coterm -> term :|: coterm) -> term
+  µR :: Name -> (coterm -> command) -> term
   funR :: [(Pattern Name, Pattern (Name :=: term) -> term)] -> term
   conR :: RName -> [term] -> term
   stringR :: Text -> term
@@ -39,11 +39,11 @@ class Term term coterm | coterm -> term, term -> coterm where
 
   -- Coterms
   covar :: Var (LName Level) -> coterm
-  µL :: Name -> (term -> term :|: coterm) -> coterm
+  µL :: Name -> (term -> command) -> coterm
   funL :: term -> coterm -> coterm
 
   -- Commands
-  (|||) :: term -> coterm -> term :|: coterm
+  (|||) :: term -> coterm -> command
 
   infix 1 |||
 
@@ -55,22 +55,22 @@ strengthen = fmap runIdentity
 
 
 µRA
-  :: (Term t c, Applicative i, Applicative m)
+  :: (Term t c d, Applicative i, Applicative m)
   => Name
-  -> (forall j . Applicative j => (forall x . i x -> j x) -> j c -> m (j (t :|: c)))
+  -> (forall j . Applicative j => (forall x . i x -> j x) -> j c -> m (j d))
   -> m (i t)
 µRA n f = fmap (µR n) . runC <$> f liftCOuter (liftCInner id)
 
 newtype Clause i m t = Clause { runClause :: forall j . Applicative j => (forall x . i x -> j x) -> j (Pattern (Name :=: t)) -> m (j t) }
 
-funRA :: (Term t c, Applicative i, Applicative m) => [(Pattern Name, Clause i m t)] -> m (i t)
+funRA :: (Term t c d, Applicative i, Applicative m) => [(Pattern Name, Clause i m t)] -> m (i t)
 funRA cs = fmap funR <$> runC (traverse (traverse (\ c -> C (runC <$> runClause c liftCOuter (liftCInner id)))) cs)
 
 
 µLA
-  :: (Term t c, Applicative i, Applicative m)
+  :: (Term t c d, Applicative i, Applicative m)
   => Name
-  -> (forall j . Applicative j => (forall x . i x -> j x) -> j t -> m (j (t :|: c)))
+  -> (forall j . Applicative j => (forall x . i x -> j x) -> j t -> m (j d))
   -> m (i c)
 µLA n f = fmap (µL n) . runC <$> f liftCOuter (liftCInner id)
 
