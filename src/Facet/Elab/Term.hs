@@ -68,7 +68,7 @@ import           Facet.Module as Module
 import           Facet.Name
 import           Facet.Pattern
 import           Facet.Semiring (Few(..), zero, (><<))
-import qualified Facet.Sequent.Class as S
+import qualified Facet.Sequent.Class as SQ
 import           Facet.Snoc
 import           Facet.Snoc.NonEmpty as NE
 import           Facet.Source (Source)
@@ -147,19 +147,19 @@ app mk operator operand = do
   a' <- censor @Usage (q ><<) $ check (operand ::: _A)
   pure $ mk f' a' :==> _B
 
-appS :: (HasCallStack, Has (Throw Err) sig m, S.Term t c) => (HasCallStack => Elab m (t :==> Type)) -> (HasCallStack => Type <==: Elab m t) -> Elab m (t :==> Type)
+appS :: (HasCallStack, Has (Throw Err) sig m, SQ.Term t c) => (HasCallStack => Elab m (t :==> Type)) -> (HasCallStack => Type <==: Elab m t) -> Elab m (t :==> Type)
 appS f a = do
   f' :==> _F <- f
   (_, q, _A, _B) <- assertFunction _F
   a' <- censor @Usage (q ><<) $ check (a ::: _A)
-  pure $ S.µR __ (\ k -> f' S.:|: S.funL a' k) :==> _B
+  pure $ SQ.µR __ (\ k -> f' SQ.:|: SQ.funL a' k) :==> _B
 
 
 string :: Text -> Elab m (Term :==> Type)
 string s = pure $ E.String s :==> T.String
 
-stringS :: S.Term t c => Text -> Elab m (t :==> Type)
-stringS s = pure $ S.stringR s :==> T.String
+stringS :: SQ.Term t c => Text -> Elab m (t :==> Type)
+stringS s = pure $ SQ.stringR s :==> T.String
 
 
 let' :: (HasCallStack, Has (Throw Err) sig m) => Bind m (Pattern (Name :==> Type)) -> Elab m (Term :==> Type) -> Type <==: Elab m Term -> Type <==: Elab m Term
