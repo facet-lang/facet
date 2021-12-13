@@ -42,7 +42,7 @@ data Coterm
 data Command = Term :|: Coterm
 
 
-instance Class.Term Term Coterm (Term Class.:|: Coterm) where
+instance Class.Sequent Term Coterm (Term Class.:|: Coterm) where
   var = Var
   µR = MuR
   funR = FunR

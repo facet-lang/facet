@@ -24,7 +24,7 @@ instance Show Print where
   showsPrec p = showsPrec p . getPrint quietOptions
 
 
-instance S.Term Print Print Print where
+instance S.Sequent Print Print Print where
   var = var
   µR n b = P.pretty "µ" <> P.braces (nameVar n id P.<+> P.dot P.<+> nameVar n b)
   funR cs = P.braces (P.encloseSep (P.flatAlt P.space mempty) (P.flatAlt P.space mempty) (P.comma <> P.space) (map (uncurry clause) cs))

@@ -147,7 +147,7 @@ app mk operator operand = do
   a' <- censor @Usage (q ><<) $ check (operand ::: _A)
   pure $ mk f' a' :==> _B
 
-appS :: (HasCallStack, Has (Throw Err) sig m, SQ.Term t c d) => (HasCallStack => Elab m (t :==> Type)) -> (HasCallStack => Type <==: Elab m t) -> Elab m (t :==> Type)
+appS :: (HasCallStack, Has (Throw Err) sig m, SQ.Sequent t c d) => (HasCallStack => Elab m (t :==> Type)) -> (HasCallStack => Type <==: Elab m t) -> Elab m (t :==> Type)
 appS f a = do
   f' :==> _F <- f
   (_, q, _A, _B) <- assertFunction _F
@@ -158,7 +158,7 @@ appS f a = do
 string :: Text -> Elab m (Term :==> Type)
 string s = pure $ E.String s :==> T.String
 
-stringS :: SQ.Term t c d => Text -> Elab m (t :==> Type)
+stringS :: SQ.Sequent t c d => Text -> Elab m (t :==> Type)
 stringS s = pure $ SQ.stringR s :==> T.String
 
 

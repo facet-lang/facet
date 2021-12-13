@@ -1,8 +1,8 @@
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE UndecidableInstances #-}
 module Facet.Sequent.Class
-( -- * Term abstraction
-  Term(..)
+( -- * Sequent abstraction
+  Sequent(..)
   -- * Effectful abstractions
 , strengthen
 , µRA
@@ -27,7 +27,7 @@ import Facet.Syntax (Var, (:=:)(..))
 
 -- * Term abstraction
 
-class Term term coterm command | coterm -> term command, term -> coterm command, command -> term coterm where
+class Sequent term coterm command | coterm -> term command, term -> coterm command, command -> term coterm where
   -- Terms
   var :: Var (LName Level) -> term
   µR :: Name -> (coterm -> command) -> term
@@ -55,7 +55,7 @@ strengthen = fmap runIdentity
 
 
 µRA
-  :: (Term t c d, Applicative i, Applicative m)
+  :: (Sequent t c d, Applicative i, Applicative m)
   => Name
   -> (forall j . Applicative j => (forall x . i x -> j x) -> j c -> m (j d))
   -> m (i t)
@@ -63,12 +63,12 @@ strengthen = fmap runIdentity
 
 newtype Clause i m t = Clause { runClause :: forall j . Applicative j => (forall x . i x -> j x) -> j (Pattern (Name :=: t)) -> m (j t) }
 
-funRA :: (Term t c d, Applicative i, Applicative m) => [(Pattern Name, Clause i m t)] -> m (i t)
+funRA :: (Sequent t c d, Applicative i, Applicative m) => [(Pattern Name, Clause i m t)] -> m (i t)
 funRA cs = fmap funR <$> runC (traverse (traverse (\ c -> C (runC <$> runClause c liftCOuter (liftCInner id)))) cs)
 
 
 µLA
-  :: (Term t c d, Applicative i, Applicative m)
+  :: (Sequent t c d, Applicative i, Applicative m)
   => Name
   -> (forall j . Applicative j => (forall x . i x -> j x) -> j t -> m (j d))
   -> m (i c)

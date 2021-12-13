@@ -36,7 +36,7 @@ data Coterm
   | FunL Term Coterm
 
 
-instance C.Term (Quoter Term) (Quoter Coterm) (Quoter (Term C.:|: Coterm)) where
+instance C.Sequent (Quoter Term) (Quoter Coterm) (Quoter (Term C.:|: Coterm)) where
   var v = Quoter (\ d -> Var (toIndexed d v))
   µR n b = MuR n <$> binder (\ d' -> Quoter (\ d -> covar n (toIndexed d d'))) b
   funR ps = FunR <$> traverse (uncurry clause) ps
