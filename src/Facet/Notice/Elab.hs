@@ -29,7 +29,7 @@ import           Silkscreen
 
 -- Elaboration
 
-rethrowElabErrors :: Applicative m => Options -> L.ThrowC (Notice (Doc Style)) Err m a -> m a
+rethrowElabErrors :: Applicative m => Options Print -> L.ThrowC (Notice (Doc Style)) Err m a -> m a
 rethrowElabErrors opts = L.runThrow (pure . rethrow)
   where
   rethrow Err{ source, reason, context, subst, sig, callStack } = Notice.Notice (Just Error) [source] (printErrReason opts printCtx reason)
@@ -57,7 +57,7 @@ rethrowElabErrors opts = L.runThrow (pure . rethrow)
     | otherwise -> id
 
 
-printErrReason :: Options -> Env.Env Print -> ErrReason -> Doc Style
+printErrReason :: Options Print -> Env.Env Print -> ErrReason -> Doc Style
 printErrReason opts ctx = group . \case
   FreeVariable n               -> fillSep [reflow "variable not in scope:", pretty n]
   AmbiguousName n qs           -> fillSep [reflow "ambiguous name", pretty n] <\> nest 2 (reflow "alternatives:" <\> unlines (map pretty qs))

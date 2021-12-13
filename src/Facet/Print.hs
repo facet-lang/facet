@@ -36,6 +36,7 @@ import qualified Facet.Module as C
 import           Facet.Name as Name
 import           Facet.Pattern
 import           Facet.Pretty (lower, upper)
+import           Facet.Print.Options
 import           Facet.Quote
 import           Facet.Semiring (one, zero)
 import           Facet.Snoc
@@ -117,35 +118,6 @@ f $$ a = askingPrec $ \case
 ($$*) = fmap group . foldl' ($$)
 
 
--- Options
-
--- FIXME: add an option to control whether shifts are printed
-data Options = Options
-  { rname         :: RName -> Print
-  , instantiation :: Print -> Print -> Print
-  }
-
-verboseOptions :: Options
-verboseOptions = Options
-  { rname         = qualified
-  , instantiation = printInstantiation
-  }
-
-quietOptions :: Options
-quietOptions = Options
-  { rname         = unqualified
-  , instantiation = suppressInstantiation
-  }
-
-qualified, unqualified :: RName -> Print
-qualified = pretty
-unqualified (_:.:n) = pretty n
-
-printInstantiation, suppressInstantiation :: Print -> Print -> Print
-printInstantiation = ($$)
-suppressInstantiation = const
-
-
 intro, tintro :: Name -> Level -> Print
 intro  n = name lower n . getLevel
 tintro n = name upper n . getLevel
@@ -170,7 +142,7 @@ name f n d = setPrec Var . annotate (Name d) $
 -- Printable
 
 class Printable t where
-  print :: Options -> Env Print -> t -> Print
+  print :: Options Print -> Env Print -> t -> Print
 
 instance Printable Print where
   print _ _ = id
@@ -267,7 +239,7 @@ instance Printable C.Module where
 
 
 class Printable1 f where
-  printWith :: (Options -> Env Print -> a -> Print) -> Options -> Env Print -> f a -> Print
+  printWith :: (Options Print -> Env Print -> a -> Print) -> Options Print -> Env Print -> f a -> Print
 
 instance Printable1 Interface where
   printWith with opts@Options{ rname } env (Interface h sp) = rname h $$* fmap (with opts env) sp
@@ -282,5 +254,5 @@ instance Printable1 Pattern where
       PDict os  -> brackets (flatAlt space line <> commaSep (map (\ (n :=: v) -> rname n <+> equals <+> group (with opts env v)) os) <> flatAlt space line)
 
 
-print1 :: (Printable1 f, Printable a) => Options -> Env Print -> f a -> Print
+print1 :: (Printable1 f, Printable a) => Options Print -> Env Print -> f a -> Print
 print1 = printWith print

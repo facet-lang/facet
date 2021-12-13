@@ -71,7 +71,7 @@ repl searchPaths
   . fmap (const ExitSuccess)
   . runReadlineWithHistory
   . evalState (defaultREPLState & target_.searchPaths_ .~ Set.fromList searchPaths)
-  . evalState quietOptions
+  . evalState (quietOptions @Print)
   . evalEmpty
   $ loop
 
@@ -111,7 +111,7 @@ defaultPromptFunction _ = pure $ setTitleCode "facet" <> "\STX" <> bold <> cyan 
   plain = setSGRCode [] <> "\STX"
 
 
-loop :: (Has (Empty :+: Input :+: Output :+: State Options :+: State REPL) sig m, MonadIO m) => m ()
+loop :: (Has (Empty :+: Input :+: Output :+: State (Options Print) :+: State REPL) sig m, MonadIO m) => m ()
 loop = do
   -- FIXME: handle interrupts
   resp <- prompt
@@ -160,7 +160,7 @@ path' :: TokenParsing p => p FilePath
 path' = stringLiteral <|> some (satisfy (not . isSpace))
 
 
-newtype Action = Action { runAction :: forall sig m . (Has (Empty :+: Error (Notice.Notice (Doc Style)) :+: Output :+: Reader Source :+: State Options :+: State REPL :+: I.Write (Notice.Notice (Doc Style))) sig m, MonadFail m, MonadIO m) => m () }
+newtype Action = Action { runAction :: forall sig m . (Has (Empty :+: Error (Notice.Notice (Doc Style)) :+: Output :+: Reader Source :+: State (Options Print) :+: State REPL :+: I.Write (Notice.Notice (Doc Style))) sig m, MonadFail m, MonadIO m) => m () }
 
 
 showPaths, showModules, showTargets :: Action
@@ -207,7 +207,7 @@ showEval e = Action $ do
   opts <- get
   outputDocLn (getPrint (ann (Print.print opts mempty e'' ::: Print.print opts mempty _T)))
 
-runEvalMain :: (Has (Error (Notice.Notice (Doc Style)) :+: Output :+: Reader Graph :+: Reader Module :+: State Options) sig m, MonadFail m) => Term -> m Term
+runEvalMain :: (Has (Error (Notice.Notice (Doc Style)) :+: Output :+: Reader Graph :+: Reader Module :+: State (Options Print)) sig m, MonadFail m) => Term -> m Term
 runEvalMain e = runEval (runQuoter  0 . quote =<< runReader mempty (eval e)) pure
   -- where
   -- hdl = [(write, Handler handle)]
@@ -242,7 +242,7 @@ prompt = do
   p <- liftIO $ fn line
   fmap (sourceFromString Nothing line) <$> getInputLine p
 
-runElab :: Has (State Options :+: State REPL) sig m => I.WriteC (Notice.Notice (Doc Style)) Elab.Warn (I.ThrowC (Notice.Notice (Doc Style)) Elab.Err (ReaderC MName (ReaderC Module (ReaderC Graph m)))) a -> m a
+runElab :: Has (State (Options Print) :+: State REPL) sig m => I.WriteC (Notice.Notice (Doc Style)) Elab.Warn (I.ThrowC (Notice.Notice (Doc Style)) Elab.Err (ReaderC MName (ReaderC Module (ReaderC Graph m)))) a -> m a
 runElab m = do
   graph <- use (target_.modules_)
   localDefs <- use localDefs_

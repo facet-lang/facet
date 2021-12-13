@@ -13,7 +13,7 @@ import           Facet.Carrier.Write.General
 import           Facet.Driver
 import           Facet.Graph
 import           Facet.Lens
-import           Facet.Print (quietOptions)
+import           Facet.Print (Print, quietOptions)
 import           Facet.Source as Source
 import           Facet.Style
 import           Fresnel.At
@@ -36,4 +36,4 @@ runFile searchPaths path = runStack $ do
     . evalState (Target mempty mempty (Set.fromList searchPaths))
     . runError ((ExitFailure 1 <$) . outputDocLn . prettyNotice) pure
     . runWrite (outputDocLn . prettyNotice)
-    . evalState quietOptions
+    . evalState (quietOptions @Print)

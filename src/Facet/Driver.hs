@@ -44,7 +44,7 @@ import           Facet.Notice.Elab (rethrowElabErrors, rethrowElabWarnings)
 import           Facet.Notice.Parser (rethrowParseErrors)
 import           Facet.Parser
 import           Facet.Pretty
-import           Facet.Print (Options)
+import           Facet.Print (Options, Print)
 import           Facet.Snoc
 import           Facet.Source
 import           Facet.Style
@@ -91,7 +91,7 @@ kernel = Module kernelName [] [] $ Scope mempty
 
 -- Module loading
 
-reloadModules :: (Has (Error (Notice.Notice (Doc Style)) :+: Output :+: State Options :+: State Target :+: Write (Notice.Notice (Doc Style))) sig m, MonadIO m) => m ()
+reloadModules :: (Has (Error (Notice.Notice (Doc Style)) :+: Output :+: State (Options Print) :+: State Target :+: Write (Notice.Notice (Doc Style))) sig m, MonadIO m) => m ()
 reloadModules = do
   searchPaths <- uses searchPaths_ toList
   modules_ .= singleton Nothing kernel
@@ -145,7 +145,7 @@ loadModuleHeader searchPaths target = do
   (name', is) <- rethrowParseErrors @_ @Style (runParserWithSource src (runFacet [] (whiteSpace *> moduleHeader)))
   pure (ModuleHeader name' src (map (Import.name . S.out) is))
 
-loadModule :: Has (Output :+: State Options :+: Throw (Notice.Notice (Doc Style)) :+: Write (Notice.Notice (Doc Style))) sig m => Graph -> ModuleHeader Module -> m Module
+loadModule :: Has (Output :+: State (Options Print) :+: Throw (Notice.Notice (Doc Style)) :+: Write (Notice.Notice (Doc Style))) sig m => Graph -> ModuleHeader Module -> m Module
 loadModule graph (ModuleHeader _ src imports) = do
   let ops = foldMap (\ m -> map (\ (op, assoc) -> (name m, op, assoc)) (operators m)) imports
   m <- rethrowParseErrors @_ @Style (runParserWithSource src (runFacet (map makeOperator ops) (whole module')))
