@@ -17,6 +17,13 @@ import qualified Silkscreen.Printer.Rainbow as P
 newtype Print = Print { doc :: Options Print -> Used -> P.Rainbow (PP.Doc S.Style) }
   deriving (Monoid, P.Printer, Semigroup)
 
+getPrint :: Options Print -> Print -> PP.Doc S.Style
+getPrint o p = P.runRainbow (P.annotate . S.Nest) 0 (doc (P.group p) o 0)
+
+instance Show Print where
+  showsPrec p = showsPrec p . getPrint quietOptions
+
+
 instance S.Term Print Print Print where
   var = var
   µR n b = P.pretty "µ" <> P.braces (nameVar n id P.<+> P.dot P.<+> nameVar n b)
