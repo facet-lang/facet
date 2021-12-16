@@ -80,5 +80,5 @@ instance Quote Coterm X.Coterm where
     FunL a b -> liftA2 X.FunL (quote a) (quote b)
 
 
-instance Quote Command (X.Term Class.:|: X.Coterm) where
-  quote (t :|: c) = (Class.:|:) <$> quote t <*> quote c
+instance Quote Command (X.Term X.:|: X.Coterm) where
+  quote (t :|: c) = liftA2 (X.:|:) (quote t) (quote c)
