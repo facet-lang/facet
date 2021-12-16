@@ -21,7 +21,7 @@ import           Facet.Syntax
 
 data Term
   = Var (Var (LName Level))
-  | MuR Name (Coterm -> Term Class.:|: Coterm)
+  | MuR Name (Coterm -> Command)
   | FunR [(Pattern Name, Pattern (Name :=: Term) -> Term)]
   | ConR RName [Term]
   | StringR Text
@@ -33,7 +33,7 @@ data Term
 
 data Coterm
   = Covar (Var (LName Level))
-  | MuL Name (Term -> Term Class.:|: Coterm)
+  | MuL Name (Term -> Command)
   | FunL Term Coterm
 
 
@@ -42,7 +42,7 @@ data Coterm
 data Command = Term :|: Coterm
 
 
-instance Class.Sequent Term Coterm (Term Class.:|: Coterm) where
+instance Class.Sequent Term Coterm Command where
   var = Var
   µR = MuR
   funR = FunR
@@ -55,7 +55,7 @@ instance Class.Sequent Term Coterm (Term Class.:|: Coterm) where
   µL = MuL
   funL = FunL
 
-  (.|.) = (Class.:|:)
+  (.|.) = (:|:)
 
 
 instance Quote Term X.Term where
