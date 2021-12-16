@@ -1,11 +1,10 @@
-{-# LANGUAGE UndecidableInstances #-}
 module Facet.Sequent.Expr
 ( -- * Terms
   Term(..)
   -- * Coterms
 , Coterm(..)
   -- * Commands
-, (:|:)(..)
+, Command(..)
   -- * Interpretation
 , interpretTerm
 , interpretCoterm
@@ -13,9 +12,6 @@ module Facet.Sequent.Expr
 ) where
 
 import           Control.Applicative (liftA2)
-import           Data.Bifoldable (Bifoldable(..))
-import           Data.Bifunctor (Bifunctor(..))
-import           Data.Bitraversable (Bitraversable(..), bifoldMapDefault, bimapDefault)
 import           Data.Text (Text)
 import           Data.Traversable (mapAccumL)
 import           Facet.Env
@@ -29,7 +25,7 @@ import           Facet.Syntax
 
 data Term
   = Var (Var (LName Index))
-  | MuR Name (Term :|: Coterm)
+  | MuR Name Command
   | FunR [(Pattern Name, Term)]
   | ConR RName [Term]
   | StringR Text
@@ -41,28 +37,16 @@ data Term
 
 data Coterm
   = Covar (Var (LName Index))
-  | MuL Name (Term :|: Coterm)
+  | MuL Name Command
   | FunL Term Coterm
 
 
 -- Commands
 
-data term :|: coterm = term :|: coterm
-
-instance (Quote term1 term2, Quote coterm1 coterm2) => Quote (term1 :|: coterm1) (term2 :|: coterm2) where
-  quote (term :|: coterm) = liftA2 (:|:) (quote term) (quote coterm)
-
-instance Bifoldable (:|:) where
-  bifoldMap = bifoldMapDefault
-
-instance Bifunctor (:|:) where
-  bimap = bimapDefault
-
-instance Bitraversable (:|:) where
-  bitraverse f g (a :|: b) = (:|:) <$> f a <*> g b
+data Command = Term :|: Coterm
 
 
-instance C.Sequent (Quoter Term) (Quoter Coterm) (Quoter (Term :|: Coterm)) where
+instance C.Sequent (Quoter Term) (Quoter Coterm) (Quoter Command) where
   var v = Quoter (\ d -> Var (toIndexed d v))
   µR n b = MuR n <$> binder (\ d' -> Quoter (\ d -> covar n (toIndexed d d'))) b
   funR ps = FunR <$> traverse (uncurry clause) ps
@@ -105,5 +89,5 @@ interpretCoterm _G _D = \case
   MuL n b          -> C.µL n (\ t -> interpretCommand (_G |> PVar (n :=: t)) _D b)
   FunL a k         -> C.funL (interpretTerm _G _D a) (interpretCoterm _G _D k)
 
-interpretCommand :: C.Sequent t c d => Env t -> Env c -> Term :|: Coterm -> d
+interpretCommand :: C.Sequent t c d => Env t -> Env c -> Command -> d
 interpretCommand _G _D (t :|: c) = interpretTerm _G _D t C..|. interpretCoterm _G _D c
