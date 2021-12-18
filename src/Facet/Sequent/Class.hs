@@ -59,7 +59,7 @@ funRA :: (Sequent t c d, Applicative i, Applicative m) => [(Pattern Name, Clause
 funRA cs = fmap funR <$> runC (traverse (uncurry clause) cs)
   where
   clause :: (Functor m, Applicative i) => Pattern Name -> Clause i m t -> (m . i) (Pattern Name, Pattern (Name :=: t) -> t)
-  clause p c = (p,) <$> C (runC <$> runClause c liftCOuter (liftCInner id))
+  clause p (Clause c) = (p,) <$> C (runC <$> c liftCOuter (liftCInner id))
 
 
 µLA
