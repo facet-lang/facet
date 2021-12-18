@@ -56,7 +56,10 @@ strengthen = fmap runIdentity
 newtype Clause i m t = Clause { runClause :: forall j . Applicative j => (forall x . i x -> j x) -> j (Pattern (Name :=: t)) -> m (j t) }
 
 funRA :: (Sequent t c d, Applicative i, Applicative m) => [(Pattern Name, Clause i m t)] -> m (i t)
-funRA cs = fmap funR <$> runC (traverse (traverse (\ c -> C (runC <$> runClause c liftCOuter (liftCInner id)))) cs)
+funRA cs = fmap funR <$> runC (traverse (uncurry clause) cs)
+  where
+  clause :: (Functor m, Applicative i) => Pattern Name -> Clause i m t -> (m . i) (Pattern Name, Pattern (Name :=: t) -> t)
+  clause p c = (p,) <$> C (runC <$> runClause c liftCOuter (liftCInner id))
 
 
 µLA
