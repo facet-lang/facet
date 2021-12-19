@@ -37,6 +37,7 @@ class Sequent term coterm command | coterm -> term command, term -> coterm comma
   µL :: (term -> command) -> coterm
   funL :: term -> coterm -> coterm
   sumL :: [term -> command] -> coterm
+  prdL :: Int -> coterm -> coterm
 
   -- Commands
   (.|.) :: term -> coterm -> command

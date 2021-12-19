@@ -43,6 +43,7 @@ instance S.Sequent Print Print Print where
   µL b = µ̃ <> P.braces (fresh (\ v -> anon v P.<+> P.dot P.<+> b (anon v)))
   funL a k = a P.<+> P.dot P.<+> k
   sumL cs = µ̃ <> P.braces (commaSep (map (\ c -> fresh (\ v -> anon v P.<+> P.dot P.<+> c (anon v))) cs))
+  prdL i k = P.parens (P.pretty "ex" <> P.pretty i P.<+> k)
 
   (.|.) = fmap (P.enclose P.langle P.rangle) . P.surround P.pipe
 
