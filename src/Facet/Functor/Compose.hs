@@ -6,6 +6,7 @@ module Facet.Functor.Compose
 , mapCInner
 , liftCOuter
 , mapCOuter
+, binder
 ) where
 
 import Control.Applicative (Alternative(..))
@@ -35,3 +36,6 @@ liftCOuter = C . fmap pure
 
 mapCOuter :: (i (j a) -> i' (j' b)) -> ((i . j) a -> (i' . j') b)
 mapCOuter f = C . f . runC
+
+binder :: (Functor m, Applicative i) => (forall j . Applicative j => (forall x . i x -> j x) -> j c -> m (j d)) -> m (i (c -> d))
+binder c = runC <$> c liftCOuter (liftCInner id)
