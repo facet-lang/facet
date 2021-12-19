@@ -53,26 +53,23 @@ strengthen = fmap runIdentity
   :: (Sequent t c d, Applicative i, Applicative m)
   => (forall j . Applicative j => (forall x . i x -> j x) -> j c -> m (j d))
   -> m (i t)
-µRA f = fmap µR . runC <$> f liftCOuter (liftCInner id)
+µRA f = fmap µR <$> binder f
 
 newtype Clause i m t c d = Clause { runClause :: forall j . Applicative j => (forall x . i x -> j x) -> j (Pattern (Name :=: t)) -> m (j t) }
 
 funRA :: (Sequent t c d, Applicative i, Applicative m) => [(Pattern Name, Clause i m t c d)] -> m (i t)
-funRA cs = runC (funR <$> traverse (traverse (C . clause)) cs)
-  where
-  clause :: (Functor m, Applicative i) => Clause i m t c d -> m (i (Pattern (Name :=: t) -> t))
-  clause (Clause c) = runC <$> c liftCOuter (liftCInner id)
+funRA cs = runC (funR <$> traverse (traverse (\ (Clause c) -> C (binder c))) cs)
 
 
 µLA
   :: (Sequent t c d, Applicative i, Applicative m)
   => (forall j . Applicative j => (forall x . i x -> j x) -> j t -> m (j d))
   -> m (i c)
-µLA f = fmap µL . runC <$> f liftCOuter (liftCInner id)
+µLA f = fmap µL <$> binder f
 
 sumLA
   :: (Sequent t c d, Applicative i, Applicative m)
   => (forall j . Applicative j => (forall x . i x -> j x) -> j t -> m (j d))
   -> (forall j . Applicative j => (forall x . i x -> j x) -> j t -> m (j d))
   -> m (i c)
-sumLA f g = (\ a b -> liftA2 sumL (runC a) (runC b)) <$> f liftCOuter (liftCInner id) <*> g liftCOuter (liftCInner id)
+sumLA f g = liftA2 sumL <$> binder f <*> binder g
