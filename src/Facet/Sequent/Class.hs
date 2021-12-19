@@ -11,7 +11,6 @@ module Facet.Sequent.Class
 , sumLA
 ) where
 
-import Control.Applicative (liftA2)
 import Data.Functor.Identity (Identity(..))
 import Data.Text (Text)
 import Facet.Functor.Compose
@@ -26,8 +25,7 @@ class Sequent term coterm command | coterm -> term command, term -> coterm comma
   var :: Var (LName Level) -> term
   µR :: (coterm -> command) -> term
   funR :: [(Pattern Name, Pattern (Name :=: term) -> term)] -> term
-  sumR1 :: term -> term
-  sumR2 :: term -> term
+  sumR :: Int -> term -> term
   conR :: RName -> [term] -> term
   stringR :: Text -> term
   dictR :: [RName :=: term] -> term
@@ -37,7 +35,7 @@ class Sequent term coterm command | coterm -> term command, term -> coterm comma
   covar :: Var (LName Level) -> coterm
   µL :: (term -> command) -> coterm
   funL :: term -> coterm -> coterm
-  sumL :: (term -> command) -> (term -> command) -> coterm
+  sumL :: [term -> command] -> coterm
 
   -- Commands
   (.|.) :: term -> coterm -> command
@@ -69,7 +67,6 @@ funRA cs = runC (funR <$> traverse (traverse (\ (Clause c) -> C (binder c))) cs)
 
 sumLA
   :: (Sequent t c d, Applicative i, Applicative m)
-  => (forall j . Applicative j => (forall x . i x -> j x) -> j t -> m (j d))
-  -> (forall j . Applicative j => (forall x . i x -> j x) -> j t -> m (j d))
+  => [Clause m i t d]
   -> m (i c)
-sumLA f g = liftA2 sumL <$> binder f <*> binder g
+sumLA cs = runC (sumL <$> traverse (\ (Clause c) -> C (binder c)) cs)
