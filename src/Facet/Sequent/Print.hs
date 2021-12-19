@@ -30,6 +30,7 @@ instance S.Sequent Print Print Print where
   µR b = P.pretty "µ" <> P.braces (fresh (\ v -> anon v P.<+> P.dot P.<+> b (anon v)))
   funR cs = P.braces (P.encloseSep (P.flatAlt P.space mempty) (P.flatAlt P.space mempty) (P.comma <> P.space) (map (uncurry clause) cs))
   sumR i t = P.parens (P.pretty "in" <> P.pretty i P.<+> t)
+  prdR = P.tupled
   conR n fs = foldl1 (P.surround P.space) (S.var (Global n):fs)
   stringR = P.pretty . show
   dictR os = withOpts (\ Options{..} -> P.brackets (P.flatAlt P.space P.line <> commaSep (map (\ (n :=: v) -> rname n P.<+> P.equals P.<+> P.group v) os) <> P.flatAlt P.space P.line))
