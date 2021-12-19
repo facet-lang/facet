@@ -7,6 +7,7 @@ module Facet.Functor.Compose
 , liftCOuter
 , mapCOuter
 , binder
+, Clause(..)
 ) where
 
 import Control.Applicative (Alternative(..))
@@ -39,3 +40,5 @@ mapCOuter f = C . f . runC
 
 binder :: (Functor m, Applicative i) => (forall j . Applicative j => (forall x . i x -> j x) -> j c -> m (j d)) -> m (i (c -> d))
 binder c = runC <$> c liftCOuter (liftCInner id)
+
+newtype Clause m i a b = Clause { runClause :: forall j . Applicative j => (forall x . i x -> j x) -> j a -> m (j b) }
