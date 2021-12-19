@@ -39,6 +39,7 @@ data Coterm
   = Covar (Var (LName Index))
   | MuL Name Command
   | FunL Term Coterm
+  | SumL Command Command
 
 
 -- Commands
@@ -58,6 +59,7 @@ instance C.Sequent (Quoter Term) (Quoter Coterm) (Quoter Command) where
   covar v = Quoter (\ d -> Covar (toIndexed d v))
   µL n b = MuL n <$> binder (\ d' -> Quoter (\ d -> var n (toIndexed d d'))) b
   funL a b = FunL <$> a <*> b
+  sumL l r = SumL <$> binder (\ d' -> Quoter (\ d -> var __ (toIndexed d d'))) l <*> binder (\ d' -> Quoter (\ d -> var __ (toIndexed d d'))) r
 
   (.|.) = liftA2 (:|:)
 
@@ -88,6 +90,7 @@ interpretCoterm _G _D = \case
   Covar (Global n) -> C.covar (Global n)
   MuL n b          -> C.µL n (\ t -> interpretCommand (_G |> PVar (n :=: t)) _D b)
   FunL a k         -> C.funL (interpretTerm _G _D a) (interpretCoterm _G _D k)
+  SumL l r         -> C.sumL (\ t -> interpretCommand (_G |> PVar (__ :=: t)) _D l) (\ t -> interpretCommand (_G |> PVar (__ :=: t)) _D r)
 
 interpretCommand :: C.Sequent t c d => Env t -> Env c -> Command -> d
 interpretCommand _G _D (t :|: c) = interpretTerm _G _D t C..|. interpretCoterm _G _D c

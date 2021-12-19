@@ -6,6 +6,7 @@ module Facet.Sequent.Print
 
 import           Facet.Name
 import           Facet.Pattern (Pattern(..))
+import           Facet.Pretty
 import           Facet.Print.Options
 import qualified Facet.Sequent.Class as S
 import qualified Facet.Style as S
@@ -39,6 +40,7 @@ instance S.Sequent Print Print Print where
   covar = var
   µL n b = µ̃ <> P.braces (P.pretty n P.<+> P.dot P.<+> withLevel (\ d -> b (var (Free (LName (getUsed d) n)))))
   funL a k = a P.<+> P.dot P.<+> k
+  sumL l r = µ̃ <> P.braces (commaSep [fresh (\ v -> anon v P.<+> P.dot P.<+> l (anon v)), fresh (\ v -> anon v P.<+> P.dot P.<+> r (anon v))])
 
   (.|.) = fmap (P.enclose P.langle P.rangle) . P.surround P.pipe
 
@@ -47,6 +49,12 @@ withLevel f = Print (\ o d -> doc (f d) o d)
 
 incrLevel :: Print -> Print
 incrLevel p = Print (\ o -> doc p o . succ)
+
+fresh :: (Used -> Print) -> Print
+fresh f = withLevel (incrLevel . f)
+
+anon :: Used -> Print
+anon = lower . getLevel . getUsed
 
 withOpts :: (Options Print -> Print) -> Print
 withOpts f = Print (\ o d -> doc (f o) o d)

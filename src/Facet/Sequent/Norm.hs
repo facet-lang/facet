@@ -35,6 +35,7 @@ data Coterm
   = Covar (Var (LName Level))
   | MuL Name (Term -> Command)
   | FunL Term Coterm
+  | SumL (Term -> Command) (Term -> Command)
 
 
 -- Commands
@@ -54,6 +55,7 @@ instance Class.Sequent Term Coterm Command where
   covar = Covar
   µL = MuL
   funL = FunL
+  sumL = SumL
 
   (.|.) = (:|:)
 
@@ -78,6 +80,7 @@ instance Quote Coterm X.Coterm where
     Covar v  -> Quoter (\ d -> X.Covar (toIndexed d v))
     MuL n b  -> X.MuL n <$> quoteBinder (Quoter (\ d -> Var (Free (LName (getUsed d) n)))) b
     FunL a b -> liftA2 X.FunL (quote a) (quote b)
+    SumL l r -> liftA2 X.SumL (quoteBinder (Quoter (\ d -> Var (Free (LName (getUsed d) __)))) l) (quoteBinder (Quoter (\ d -> Var (Free (LName (getUsed d) __)))) r)
 
 
 instance Quote Command X.Command where

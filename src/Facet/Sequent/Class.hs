@@ -33,6 +33,7 @@ class Sequent term coterm command | coterm -> term command, term -> coterm comma
   covar :: Var (LName Level) -> coterm
   µL :: Name -> (term -> command) -> coterm
   funL :: term -> coterm -> coterm
+  sumL :: (term -> command) -> (term -> command) -> coterm
 
   -- Commands
   (.|.) :: term -> coterm -> command
