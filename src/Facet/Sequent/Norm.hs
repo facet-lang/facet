@@ -23,6 +23,8 @@ data Term
   = Var (Var (LName Level))
   | MuR (Coterm -> Command)
   | FunR [(Pattern Name, Pattern (Name :=: Term) -> Term)]
+  | SumR1 Term
+  | SumR2 Term
   | ConR RName [Term]
   | StringR Text
   | DictR [RName :=: Term]
@@ -47,6 +49,8 @@ instance Class.Sequent Term Coterm Command where
   var = Var
   µR = MuR
   funR = FunR
+  sumR1 = SumR1
+  sumR2 = SumR2
   conR = ConR
   stringR = StringR
   dictR = DictR
@@ -65,6 +69,8 @@ instance Quote Term X.Term where
     Var v     -> Quoter (\ d -> X.Var (toIndexed d v))
     MuR b     -> X.MuR <$> quoteBinder (Quoter (\ d -> Covar (Free (LName (getUsed d) __)))) b
     FunR ps   -> X.FunR <$> traverse (uncurry clause) ps
+    SumR1 t   -> X.SumR1 <$> quote t
+    SumR2 t   -> X.SumR2 <$> quote t
     ConR n fs -> X.ConR n <$> traverse quote fs
     StringR t -> pure (X.StringR t)
     DictR ops -> X.DictR <$> traverse (traverse quote) ops

@@ -27,6 +27,8 @@ data Term
   = Var (Var (LName Index))
   | MuR Command
   | FunR [(Pattern Name, Term)]
+  | SumR1 Term
+  | SumR2 Term
   | ConR RName [Term]
   | StringR Text
   | DictR [RName :=: Term]
@@ -51,6 +53,8 @@ instance C.Sequent (Quoter Term) (Quoter Coterm) (Quoter Command) where
   var v = Quoter (\ d -> Var (toIndexed d v))
   µR b = MuR <$> binder (\ d' -> Quoter (\ d -> covar __ (toIndexed d d'))) b
   funR ps = FunR <$> traverse (uncurry clause) ps
+  sumR1 = fmap SumR1
+  sumR2 = fmap SumR2
   conR n fs = ConR n <$> sequenceA fs
   stringR = pure . StringR
   dictR i = DictR <$> traverse sequenceA i
@@ -79,6 +83,8 @@ interpretTerm _G _D = \case
   Var (Global n) -> C.var (Global n)
   MuR b          -> C.µR (\ k -> interpretCommand _G (_D |> PVar (__ :=: k)) b)
   FunR cs        -> C.funR (map (fmap (\ t p -> interpretTerm (_G |> p) _D t)) cs)
+  SumR1 t        -> C.sumR1 (interpretTerm _G _D t)
+  SumR2 t        -> C.sumR2 (interpretTerm _G _D t)
   ConR n fs      -> C.conR n (map (interpretTerm _G _D) fs)
   StringR s      -> C.stringR s
   DictR ops      -> C.dictR (map (fmap (interpretTerm _G _D)) ops)
