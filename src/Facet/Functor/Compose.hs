@@ -6,6 +6,7 @@ module Facet.Functor.Compose
 , mapCInner
 , liftCOuter
 , mapCOuter
+  -- * Binding syntax
 , binder
 , Clause(..)
 ) where
@@ -37,6 +38,9 @@ liftCOuter = C . fmap pure
 
 mapCOuter :: (i (j a) -> i' (j' b)) -> ((i . j) a -> (i' . j') b)
 mapCOuter f = C . f . runC
+
+
+-- Binding syntax
 
 binder :: (Functor m, Applicative i) => (forall j . Applicative j => (forall x . i x -> j x) -> j c -> m (j d)) -> m (i (c -> d))
 binder c = runC <$> c liftCOuter (liftCInner id)
