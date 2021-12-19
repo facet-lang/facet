@@ -8,8 +8,10 @@ module Facet.Sequent.Class
 , Clause(..)
 , funRA
 , µLA
+, sumLA
 ) where
 
+import Control.Applicative (liftA2)
 import Data.Functor.Identity (Identity(..))
 import Data.Text (Text)
 import Facet.Functor.Compose
@@ -69,3 +71,10 @@ funRA cs = runC (funR <$> traverse (uncurry clause) cs)
   -> (forall j . Applicative j => (forall x . i x -> j x) -> j t -> m (j d))
   -> m (i c)
 µLA n f = fmap (µL n) . runC <$> f liftCOuter (liftCInner id)
+
+sumLA
+  :: (Sequent t c d, Applicative i, Applicative m)
+  => (forall j . Applicative j => j t -> m (j d))
+  -> (forall j . Applicative j => j t -> m (j d))
+  -> m (i c)
+sumLA f g = (\ a b -> liftA2 sumL (runC a) (runC b)) <$> f (liftCInner id) <*> g (liftCInner id)
