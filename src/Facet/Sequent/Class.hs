@@ -72,7 +72,7 @@ funRA cs = runC (funR <$> traverse (traverse (C . clause)) cs)
 
 sumLA
   :: (Sequent t c d, Applicative i, Applicative m)
-  => (forall j . Applicative j => j t -> m (j d))
-  -> (forall j . Applicative j => j t -> m (j d))
+  => (forall j . Applicative j => (forall x . i x -> j x) -> j t -> m (j d))
+  -> (forall j . Applicative j => (forall x . i x -> j x) -> j t -> m (j d))
   -> m (i c)
-sumLA f g = (\ a b -> liftA2 sumL (runC a) (runC b)) <$> f (liftCInner id) <*> g (liftCInner id)
+sumLA f g = (\ a b -> liftA2 sumL (runC a) (runC b)) <$> f liftCOuter (liftCInner id) <*> g liftCOuter (liftCInner id)
