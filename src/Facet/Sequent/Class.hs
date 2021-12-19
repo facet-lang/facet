@@ -24,7 +24,7 @@ import Facet.Syntax (Var, (:=:)(..))
 class Sequent term coterm command | coterm -> term command, term -> coterm command, command -> term coterm where
   -- Terms
   var :: Var (LName Level) -> term
-  µR :: Name -> (coterm -> command) -> term
+  µR :: (coterm -> command) -> term
   funR :: [(Pattern Name, Pattern (Name :=: term) -> term)] -> term
   conR :: RName -> [term] -> term
   stringR :: Text -> term
@@ -33,7 +33,7 @@ class Sequent term coterm command | coterm -> term command, term -> coterm comma
 
   -- Coterms
   covar :: Var (LName Level) -> coterm
-  µL :: Name -> (term -> command) -> coterm
+  µL :: (term -> command) -> coterm
   funL :: term -> coterm -> coterm
   sumL :: (term -> command) -> (term -> command) -> coterm
 
@@ -51,10 +51,9 @@ strengthen = fmap runIdentity
 
 µRA
   :: (Sequent t c d, Applicative i, Applicative m)
-  => Name
-  -> (forall j . Applicative j => (forall x . i x -> j x) -> j c -> m (j d))
+  => (forall j . Applicative j => (forall x . i x -> j x) -> j c -> m (j d))
   -> m (i t)
-µRA n f = fmap (µR n) . runC <$> f liftCOuter (liftCInner id)
+µRA f = fmap µR . runC <$> f liftCOuter (liftCInner id)
 
 newtype Clause i m t c d = Clause { runClause :: forall j . Applicative j => (forall x . i x -> j x) -> j (Pattern (Name :=: t)) -> m (j t) }
 
@@ -67,10 +66,9 @@ funRA cs = runC (funR <$> traverse (uncurry clause) cs)
 
 µLA
   :: (Sequent t c d, Applicative i, Applicative m)
-  => Name
-  -> (forall j . Applicative j => (forall x . i x -> j x) -> j t -> m (j d))
+  => (forall j . Applicative j => (forall x . i x -> j x) -> j t -> m (j d))
   -> m (i c)
-µLA n f = fmap (µL n) . runC <$> f liftCOuter (liftCInner id)
+µLA f = fmap µL . runC <$> f liftCOuter (liftCInner id)
 
 sumLA
   :: (Sequent t c d, Applicative i, Applicative m)

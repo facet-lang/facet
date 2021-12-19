@@ -27,7 +27,7 @@ instance Show Print where
 
 instance S.Sequent Print Print Print where
   var = var
-  µR n b = P.pretty "µ" <> P.braces (nameVar n id P.<+> P.dot P.<+> nameVar n b)
+  µR b = P.pretty "µ" <> P.braces (fresh (\ v -> anon v P.<+> P.dot P.<+> b (anon v)))
   funR cs = P.braces (P.encloseSep (P.flatAlt P.space mempty) (P.flatAlt P.space mempty) (P.comma <> P.space) (map (uncurry clause) cs))
   conR n fs = foldl1 (P.surround P.space) (S.var (Global n):fs)
   stringR = P.pretty . show
@@ -38,7 +38,7 @@ instance S.Sequent Print Print Print where
     . P.enclose P.space P.space $ clause (PDict p) b
 
   covar = var
-  µL n b = µ̃ <> P.braces (P.pretty n P.<+> P.dot P.<+> withLevel (\ d -> b (var (Free (LName (getUsed d) n)))))
+  µL b = µ̃ <> P.braces (fresh (\ v -> anon v P.<+> P.dot P.<+> b (anon v)))
   funL a k = a P.<+> P.dot P.<+> k
   sumL l r = µ̃ <> P.braces (commaSep [fresh (\ v -> anon v P.<+> P.dot P.<+> l (anon v)), fresh (\ v -> anon v P.<+> P.dot P.<+> r (anon v))])
 

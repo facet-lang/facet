@@ -21,7 +21,7 @@ import           Facet.Syntax
 
 data Term
   = Var (Var (LName Level))
-  | MuR Name (Coterm -> Command)
+  | MuR (Coterm -> Command)
   | FunR [(Pattern Name, Pattern (Name :=: Term) -> Term)]
   | ConR RName [Term]
   | StringR Text
@@ -33,7 +33,7 @@ data Term
 
 data Coterm
   = Covar (Var (LName Level))
-  | MuL Name (Term -> Command)
+  | MuL (Term -> Command)
   | FunL Term Coterm
   | SumL (Term -> Command) (Term -> Command)
 
@@ -63,7 +63,7 @@ instance Class.Sequent Term Coterm Command where
 instance Quote Term X.Term where
   quote = \case
     Var v     -> Quoter (\ d -> X.Var (toIndexed d v))
-    MuR n b   -> X.MuR n <$> quoteBinder (Quoter (\ d -> Covar (Free (LName (getUsed d) n)))) b
+    MuR b     -> X.MuR <$> quoteBinder (Quoter (\ d -> Covar (Free (LName (getUsed d) __)))) b
     FunR ps   -> X.FunR <$> traverse (uncurry clause) ps
     ConR n fs -> X.ConR n <$> traverse quote fs
     StringR t -> pure (X.StringR t)
@@ -78,7 +78,7 @@ instance Quote Term X.Term where
 instance Quote Coterm X.Coterm where
   quote = \case
     Covar v  -> Quoter (\ d -> X.Covar (toIndexed d v))
-    MuL n b  -> X.MuL n <$> quoteBinder (Quoter (\ d -> Var (Free (LName (getUsed d) n)))) b
+    MuL b    -> X.MuL <$> quoteBinder (Quoter (\ d -> Var (Free (LName (getUsed d) __)))) b
     FunL a b -> liftA2 X.FunL (quote a) (quote b)
     SumL l r -> liftA2 X.SumL (quoteBinder (Quoter (\ d -> Var (Free (LName (getUsed d) __)))) l) (quoteBinder (Quoter (\ d -> Var (Free (LName (getUsed d) __)))) r)
 

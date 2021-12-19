@@ -25,7 +25,7 @@ import           Facet.Syntax
 
 data Term
   = Var (Var (LName Index))
-  | MuR Name Command
+  | MuR Command
   | FunR [(Pattern Name, Term)]
   | ConR RName [Term]
   | StringR Text
@@ -37,7 +37,7 @@ data Term
 
 data Coterm
   = Covar (Var (LName Index))
-  | MuL Name Command
+  | MuL Command
   | FunL Term Coterm
   | SumL Command Command
 
@@ -49,7 +49,7 @@ data Command = Term :|: Coterm
 
 instance C.Sequent (Quoter Term) (Quoter Coterm) (Quoter Command) where
   var v = Quoter (\ d -> Var (toIndexed d v))
-  µR n b = MuR n <$> binder (\ d' -> Quoter (\ d -> covar n (toIndexed d d'))) b
+  µR b = MuR <$> binder (\ d' -> Quoter (\ d -> covar __ (toIndexed d d'))) b
   funR ps = FunR <$> traverse (uncurry clause) ps
   conR n fs = ConR n <$> sequenceA fs
   stringR = pure . StringR
@@ -57,7 +57,7 @@ instance C.Sequent (Quoter Term) (Quoter Coterm) (Quoter Command) where
   compR i b = CompR i . snd <$> clause (PDict i) b
 
   covar v = Quoter (\ d -> Covar (toIndexed d v))
-  µL n b = MuL n <$> binder (\ d' -> Quoter (\ d -> var n (toIndexed d d'))) b
+  µL b = MuL <$> binder (\ d' -> Quoter (\ d -> var __ (toIndexed d d'))) b
   funL a b = FunL <$> a <*> b
   sumL l r = SumL <$> binder (\ d' -> Quoter (\ d -> var __ (toIndexed d d'))) l <*> binder (\ d' -> Quoter (\ d -> var __ (toIndexed d d'))) r
 
@@ -77,7 +77,7 @@ interpretTerm :: C.Sequent t c d => Env t -> Env c -> Term -> t
 interpretTerm _G _D = \case
   Var (Free n)   -> _G `index` n
   Var (Global n) -> C.var (Global n)
-  MuR n b        -> C.µR n (\ k -> interpretCommand _G (_D |> PVar (n :=: k)) b)
+  MuR b          -> C.µR (\ k -> interpretCommand _G (_D |> PVar (__ :=: k)) b)
   FunR cs        -> C.funR (map (fmap (\ t p -> interpretTerm (_G |> p) _D t)) cs)
   ConR n fs      -> C.conR n (map (interpretTerm _G _D) fs)
   StringR s      -> C.stringR s
@@ -88,7 +88,7 @@ interpretCoterm :: C.Sequent t c d => Env t -> Env c -> Coterm -> c
 interpretCoterm _G _D = \case
   Covar (Free n)   -> _D `index` n
   Covar (Global n) -> C.covar (Global n)
-  MuL n b          -> C.µL n (\ t -> interpretCommand (_G |> PVar (n :=: t)) _D b)
+  MuL b            -> C.µL (\ t -> interpretCommand (_G |> PVar (__ :=: t)) _D b)
   FunL a k         -> C.funL (interpretTerm _G _D a) (interpretCoterm _G _D k)
   SumL l r         -> C.sumL (\ t -> interpretCommand (_G |> PVar (__ :=: t)) _D l) (\ t -> interpretCommand (_G |> PVar (__ :=: t)) _D r)
 
