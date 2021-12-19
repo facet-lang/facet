@@ -37,7 +37,7 @@ instance S.Sequent Print Print Print where
     . P.enclose P.space P.space $ clause (PDict p) b
 
   covar = var
-  µL n b = P.pretty "µ̃" <> P.braces (P.pretty n P.<+> P.dot P.<+> withLevel (\ d -> b (var (Free (LName (getUsed d) n)))))
+  µL n b = µ̃ <> P.braces (P.pretty n P.<+> P.dot P.<+> withLevel (\ d -> b (var (Free (LName (getUsed d) n)))))
   funL a k = a P.<+> P.dot P.<+> k
 
   (.|.) = fmap (P.enclose P.langle P.rangle) . P.surround P.pipe
@@ -71,3 +71,6 @@ commaSep = P.encloseSep mempty mempty (P.comma <> P.space)
 
 clause :: Pattern Name -> (Pattern (Name :=: Print) -> Print) -> Print
 clause p b = let p' = (\ n -> n :=: nameVar n id) <$> p in withOpts (`pattern` fmap def p') P.<+> P.pretty "->" P.<+> b p'
+
+µ̃ :: Print
+µ̃ = P.pretty "µ̃"
