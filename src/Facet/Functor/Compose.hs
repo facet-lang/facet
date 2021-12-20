@@ -4,9 +4,9 @@ module Facet.Functor.Compose
   -- * Introduction
 , liftCInner
 , mapCInner
-, liftCOuter
 , mapCOuter
 , strengthen
+, weaken
   -- * Binding syntax
 , binder
 , Clause(..)
@@ -25,7 +25,7 @@ instance (Applicative i, Applicative j) => Applicative (i . j) where
   C f <*> C a = C ((<*>) <$> f <*> a)
 
 instance (Alternative i, Applicative j) => Alternative (i . j) where
-  empty = liftCOuter empty
+  empty = weaken empty
   C l <|> C r = C (l <|> r)
 
 
@@ -35,9 +35,6 @@ liftCInner = C . pure
 mapCInner :: Functor i => (j a -> j' b) -> ((i . j) a -> (i . j') b)
 mapCInner f = C . fmap f . runC
 
-liftCOuter :: (Functor i, Applicative j) => i a -> (i . j) a
-liftCOuter = C . fmap pure
-
 mapCOuter :: (i (j a) -> i' (j' b)) -> ((i . j) a -> (i' . j') b)
 mapCOuter f = C . f . runC
 
@@ -45,10 +42,13 @@ mapCOuter f = C . f . runC
 strengthen :: Applicative m => m (Identity a) -> m a
 strengthen = fmap runIdentity
 
+weaken :: (Functor i, Applicative j) => i a -> (i . j) a
+weaken = C . fmap pure
+
 
 -- Binding syntax
 
 binder :: (Functor m, Applicative i) => (forall j . Applicative j => (forall x . i x -> j x) -> j c -> m (j d)) -> m (i (c -> d))
-binder c = runC <$> c liftCOuter (liftCInner id)
+binder c = runC <$> c weaken (liftCInner id)
 
 newtype Clause m i a b = Clause { runClause :: forall j . Applicative j => (forall x . i x -> j x) -> j a -> m (j b) }

@@ -24,4 +24,4 @@ class Type r where
   infixr 9 |-
 
 forAllA :: (Applicative m, Applicative i, Type r) => Name -> Kind -> (forall j . Applicative j => (i ~> j) -> j r -> m (j r)) -> m (i r)
-forAllA n k b = fmap (forAll n k) . runC <$> b liftCOuter (liftCInner id)
+forAllA n k b = fmap (forAll n k) . runC <$> b weaken (liftCInner id)
