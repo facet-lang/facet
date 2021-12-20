@@ -29,7 +29,6 @@ data Term
   | FunR [(Pattern Name, Term)]
   | SumR RName Term
   | PrdR [Term]
-  | ConR RName [Term]
   | StringR Text
   | DictR [RName :=: Term]
   | CompR [RName :=: Name] Term
@@ -56,7 +55,6 @@ instance C.Sequent (Quoter Term) (Quoter Coterm) (Quoter Command) where
   funR ps = FunR <$> traverse (uncurry clause) ps
   sumR = fmap . SumR
   prdR = fmap PrdR . sequenceA
-  conR n fs = ConR n <$> sequenceA fs
   stringR = pure . StringR
   dictR i = DictR <$> traverse sequenceA i
   compR i b = CompR i . snd <$> clause (PDict i) b
@@ -87,7 +85,6 @@ interpretTerm _G _D = \case
   FunR cs        -> C.funR (map (fmap (\ t p -> interpretTerm (_G |> p) _D t)) cs)
   SumR i t       -> C.sumR i (interpretTerm _G _D t)
   PrdR fs        -> C.prdR (map (interpretTerm _G _D) fs)
-  ConR n fs      -> C.conR n (map (interpretTerm _G _D) fs)
   StringR s      -> C.stringR s
   DictR ops      -> C.dictR (map (fmap (interpretTerm _G _D)) ops)
   CompR i b      -> C.compR i (\ p -> interpretTerm (_G |> p) _D b)

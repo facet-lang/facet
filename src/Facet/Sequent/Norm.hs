@@ -25,7 +25,6 @@ data Term
   | FunR [(Pattern Name, Pattern (Name :=: Term) -> Term)]
   | SumR RName Term
   | PrdR [Term]
-  | ConR RName [Term]
   | StringR Text
   | DictR [RName :=: Term]
   | CompR [RName :=: Name] (Pattern (Name :=: Term) -> Term)
@@ -52,7 +51,6 @@ instance Class.Sequent Term Coterm Command where
   funR = FunR
   sumR = SumR
   prdR = PrdR
-  conR = ConR
   stringR = StringR
   dictR = DictR
   compR = CompR
@@ -73,7 +71,6 @@ instance Quote Term X.Term where
     FunR ps   -> X.FunR <$> traverse (uncurry clause) ps
     SumR i t  -> X.SumR i <$> quote t
     PrdR fs   -> X.PrdR <$> traverse quote fs
-    ConR n fs -> X.ConR n <$> traverse quote fs
     StringR t -> pure (X.StringR t)
     DictR ops -> X.DictR <$> traverse (traverse quote) ops
     CompR i b -> X.CompR i . snd <$> clause (PDict i) b
