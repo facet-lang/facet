@@ -27,7 +27,7 @@ data Term
   = Var (Var (LName Index))
   | MuR Command
   | FunR [(Pattern Name, Term)]
-  | SumR Int Term
+  | SumR RName Term
   | PrdR [Term]
   | ConR RName [Term]
   | StringR Text

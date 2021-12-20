@@ -23,7 +23,7 @@ data Term
   = Var (Var (LName Level))
   | MuR (Coterm -> Command)
   | FunR [(Pattern Name, Pattern (Name :=: Term) -> Term)]
-  | SumR Int Term
+  | SumR RName Term
   | PrdR [Term]
   | ConR RName [Term]
   | StringR Text
