@@ -21,7 +21,7 @@ class Type r where
   tapp :: r -> r -> r
 
 forAllA :: (Applicative m, Applicative i, Type r) => m Name -> m Kind -> (forall j . Applicative j => (i ~> j) -> j r -> m (j r)) -> m (i r)
-forAllA n k b = fmap fmap . forAll <$> n <*> k <*> (runC <$> b liftCOuter (liftCInner id))
+forAllA n k b = fmap fmap . forAll <$> n <*> k <*> (runC <$> b weaken (liftCInner id))
 
 class Interface r where
   interface :: QName -> Snoc r -> r
