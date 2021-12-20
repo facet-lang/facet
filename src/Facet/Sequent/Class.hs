@@ -3,7 +3,6 @@ module Facet.Sequent.Class
 ( -- * Sequent abstraction
   Sequent(..)
   -- * Effectful abstractions
-, strengthen
 , µRA
 , Clause(..)
 , funRA
@@ -11,7 +10,6 @@ module Facet.Sequent.Class
 , sumLA
 ) where
 
-import Data.Functor.Identity (Identity(..))
 import Data.Text (Text)
 import Facet.Functor.Compose
 import Facet.Name (LName, Level, Name, RName)
@@ -45,10 +43,6 @@ class Sequent term coterm command | coterm -> term command, term -> coterm comma
 
 
 -- * Effectful abstractions
-
-strengthen :: Applicative m => m (Identity a) -> m a
-strengthen = fmap runIdentity
-
 
 µRA
   :: (Sequent t c d, Applicative i, Applicative m)

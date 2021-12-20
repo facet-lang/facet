@@ -6,12 +6,14 @@ module Facet.Functor.Compose
 , mapCInner
 , liftCOuter
 , mapCOuter
+, strengthen
   -- * Binding syntax
 , binder
 , Clause(..)
 ) where
 
 import Control.Applicative (Alternative(..))
+import Data.Functor.Identity (Identity(..))
 
 -- Composition functor
 
@@ -38,6 +40,10 @@ liftCOuter = C . fmap pure
 
 mapCOuter :: (i (j a) -> i' (j' b)) -> ((i . j) a -> (i' . j') b)
 mapCOuter f = C . f . runC
+
+
+strengthen :: Applicative m => m (Identity a) -> m a
+strengthen = fmap runIdentity
 
 
 -- Binding syntax
