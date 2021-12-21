@@ -8,6 +8,7 @@ module Facet.Sequent.Class
 , funRA
 , µLA
 , sumLA
+, prdLA
 ) where
 
 import Data.Text (Text)
@@ -65,3 +66,10 @@ sumLA
   => [Clause m i t d]
   -> m (i c)
 sumLA cs = runC (sumL <$> traverse (\ (Clause c) -> C (binder c)) cs)
+
+prdLA
+  :: (Sequent t c d, Applicative i, Applicative m)
+  => Int
+  -> (forall j . Applicative j => (forall x . i x -> j x) -> j [t] -> m (j d))
+  -> m (i c)
+prdLA i f = fmap (prdL i) <$> binder f
