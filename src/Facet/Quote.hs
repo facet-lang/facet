@@ -92,7 +92,7 @@ binder with f = Quoter (\ d -> runQuoter (d + 1) (f (with (getUsed d))))
 binderN
   :: Int
   -> (Level -> Quoter a)      -- ^ Constructor for variables in @a@.
-  -> (Quoter [a] -> Quoter b) -- ^ The binder's scope, represented as a Haskell function mapping lists of variables' values to complete terms.
+  -> ([Quoter a] -> Quoter b) -- ^ The binder's scope, represented as a Haskell function mapping lists of variables' values to complete terms.
   -> Quoter b                 -- ^ A 'Quoter' of the first-order term.
-binderN n with f = Quoter (\ d -> runQuoter (d + n') (f (traverse (with . getUsed) [0..n'])))
+binderN n with f = Quoter (\ d -> runQuoter (d + n') (f (map (with . getUsed) [0..n'])))
   where n' = fromIntegral n
