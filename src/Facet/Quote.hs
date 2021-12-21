@@ -13,6 +13,7 @@ module Facet.Quote
 , Quoter(..)
 , runQuoter
 , binder
+, binderN
 ) where
 
 import Facet.Name (Level, Used(..))
@@ -86,3 +87,12 @@ binder
   -> (Quoter a -> Quoter b) -- ^ The binder's scope, represented as a Haskell function mapping variables' values to complete terms.
   -> Quoter b               -- ^ A 'Quoter' of the first-order term.
 binder with f = Quoter (\ d -> runQuoter (d + 1) (f (with (getUsed d))))
+
+-- | Build quoted first-order syntax from a higher-order representation taking multiple variables.
+binderN
+  :: Int
+  -> (Level -> Quoter a)      -- ^ Constructor for variables in @a@.
+  -> (Quoter [a] -> Quoter b) -- ^ The binder's scope, represented as a Haskell function mapping lists of variables' values to complete terms.
+  -> Quoter b                 -- ^ A 'Quoter' of the first-order term.
+binderN n with f = Quoter (\ d -> runQuoter (d + n') (f (traverse (with . getUsed) [0..n'])))
+  where n' = fromIntegral n
