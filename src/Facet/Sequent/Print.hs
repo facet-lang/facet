@@ -31,7 +31,6 @@ instance S.Sequent Print Print Print where
   funR cs = P.braces (P.encloseSep (P.flatAlt P.space mempty) (P.flatAlt P.space mempty) (P.comma <> P.space) (map (uncurry clause) cs))
   sumR i t = P.parens (P.pretty "in" <> P.pretty i P.<+> t)
   prdR = P.tupled
-  conR n fs = foldl1 (P.surround P.space) (S.var (Global n):fs)
   stringR = P.pretty . show
   dictR os = withOpts (\ Options{..} -> P.brackets (P.flatAlt P.space P.line <> commaSep (map (\ (n :=: v) -> rname n P.<+> P.equals P.<+> P.group v) os) <> P.flatAlt P.space P.line))
   compR p b = P.group
@@ -43,7 +42,7 @@ instance S.Sequent Print Print Print where
   µL b = µ̃ <> P.braces (fresh (\ v -> anon v P.<+> P.dot P.<+> b (anon v)))
   funL a k = a P.<+> P.dot P.<+> k
   sumL cs = µ̃ <> P.braces (commaSep (map (\ c -> fresh (\ v -> anon v P.<+> P.dot P.<+> c (anon v))) cs))
-  prdL i k = P.parens (P.pretty "ex" <> P.pretty i P.<+> k)
+  prdL i k = P.parens (µ̃ <> withLevel (\ d -> k (map (\ i -> anon (d + fromIntegral i)) [0..i])))
 
   (.|.) = fmap (P.enclose P.langle P.rangle) . P.surround P.pipe
 

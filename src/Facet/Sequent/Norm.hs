@@ -37,7 +37,7 @@ data Coterm
   | MuL (Term -> Command)
   | FunL Term Coterm
   | SumL [Term -> Command]
-  | PrdL Int Coterm
+  | PrdL Int ([Term] -> Command)
 
 
 -- Commands
@@ -86,7 +86,7 @@ instance Quote Coterm X.Coterm where
     MuL b    -> X.MuL <$> quoteBinder (Quoter (\ d -> Var (Free (LName (getUsed d) __)))) b
     FunL a b -> liftA2 X.FunL (quote a) (quote b)
     SumL cs  -> X.SumL <$> traverse (quoteBinder (Quoter (\ d -> Var (Free (LName (getUsed d) __))))) cs
-    PrdL i k -> X.PrdL i <$> quote k
+    PrdL n k -> X.PrdL n <$> quoteBinder (Quoter (\ d -> map (\ d' -> Var (Free (LName (getUsed d + fromIntegral d') __))) [0..n])) k
 
 
 instance Quote Command X.Command where

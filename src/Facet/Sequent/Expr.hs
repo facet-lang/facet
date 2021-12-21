@@ -41,7 +41,7 @@ data Coterm
   | MuL Command
   | FunL Term Coterm
   | SumL [Command]
-  | PrdL Int Coterm
+  | PrdL Int Command
 
 
 -- Commands
@@ -63,7 +63,7 @@ instance C.Sequent (Quoter Term) (Quoter Coterm) (Quoter Command) where
   µL b = MuL <$> binder (\ d' -> Quoter (\ d -> var __ (toIndexed d d'))) b
   funL a b = FunL <$> a <*> b
   sumL = fmap SumL . traverse (binder (\ d' -> Quoter (\ d -> var __ (toIndexed d d'))))
-  prdL = fmap . PrdL
+  prdL i b = PrdL i <$> binderN i (\ d' -> Quoter (\ d -> var __ (toIndexed d d'))) b
 
   (.|.) = liftA2 (:|:)
 
@@ -96,7 +96,7 @@ interpretCoterm _G _D = \case
   MuL b            -> C.µL (\ t -> interpretCommand (_G |> PVar (__ :=: t)) _D b)
   FunL a k         -> C.funL (interpretTerm _G _D a) (interpretCoterm _G _D k)
   SumL cs          -> C.sumL (map (\ d t -> interpretCommand (_G |> PVar (__ :=: t)) _D d) cs)
-  PrdL i k         -> C.prdL i (interpretCoterm _G _D k)
+  PrdL i c         -> C.prdL i (\ cs -> interpretCommand (foldl (\ e c -> e |> PVar (__ :=: c)) _G cs) _D c)
 
 interpretCommand :: C.Sequent t c d => Env t -> Env c -> Command -> d
 interpretCommand _G _D (t :|: c) = interpretTerm _G _D t C..|. interpretCoterm _G _D c
