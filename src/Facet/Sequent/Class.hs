@@ -27,8 +27,6 @@ class Sequent term coterm command | coterm -> term command, term -> coterm comma
   sumR :: RName -> term -> term
   prdR :: [term] -> term
   stringR :: Text -> term
-  dictR :: [RName :=: term] -> term
-  compR :: [RName :=: Name] -> (Pattern (Name :=: term) -> term) -> term
 
   -- Coterms
   covar :: Var (LName Level) -> coterm

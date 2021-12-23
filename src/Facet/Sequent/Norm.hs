@@ -26,8 +26,6 @@ data Term
   | SumR RName Term
   | PrdR [Term]
   | StringR Text
-  | DictR [RName :=: Term]
-  | CompR [RName :=: Name] (Pattern (Name :=: Term) -> Term)
 
 
 -- Coterms
@@ -52,8 +50,6 @@ instance Class.Sequent Term Coterm Command where
   sumR = SumR
   prdR = PrdR
   stringR = StringR
-  dictR = DictR
-  compR = CompR
 
   covar = Covar
   µL = MuL
@@ -72,8 +68,6 @@ instance Quote Term X.Term where
     SumR i t  -> X.SumR i <$> quote t
     PrdR fs   -> X.PrdR <$> traverse quote fs
     StringR t -> pure (X.StringR t)
-    DictR ops -> X.DictR <$> traverse (traverse quote) ops
-    CompR i b -> X.CompR i . snd <$> clause (PDict i) b
     where
     var d n = Var (Free (LName (getUsed d) n))
     clause :: Pattern Name -> (Pattern (Name :=: Term) -> Term) -> Quoter (Pattern Name, X.Term)

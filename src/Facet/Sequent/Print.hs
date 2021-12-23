@@ -32,11 +32,6 @@ instance S.Sequent Print Print Print where
   sumR i t = P.parens (P.pretty "in" <> P.pretty i P.<+> t)
   prdR = P.tupled
   stringR = P.pretty . show
-  dictR os = withOpts (\ Options{..} -> P.brackets (P.flatAlt P.space P.line <> commaSep (map (\ (n :=: v) -> rname n P.<+> P.equals P.<+> P.group v) os) <> P.flatAlt P.space P.line))
-  compR p b = P.group
-    . P.align
-    . P.braces
-    . P.enclose P.space P.space $ clause (PDict p) b
 
   covar = var
   µL b = µ̃ <> P.braces (fresh (\ v -> anon v P.<+> P.dot P.<+> b (anon v)))

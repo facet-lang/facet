@@ -30,8 +30,6 @@ data Term
   | SumR RName Term
   | PrdR [Term]
   | StringR Text
-  | DictR [RName :=: Term]
-  | CompR [RName :=: Name] Term
 
 
 -- Coterms
@@ -56,8 +54,6 @@ instance C.Sequent (Quoter Term) (Quoter Coterm) (Quoter Command) where
   sumR = fmap . SumR
   prdR = fmap PrdR . sequenceA
   stringR = pure . StringR
-  dictR i = DictR <$> traverse sequenceA i
-  compR i b = CompR i . snd <$> clause (PDict i) b
 
   covar v = Quoter (\ d -> Covar (toIndexed d v))
   µL b = MuL <$> binder (\ d' -> Quoter (\ d -> var __ (toIndexed d d'))) b
@@ -86,8 +82,6 @@ interpretTerm _G _D = \case
   SumR i t       -> C.sumR i (interpretTerm _G _D t)
   PrdR fs        -> C.prdR (map (interpretTerm _G _D) fs)
   StringR s      -> C.stringR s
-  DictR ops      -> C.dictR (map (fmap (interpretTerm _G _D)) ops)
-  CompR i b      -> C.compR i (\ p -> interpretTerm (_G |> p) _D b)
 
 interpretCoterm :: C.Sequent t c d => Env t -> Env c -> Coterm -> c
 interpretCoterm _G _D = \case
