@@ -97,7 +97,7 @@ switch m = Check $ \ _Exp -> m >>= \case
   a :==> T.Comp req _Act -> require req >> unify (Exp _Exp) (Act _Act) $> a
   a :==>            _Act -> unify (Exp _Exp) (Act _Act) $> a
 
-as :: (HasCallStack, Has (Throw Err) sig m) => (Type <==: Elab m Term) ::: Elab m (Type :==> Kind) -> Elab m (Term :==> Type)
+as :: (HasCallStack, Has (Throw Err) sig m) => (Type <==: Elab m a) ::: Elab m (Type :==> Kind) -> Elab m (a :==> Type)
 as (m ::: _T) = do
   _T' <- Type.switch _T <==: KType
   a <- check (m ::: _T')
