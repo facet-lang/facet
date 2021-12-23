@@ -235,7 +235,7 @@ synthExpr = let ?callStack = popCallStack GHC.Stack.callStack in withSpan $ \cas
 
 checkExpr :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Type <==: Elab m Term
 checkExpr expr = let ?callStack = popCallStack GHC.Stack.callStack in withSpanC expr $ \case
-  S.Hole  n  -> hole n
+  S.Hole n   -> hole n
   S.Lam cs   -> checkLam cs
   S.Var{}    -> switch (synthExpr expr)
   S.App{}    -> switch (synthExpr expr)
