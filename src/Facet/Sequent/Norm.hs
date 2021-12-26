@@ -9,9 +9,7 @@ module Facet.Sequent.Norm
 
 import           Control.Applicative (liftA2)
 import           Data.Text (Text)
-import           Data.Traversable (mapAccumL)
 import           Facet.Name
-import           Facet.Pattern
 import           Facet.Quote
 import qualified Facet.Sequent.Class as Class
 import qualified Facet.Sequent.Expr as X
@@ -22,7 +20,7 @@ import           Facet.Syntax
 data Term
   = Var (Var Level)
   | MuR (Coterm -> Command)
-  | FunR [(Pattern Name, Pattern Term -> Term)]
+  | FunR (Term -> Term)
   | SumR RName Term
   | PrdR [Term]
   | StringR Text
@@ -64,13 +62,10 @@ instance Quote Term X.Term where
   quote = \case
     Var v     -> Quoter (\ d -> X.Var (toIndexed d v))
     MuR b     -> X.MuR <$> quoteBinder (Quoter (Covar . Free . getUsed)) b
-    FunR ps   -> X.FunR <$> traverse (uncurry clause) ps
+    FunR b    -> X.FunR <$> quoteBinder (Quoter (Var . Free . getUsed)) b
     SumR i t  -> X.SumR i <$> quote t
     PrdR fs   -> X.PrdR <$> traverse quote fs
     StringR t -> pure (X.StringR t)
-    where
-    clause :: Pattern a -> (Pattern Term -> Term) -> Quoter (Pattern a, X.Term)
-    clause p b = Quoter (\ d -> let (_, p') = mapAccumL (\ d' _ -> (succ d', var d')) d p in (p, runQuoter d (quote (b p'))))
 
 var :: Used -> Term
 var = Var . Free . getUsed

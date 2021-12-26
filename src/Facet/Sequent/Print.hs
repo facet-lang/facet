@@ -5,7 +5,6 @@ module Facet.Sequent.Print
 ) where
 
 import           Facet.Name
-import           Facet.Pattern (Pattern(..))
 import           Facet.Pretty
 import           Facet.Print.Options
 import qualified Facet.Sequent.Class as S
@@ -28,7 +27,7 @@ instance Show Print where
 instance S.Sequent Print Print Print where
   var = var
   µR b = P.pretty "µ" <> P.braces (fresh (\ v -> anon v P.<+> P.dot P.<+> b (anon v)))
-  funR cs = P.braces (P.encloseSep (P.flatAlt P.space mempty) (P.flatAlt P.space mempty) (P.comma <> P.space) (map (uncurry clause) cs))
+  funR c = P.braces (let v = nameVar in v P.<+> P.pretty "->" P.<+> c v)
   sumR i t = P.parens (P.pretty "in" <> P.pretty i P.<+> t)
   prdR = P.tupled
   stringR = P.pretty . show
@@ -53,9 +52,6 @@ fresh f = withLevel (incrLevel . f)
 anon :: Used -> Print
 anon = lower . getLevel . getUsed
 
-withOpts :: (Options Print -> Print) -> Print
-withOpts f = Print (\ o d -> doc (f o) o d)
-
 var :: Var Level -> Print
 var v = case v of
   Free l   -> lower (getLevel l)
@@ -64,18 +60,8 @@ var v = case v of
 nameVar :: Print
 nameVar = withLevel (incrLevel . var . Free . getUsed)
 
-pattern :: Options Print -> Pattern Print -> Print
-pattern opts@Options{..} = \case
-  PWildcard -> P.pretty "_"
-  PVar p    -> p
-  PCon n fs -> foldl1 (P.surround P.space) (S.var (Global n):map (pattern opts) fs)
-  PDict os  -> P.brackets (P.flatAlt P.space P.line <> commaSep (map (\ (n :=: v) -> rname n P.<+> P.equals P.<+> P.group v) os) <> P.flatAlt P.space P.line)
-
 commaSep :: [Print] -> Print
 commaSep = P.encloseSep mempty mempty (P.comma <> P.space)
-
-clause :: Pattern Name -> (Pattern Print -> Print) -> Print
-clause p b = let p' = nameVar <$ p in withOpts (`pattern` p') P.<+> P.pretty "->" P.<+> b p'
 
 µ̃ :: Print
 µ̃ = P.pretty "µ̃"

@@ -13,8 +13,7 @@ module Facet.Sequent.Class
 
 import Data.Text (Text)
 import Facet.Functor.Compose
-import Facet.Name (Level, Name, RName)
-import Facet.Pattern (Pattern)
+import Facet.Name (Level, RName)
 import Facet.Syntax (Var)
 
 -- * Term abstraction
@@ -23,7 +22,7 @@ class Sequent term coterm command | coterm -> term command, term -> coterm comma
   -- Terms
   var :: Var Level -> term
   µR :: (coterm -> command) -> term
-  funR :: [(Pattern Name, Pattern term -> term)] -> term
+  funR :: (term -> term) -> term
   sumR :: RName -> term -> term
   prdR :: [term] -> term
   stringR :: Text -> term
@@ -49,8 +48,8 @@ class Sequent term coterm command | coterm -> term command, term -> coterm comma
   -> m (i t)
 µRA f = fmap µR <$> binder f
 
-funRA :: (Sequent t c d, Applicative i, Applicative m) => [(Pattern Name, Clause m i (Pattern t) t)] -> m (i t)
-funRA cs = runC (funR <$> traverse (traverse (\ (Clause c) -> C (binder c))) cs)
+funRA :: (Sequent t c d, Applicative i, Applicative m) => Clause m i t t -> m (i t)
+funRA (Clause c) = runC (funR <$> C (binder c))
 
 
 µLA
