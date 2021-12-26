@@ -38,7 +38,7 @@ import qualified Facet.Elab.Term as Elab
 import           Facet.Graph
 import           Facet.Lens
 import           Facet.Module hiding (Import(name), imports, imports_)
-import           Facet.Name
+import           Facet.Name hiding (name)
 import qualified Facet.Notice as Notice
 import           Facet.Notice.Elab (rethrowElabErrors, rethrowElabWarnings)
 import           Facet.Notice.Parser (rethrowParseErrors)
