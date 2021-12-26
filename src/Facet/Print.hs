@@ -33,7 +33,7 @@ import           Facet.Env as Env
 import           Facet.Interface
 import           Facet.Kind
 import qualified Facet.Module as C
-import           Facet.Name as Name
+import           Facet.Name as Name hiding (name)
 import           Facet.Pattern
 import           Facet.Pretty (lower, upper)
 import           Facet.Print.Options
