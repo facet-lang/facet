@@ -14,7 +14,6 @@ module Facet.Sequent.Expr
 import           Control.Applicative (liftA2)
 import           Data.Text (Text)
 import           Data.Traversable (mapAccumL)
-import           Facet.Env
 import           Facet.Name
 import           Facet.Pattern
 import           Facet.Quote
@@ -24,7 +23,7 @@ import           Facet.Syntax
 -- Terms
 
 data Term
-  = Var (Var (LName Index))
+  = Var (Var Index)
   | MuR Command
   | FunR [(Pattern Name, Term)]
   | SumR RName Term
@@ -35,7 +34,7 @@ data Term
 -- Coterms
 
 data Coterm
-  = Covar (Var (LName Index))
+  = Covar (Var Index)
   | MuL Command
   | FunL Term Coterm
   | SumL [Command]
@@ -64,33 +63,36 @@ instance C.Sequent (Quoter Term) (Quoter Coterm) (Quoter Command) where
   (.|.) = liftA2 (:|:)
 
 var :: Name -> Index -> Term
-var n i = Var (Free (LName i n))
+var = const (Var . Free)
 
 covar :: Name -> Index -> Coterm
-covar n i = Covar (Free (LName i n))
+covar = const (Covar . Free)
 
-clause :: Pattern Name -> (Pattern (Name :=: Quoter Term) -> Quoter Term) -> Quoter (Pattern Name, Term)
-clause p b = Quoter (\ d -> let (d', p') = mapAccumL (\ d' n -> (succ d', n :=: Quoter (\ d -> var n (toIndexed d (getUsed d'))))) d p in (p, runQuoter d' (b p')))
+clause :: Pattern Name -> (Pattern (Quoter Term) -> Quoter Term) -> Quoter (Pattern Name, Term)
+clause p b = Quoter (\ d -> let (d', p') = mapAccumL (\ d' n -> (succ d', Quoter (\ d -> var n (toIndexed d (getUsed d'))))) d p in (p, runQuoter d' (b p')))
 
 
-interpretTerm :: C.Sequent t c d => Env t -> Env c -> Term -> t
+interpretTerm :: C.Sequent t c d => [t] -> [c] -> Term -> t
 interpretTerm _G _D = \case
   Var (Free n)   -> _G `index` n
   Var (Global n) -> C.var (Global n)
-  MuR b          -> C.µR (\ k -> interpretCommand _G (_D |> PVar (__ :=: k)) b)
-  FunR cs        -> C.funR (map (fmap (\ t p -> interpretTerm (_G |> p) _D t)) cs)
+  MuR b          -> C.µR (\ k -> interpretCommand _G (k:_D) b)
+  FunR cs        -> C.funR (map (fmap (\ t p -> interpretTerm (foldr (:) _G p) _D t)) cs)
   SumR i t       -> C.sumR i (interpretTerm _G _D t)
   PrdR fs        -> C.prdR (map (interpretTerm _G _D) fs)
   StringR s      -> C.stringR s
 
-interpretCoterm :: C.Sequent t c d => Env t -> Env c -> Coterm -> c
+interpretCoterm :: C.Sequent t c d => [t] -> [c] -> Coterm -> c
 interpretCoterm _G _D = \case
   Covar (Free n)   -> _D `index` n
   Covar (Global n) -> C.covar (Global n)
-  MuL b            -> C.µL (\ t -> interpretCommand (_G |> PVar (__ :=: t)) _D b)
+  MuL b            -> C.µL (\ t -> interpretCommand (t:_G) _D b)
   FunL a k         -> C.funL (interpretTerm _G _D a) (interpretCoterm _G _D k)
-  SumL cs          -> C.sumL (map (\ d t -> interpretCommand (_G |> PVar (__ :=: t)) _D d) cs)
-  PrdL i c         -> C.prdL i (\ cs -> interpretCommand (foldl (\ e c -> e |> PVar (__ :=: c)) _G cs) _D c)
+  SumL cs          -> C.sumL (map (\ d t -> interpretCommand (t:_G) _D d) cs)
+  PrdL i c         -> C.prdL i (\ cs -> interpretCommand (foldl (flip (:)) _G cs) _D c)
 
-interpretCommand :: C.Sequent t c d => Env t -> Env c -> Command -> d
+interpretCommand :: C.Sequent t c d => [t] -> [c] -> Command -> d
 interpretCommand _G _D (t :|: c) = interpretTerm _G _D t C..|. interpretCoterm _G _D c
+
+index :: [a] -> Index -> a
+index as (Index i) = as !! i

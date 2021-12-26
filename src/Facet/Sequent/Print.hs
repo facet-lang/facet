@@ -56,13 +56,13 @@ anon = lower . getLevel . getUsed
 withOpts :: (Options Print -> Print) -> Print
 withOpts f = Print (\ o d -> doc (f o) o d)
 
-var :: Var (LName Level) -> Print
+var :: Var Level -> Print
 var v = case v of
-  Free (LName l n) -> P.pretty n <> P.pretty (getLevel l)
-  Global n         -> P.pretty n
+  Free l   -> lower (getLevel l)
+  Global n -> P.pretty n
 
-nameVar :: Name -> (Print -> Print) -> Print
-nameVar n b = withLevel (\ d -> incrLevel (b (var (Free (LName (getUsed d) n)))))
+nameVar :: Print
+nameVar = withLevel (incrLevel . var . Free . getUsed)
 
 pattern :: Options Print -> Pattern Print -> Print
 pattern opts@Options{..} = \case
@@ -74,8 +74,8 @@ pattern opts@Options{..} = \case
 commaSep :: [Print] -> Print
 commaSep = P.encloseSep mempty mempty (P.comma <> P.space)
 
-clause :: Pattern Name -> (Pattern (Name :=: Print) -> Print) -> Print
-clause p b = let p' = (\ n -> n :=: nameVar n id) <$> p in withOpts (`pattern` fmap def p') P.<+> P.pretty "->" P.<+> b p'
+clause :: Pattern Name -> (Pattern Print -> Print) -> Print
+clause p b = let p' = nameVar <$ p in withOpts (`pattern` p') P.<+> P.pretty "->" P.<+> b p'
 
 µ̃ :: Print
 µ̃ = P.pretty "µ̃"
