@@ -9,8 +9,10 @@ module Facet.Sequent.Class
 , µLA
 , sumLA
 , prdLA
+, (.||.)
 ) where
 
+import Control.Applicative (liftA2)
 import Data.Text (Text)
 import Facet.Functor.Compose
 import Facet.Name (Level, RName)
@@ -70,3 +72,9 @@ prdLA
   -> (forall j . Applicative j => (forall x . i x -> j x) -> j [t] -> m (j d))
   -> m (i c)
 prdLA i f = fmap (prdL i) <$> binder f
+
+
+(.||.) :: (Applicative m, Applicative i, Sequent t c d) => m (i t) -> m (i c) -> m (i d)
+(.||.) = liftA2 (liftA2 (.|.))
+
+infix 1 .||.
