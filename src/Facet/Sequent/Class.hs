@@ -48,8 +48,8 @@ class Sequent term coterm command | coterm -> term command, term -> coterm comma
   -> m (i t)
 µRA f = fmap µR <$> binder f
 
-funRA :: (Sequent t c d, Applicative i, Applicative m) => Clause m i t t -> m (i t)
-funRA (Clause c) = runC (funR <$> C (binder c))
+funRA :: (Sequent t c d, Applicative i, Applicative m) => (forall j . Applicative j => (forall x . i x -> j x) -> j t -> m (j t))-> m (i t)
+funRA f = fmap funR <$> binder f
 
 
 µLA
