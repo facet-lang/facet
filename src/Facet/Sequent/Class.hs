@@ -1,3 +1,4 @@
+{-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE FunctionalDependencies #-}
 module Facet.Sequent.Class
 ( -- * Sequent abstraction
@@ -10,13 +11,14 @@ module Facet.Sequent.Class
 , sumLA
 , prdLA
 , (.||.)
+, Ctx(..)
 ) where
 
 import Control.Applicative (liftA2)
 import Data.Text (Text)
 import Facet.Functor.Compose
-import Facet.Name (Level, RName)
-import Facet.Syntax (Var)
+import Facet.Name (Level, Name, RName)
+import Facet.Syntax (Var, type (~>))
 
 -- * Term abstraction
 
@@ -78,3 +80,8 @@ prdLA i f = fmap (prdL i) <$> binder f
 (.||.) = liftA2 (liftA2 (.|.))
 
 infix 1 .||.
+
+
+data Ctx j t
+  = Nil
+  | forall i . Entry Name (Ctx i t) (i ~> j) (j t)
