@@ -12,9 +12,11 @@ module Facet.Sequent.Class
 , prdLA
 , (.||.)
 , Ctx(..)
+, lookupCtx
 ) where
 
-import Control.Applicative (liftA2)
+import Control.Applicative (Alternative(..), liftA2)
+import Control.Monad (guard)
 import Data.Text (Text)
 import Facet.Functor.Compose
 import Facet.Name (Level, Name, RName)
@@ -85,3 +87,11 @@ infix 1 .||.
 data Ctx j t
   = Nil
   | forall i . Entry Name (Ctx i t) (i ~> j) (j t)
+
+lookupCtx :: Name -> Ctx i t -> Maybe (i t)
+lookupCtx n = go id
+  where
+  go :: (i ~> j) -> Ctx i t -> Maybe (j t)
+  go wk = \case
+    Nil              -> Nothing
+    Entry n' c wk' t -> wk t <$ guard (n == n') <|> go (wk . wk') c
