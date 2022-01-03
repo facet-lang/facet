@@ -4,5 +4,5 @@ tests: True
 source-repository-package
   type: git
   location: https://github.com/robrix/fresnel.git
-  tag: dbb1c34c93c72e9207d0d8a01226efa2ff2e08d9
+  tag: c56b7dc69d775ce5f1b2cbe9a3204e246f08227a
   subdir: fresnel
