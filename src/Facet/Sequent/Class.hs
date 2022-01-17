@@ -282,6 +282,9 @@ instance Alternative Covers where
 instance Monad Covers where
   Covers m >>= f = Covers $ \ fork leaf nil -> m fork (\ a -> runCovers (f a) fork leaf nil) nil
 
+instance MonadFail Covers where
+  fail _ = empty
+
 {-
 
 - use Alternative to indicate branching
