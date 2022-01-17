@@ -23,6 +23,7 @@ module Facet.Sequent.Class
 ) where
 
 import Control.Applicative (Alternative(..), liftA2)
+import Control.Effect.Reader
 import Control.Monad (ap, guard, (<=<))
 import Data.Bifunctor (Bifunctor(..))
 import Data.Text (Text)
@@ -274,6 +275,14 @@ instance Monad Covers where
 
 instance MonadFail Covers where
   fail _ = empty
+
+push :: Ty -> Covers a -> Covers a
+push t (Covers m) = Covers (local (t:) m)
+
+pop :: (Ty -> Covers a) -> Covers a
+pop f = Covers $ \ ctx fork leaf nil -> case ctx of
+  []   -> nil
+  t:ts -> runCovers (f t) ts fork leaf nil
 
 {-
 
