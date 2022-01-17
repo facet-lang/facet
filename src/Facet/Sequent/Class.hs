@@ -266,3 +266,31 @@ instance Contravariant (Match a) where
 
 prd :: Match c a -> Match c b -> Match c (a, b)
 prd ma mb = Match (\ (a, b) -> match ma a *> match mb b)
+
+
+newtype Covers a = Covers { runCovers :: forall r . (r -> r -> r) -> (a -> r) -> r -> r }
+  deriving (Functor)
+
+instance Applicative Covers where
+  pure a = Covers $ \ _ leaf _ -> leaf a
+  (<*>) = ap
+
+instance Alternative Covers where
+  empty = Covers $ \ _ _ nil -> nil
+  Covers l <|> Covers r = Covers (\ fork leaf nil -> l fork leaf nil `fork` r fork leaf nil)
+
+instance Monad Covers where
+  Covers m >>= f = Covers $ \ fork leaf nil -> m fork (\ a -> runCovers (f a) fork leaf nil) nil
+
+{-
+
+- use Alternative to indicate branching
+  ❌ each initial branch is an Alternative fork
+    - we need to check branches together, so there's one thread for all the initial branches
+  - each time we inspect a sum type, we fork for each constructor
+    - partition inl/inr/var/wildcard branhes, then run left/right in parallel
+  - fail with empty
+
+- separate stack API to manipulate the context
+
+-}
