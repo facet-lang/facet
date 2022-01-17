@@ -25,7 +25,6 @@ module Facet.Sequent.Class
 import Control.Applicative (Alternative(..), liftA2)
 import Control.Monad (ap, guard, (<=<))
 import Data.Bifunctor (Bifunctor(..))
-import Data.Functor.Contravariant
 import Data.Text (Text)
 import Data.These
 import Facet.Functor.Compose
@@ -257,15 +256,6 @@ instance Monad (Decompose r) where
 
 decomposePatterns :: ([Pat] -> Maybe [Pat]) -> Decompose Clauses Clauses
 decomposePatterns go = Decompose (\ f -> f <=< traverse (traverseOf patterns_ go))
-
-
-newtype Match a b = Match { match :: b -> Maybe a }
-
-instance Contravariant (Match a) where
-  contramap f (Match g) = Match (g . f)
-
-prd :: Match c a -> Match c b -> Match c (a, b)
-prd ma mb = Match (\ (a, b) -> match ma a *> match mb b)
 
 
 newtype Covers a = Covers { runCovers :: forall r . Context -> (r -> r -> r) -> (a -> r) -> r -> r }
