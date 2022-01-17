@@ -268,19 +268,19 @@ prd :: Match c a -> Match c b -> Match c (a, b)
 prd ma mb = Match (\ (a, b) -> match ma a *> match mb b)
 
 
-newtype Covers a = Covers { runCovers :: forall r . (r -> r -> r) -> (a -> r) -> r -> r }
+newtype Covers a = Covers { runCovers :: forall r . Context -> (r -> r -> r) -> (a -> r) -> r -> r }
   deriving (Functor)
 
 instance Applicative Covers where
-  pure a = Covers $ \ _ leaf _ -> leaf a
+  pure a = Covers $ \ _ _ leaf _ -> leaf a
   (<*>) = ap
 
 instance Alternative Covers where
-  empty = Covers $ \ _ _ nil -> nil
-  Covers l <|> Covers r = Covers (\ fork leaf nil -> l fork leaf nil `fork` r fork leaf nil)
+  empty = Covers $ \ _ _ _ nil -> nil
+  Covers l <|> Covers r = Covers (\ ctx fork leaf nil -> l ctx fork leaf nil `fork` r ctx fork leaf nil)
 
 instance Monad Covers where
-  Covers m >>= f = Covers $ \ fork leaf nil -> m fork (\ a -> runCovers (f a) fork leaf nil) nil
+  Covers m >>= f = Covers $ \ ctx fork leaf nil -> m ctx fork (\ a -> runCovers (f a) ctx fork leaf nil) nil
 
 instance MonadFail Covers where
   fail _ = empty
