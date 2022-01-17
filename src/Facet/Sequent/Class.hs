@@ -16,7 +16,6 @@ module Facet.Sequent.Class
 , lookupCtx
   -- * Temp
 , covers
-, Branch(..)
 , Tm(..)
 , Ty(..)
 , Pat(..)
@@ -180,15 +179,15 @@ data Pat
 
 type PList = [Pat]
 
-data Branch = Branch
+data Clause = Clause
   { patterns :: PList
   , body     :: Tm
   }
 
-patterns_ :: Lens Branch Branch [Pat] [Pat]
-patterns_ = lens patterns (\ (Branch _ e) ps -> Branch ps e)
+patterns_ :: Lens Clause Clause [Pat] [Pat]
+patterns_ = lens patterns (\ (Clause _ e) ps -> Clause ps e)
 
-type Clauses = [Branch]
+type Clauses = [Clause]
 type Context = [Ty]
 
 covers :: Context -> Clauses -> Bool
