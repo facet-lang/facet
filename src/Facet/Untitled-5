@@ -1,0 +1,11 @@
+
+Γ ⊢ v ==> v'
+Γ, [ask ; k -> let x = v' in k x, local f m ; k -> let x = v' in k (let x = f v' in m)] ⊢ b ==> b'
+--------------
+Γ ⊢ let x = v in b ==> let x = v' in b'
+
+
+
+Γ ⊢ _
+-----
+Γ ⊢ _

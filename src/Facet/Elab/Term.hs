@@ -6,10 +6,12 @@ module Facet.Elab.Term
 , as
   -- * Term combinators
 , global
+, globalS
 , var
 , varS
 , tlam
 , lam
+, lamS
 , app
 , appS
 , string
@@ -24,7 +26,9 @@ module Facet.Elab.Term
 , allP
   -- * Expression elaboration
 , synthExpr
+, synthExprS
 , checkExpr
+, checkExprS
 , bindPattern
   -- * Declarations
 , elabDataDef
@@ -41,6 +45,7 @@ module Facet.Elab.Term
 ) where
 
 import           Control.Algebra
+import           Control.Applicative (liftA2)
 import           Control.Carrier.Reader
 import           Control.Carrier.State.Church
 import           Control.Effect.Throw
@@ -54,7 +59,7 @@ import           Data.Monoid (Ap(..), First(..))
 import qualified Data.Set as Set
 import           Data.Text (Text)
 import           Data.Traversable (for, mapAccumL)
-import           Facet.Context (toEnv)
+import           Facet.Context (level, toEnv)
 import           Facet.Effect.Write
 import           Facet.Elab
 import           Facet.Elab.Type hiding (switch)
@@ -67,7 +72,7 @@ import           Facet.Interface
 import           Facet.Kind
 import           Facet.Lens as Lens (locally, view, views, (.=), (<~))
 import           Facet.Module as Module
-import           Facet.Name
+import           Facet.Name as Name
 import           Facet.Pattern
 import           Facet.Semiring (Few(..), zero, (><<))
 import qualified Facet.Sequent.Class as SQ
@@ -80,6 +85,7 @@ import qualified Facet.Surface.Term.Expr as S
 import qualified Facet.Surface.Type.Expr as S
 import           Facet.Syntax as S hiding (context_)
 import           Facet.Term.Expr as E
+import qualified Facet.Type.Class as C
 import qualified Facet.Type.Expr as TX
 import           Facet.Type.Norm as T hiding (global)
 import           Facet.Unify
@@ -112,6 +118,9 @@ as (m ::: _T) = do
 global :: Algebra sig m => RName ::: Type -> Elab m (Term :==> Type)
 global (q ::: _T) = (\ (v ::: _T) -> v :==> _T) <$> instantiate const (Var (Global q) ::: _T)
 
+globalS :: (Algebra sig m, SQ.Sequent t c d, Applicative i) => RName ::: Type -> Elab m (i t :==> Type)
+globalS (q ::: _T) = (\ (v ::: _T) -> v :==> _T) <$> instantiate const (pure (SQ.var (Global q)) ::: _T)
+
 -- FIXME: do we need to instantiate here to deal with rank-n applications?
 -- FIXME: effect ops not in the sig are reported as not in scope
 -- FIXME: effect ops in the sig are available whether or not they’re in scope
@@ -120,6 +129,16 @@ var n = views context_ (lookupInContext n) >>= \case
   [(n', q, CT _T)] -> use n' q $> (Var (Free n') :==> _T)
   _                -> resolveQ n >>= \case
     n :=: DTerm _ _T -> global (n ::: _T)
+    _ :=: _          -> freeVariable n
+
+varS :: (HasCallStack, Has (Throw Err) sig m, SQ.Sequent t c d, Applicative i) => QName -> Elab m (i t :==> Type)
+varS n = views context_ (lookupInContext n) >>= \case
+  [(n', q, CT _T)] -> do
+    use n' q
+    d <- views context_ level
+    pure (pure (SQ.var (Free (toLeveled d (ident n')))) :==> _T)
+  _                -> resolveQ n >>= \case
+    n :=: DTerm _ _T -> globalS (n ::: _T)
     _ :=: _          -> freeVariable n
 
 
@@ -142,11 +161,11 @@ lam1 :: (HasCallStack, Has (Throw Err) sig m) => Bind m (Pattern (Name :==> Type
 lam1 p b = lam [(p, b)]
 
 -- FIXME: scope-safety requires an outer environment and weakening
-lamS :: (HasCallStack, Has (Throw Err) sig m, SQ.Sequent  t c d) => (forall j . Applicative j => (j t :==> Type) -> (Type <==: Elab m (j t))) -> Type <==: Elab m t
-lamS f = runC . strengthen $ SQ.funRA $ \ _ v -> C $ Check $ \ _T -> do
+lamS :: (HasCallStack, Has (Throw Err) sig m, SQ.Sequent  t c d, Applicative i) => (forall j . Applicative j => (forall x . i x -> j x) -> (j t :==> Type) -> (Type <==: Elab m (j t))) -> Type <==: Elab m (i t)
+lamS f = runC $ SQ.funRA $ \ wk v -> C $ Check $ \ _T -> do
   -- FIXME: how should we pass the quantity along to the higher-order function?
   (_, _q, _A, _B) <- assertTacitFunction _T
-  check (f (v :==> _A) ::: _B)
+  check (f wk (v :==> _A) ::: _B)
 
 app :: (HasCallStack, Has (Throw Err) sig m) => (a -> b -> c) -> (HasCallStack => Elab m (a :==> Type)) -> (HasCallStack => Type <==: Elab m b) -> Elab m (c :==> Type)
 app mk operator operand = do
@@ -155,19 +174,19 @@ app mk operator operand = do
   a' <- censor @Usage (q ><<) $ check (operand ::: _A)
   pure $ mk f' a' :==> _B
 
-appS :: (HasCallStack, Has (Throw Err) sig m, SQ.Sequent t c d) => (HasCallStack => Elab m (t :==> Type)) -> (HasCallStack => Type <==: Elab m t) -> Elab m (t :==> Type)
+appS :: (HasCallStack, Has (Throw Err) sig m, SQ.Sequent t c d, Applicative i) => (HasCallStack => Elab m (i t :==> Type)) -> (HasCallStack => Type <==: Elab m (i t)) -> Elab m (i t :==> Type)
 appS f a = do
   f' :==> _F <- f
   (_, q, _A, _B) <- assertFunction _F
   a' <- censor @Usage (q ><<) $ check (a ::: _A)
-  pure $ SQ.µR (\ k -> f' SQ..|. SQ.funL a' k) :==> _B
+  (:==> _B) <$> SQ.µRA (\ wk k -> pure (wk f') SQ..||. pure (liftA2 SQ.funL (wk a') k))
 
 
 string :: Text -> Elab m (Term :==> Type)
 string s = pure $ E.String s :==> T.String
 
-stringS :: SQ.Sequent t c d => Text -> Elab m (t :==> Type)
-stringS s = pure $ SQ.stringR s :==> T.String
+stringS :: (SQ.Sequent t c d, Applicative i) => Text -> Elab m (i t :==> Type)
+stringS s = pure $ pure (SQ.stringR s) :==> T.String
 
 
 let' :: (HasCallStack, Has (Throw Err) sig m) => Bind m (Pattern (Name :==> Type)) -> Elab m (Term :==> Type) -> Type <==: Elab m Term -> Type <==: Elab m Term
@@ -240,6 +259,15 @@ synthExpr = let ?callStack = popCallStack GHC.Stack.callStack in withSpan $ \cas
   synthAs :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> S.Ann S.Type -> Elab m (Term :==> Type)
   synthAs t _T = as (checkExpr t ::: do { _T :==> _K <- synthType _T ; (:==> _K) <$> evalTExpr _T })
 
+synthExprS :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m, SQ.Sequent t c d, Applicative i) => SQ.Ctx i t -> S.Ann S.Expr -> Elab m (i t :==> Type)
+synthExprS ctx = let ?callStack = popCallStack GHC.Stack.callStack in withSpan $ \case
+  S.Var n    -> varS n
+  S.App f a  -> appS (synthExprS ctx f) (checkExprS ctx a)
+  S.As t _T  -> as (checkExprS ctx t ::: do { _T :==> _K <- synthType _T ; (:==> _K) <$> evalTExpr _T })
+  S.String s -> stringS s
+  S.Hole{}   -> couldNotSynthesize
+  S.Lam{}    -> couldNotSynthesize
+
 
 checkExpr :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => S.Ann S.Expr -> Type <==: Elab m Term
 checkExpr expr = let ?callStack = popCallStack GHC.Stack.callStack in withSpanC expr $ \case
@@ -250,6 +278,15 @@ checkExpr expr = let ?callStack = popCallStack GHC.Stack.callStack in withSpanC 
   S.As{}     -> switch (synthExpr expr)
   S.String{} -> switch (synthExpr expr)
 
+checkExprS :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m, SQ.Sequent t c d, Applicative i) => SQ.Ctx i t -> S.Ann S.Expr -> Type <==: Elab m (i t)
+checkExprS ctx expr = let ?callStack = popCallStack GHC.Stack.callStack in withSpanC expr $ \case
+  S.Hole n   -> hole n
+  S.Lam cs   -> checkLamS ctx cs
+  S.Var{}    -> switch (synthExprS ctx expr)
+  S.App{}    -> switch (synthExprS ctx expr)
+  S.As{}     -> switch (synthExprS ctx expr)
+  S.String{} -> switch (synthExprS ctx expr)
+
 checkLam :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => [S.Clause] -> Type <==: Elab m Term
 checkLam cs = lam (snd vs)
   where
@@ -257,6 +294,25 @@ checkLam cs = lam (snd vs)
   vs = partitionEithers (map (\ (S.Clause (S.Ann _ _ p) b) -> case p of
     S.PVal p                          -> Right (bindPattern p, checkExpr b)
     S.PEff (S.Ann s _ (S.POp n fs k)) -> Left $ n :=: Check (\ _T -> pushSpan s (foldr (lam1 . bindPattern) (checkExpr b) (fromList fs:>k) <==: _T))) cs)
+
+checkLamS :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m, SQ.Sequent t c d, Applicative i) => SQ.Ctx i t -> [S.Clause] -> Type <==: Elab m (i t)
+checkLamS ctx cs = lamS $ \ wk (v :==> _A) -> Check $ \ _B -> SQ.µRA (\ wk' k -> pure (wk' v) SQ..||. SQ.sumLA (map (clauseS _A _B k (SQ.Entry __ ctx (wk' . wk) (wk' v))) cs))
+
+clauseS :: (Has (Throw Err :+: Write Warn) sig m, SQ.Sequent t c d, Applicative i) => Type -> Type -> i c -> SQ.Ctx i t -> S.Clause -> Clause (Elab m) i t d
+clauseS = undefined
+-- clauseS _A _B k ctx (S.Clause (S.Ann _ _ p) b) = Clause $ \ wk v -> case p of
+--   S.PVal (S.Ann _ _ p)              -> case p of
+--     S.PWildcard -> check (checkExprS (SQ.Entry __ ctx wk v) b ::: _B) SQ..||. pure (wk k)
+--     S.PVar n    -> check (checkExprS (SQ.Entry n ctx wk v) b ::: _B) SQ..||. pure (wk k)
+--     -- FIXME: Recur in CPS
+--     S.PCon n fs -> _
+--   S.PEff (S.Ann s _ (S.POp n fs k)) -> _
+--   where
+--   go k = _
+  -- vs :: (Has (Throw Err :+: Write Warn) sig m, SQ.Sequent t c d) => ([QName :=: (Type <==: Elab m t)], [(Bind m (Pattern (Name :==> Type)), Type <==: Elab m t)])
+  -- vs = partitionEithers (map (\ (S.Clause (S.Ann _ _ p) b) -> case p of
+  --   S.PVal p                          -> Right (bindPattern p, checkExpr b)
+  --   S.PEff (S.Ann s _ (S.POp n fs k)) -> Left $ n :=: Check (\ _T -> pushSpan s (foldr (lam1 . bindPattern) (checkExpr b) (fromList fs:>k) <==: _T))) cs)
 
 
 -- FIXME: check for unique variable names

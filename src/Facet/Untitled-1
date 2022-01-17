@@ -1,0 +1,142 @@
+
+
+reader : { R, A : Type } -> (r : R) -> [Reader R] A -> A
+
+
+[Output, Reader R] A
+
+[] A
+
+(Output -> Reader R -> A)
+((Output, Reader R) -> A)
+
+[Reader R] A
+(Reader R -> A)
+Reader R : Interface
+{ ask = …
+, local = … }
+
+
+handle : (A -> [Error E] B) -> [Error E] A -> [Error E] B
+{ h [a] -> catch a! h }
+
+handle : (A -> [Error E] B) -> [Error E] A -> [Error E] B
+{ h a -> catch a h }
+
+
+reader : { R, A : Type } -> (r : R) -> [Reader R] A -> A
+{ [ask       ; k] -> reader r (k r)
+, [local f m ; k] -> reader r (k (reader (f r) (m!)))
+, a               -> a }
+
+
+reader : { R : Type} -> { A : Type } -> R -> [Reader R] A -> A
+{ r [ask       ; k] -> reader r (k r)
+, r [local f m ; k] -> reader r (k (reader (f r) (m!)))
+, _ a               -> a }
+
+
+reader : { R : Type} -> { A : Type } -> R -> (Reader R -> A) -> A
+{ r a -> a dict
+  where
+  dict = Reader
+    { ask = { k -> reader r (k r) }
+    , local = { f m k -> reader r (k (reader (f r) m)) }
+    }
+  }
+
+{ r a -> a (dict r)
+  where
+  dict r = Reader
+    { ask = { k -> reader r (k r) }
+    , local = { f m k -> reader r (k (reader (f r) m)) }
+    }
+  }
+
+{ r a -> a dict
+  where
+  dict = Reader
+    { ask = { k -> reader r (k r) }
+    , local = { f m k -> reader r (k (reader (f r) m)) }
+    }
+  }
+
+
+
+ask : {R : Type} -> [Reader R] R
+local : {R : Type} -> {A : Type} -> (R -> R) -> [Reader R] A -> [Reader R] A
+
+
+oneMore : [Reader R] Int
+{ local succ ask }
+
+~~>
+
+oneMore : Reader R -> Int
+{ [ask, local] -> local succ ask }
+
+
+
+if : Bool -> {A} -> {A} -> A
+if : (c : Bool) -> (t : Unit -> A) -> (e : Unit -> A) -> A
+{ case c { (true)  -> t!
+         , (false) -> e! } }
+
+
+
+reader : { R : Type} -> { A : Type } -> R -> (Reader R -> A) -> A
+Cont R A =                                   (A        -> R) -> R
+
+
+
+nondet : (B -> B -> B) -> (A -> B) -> B -> (NonDet -> A) -> B
+
+
+do
+  x <- reader r
+  _
+
+
+{
+nondet (_ | _) (leaf << print) empty
+(_ |)
+(| _)
+(| _ |)
+(| _ | _)
+((_ | _) | _)
+(_ | (_ | _))
+
+(reader _ a)
+(reader _1 _0)
+(reader { action = _ , env = _ })
+
+}
+
+
+($)   : (a ->   b) ->   a ->   b
+(<$>) : (a ->   b) -> f a -> f b
+(=<<) : (a -> m b) -> m a -> m b
+
+(&)   :   a -> (a ->   b) ->   b
+(>>=) : m a -> (a -> m b) -> m b
+
+
+f : a -> b
+f a
+a'f
+
+
+
+P ::= String | Int | ↓ N
+N ::= P -> N | ↑ P
+
+
+
+\ x -> return x
+
+
+X to x . Y
+
+X : ↑ P
+x : P
+Γ, x : P |- Y : N

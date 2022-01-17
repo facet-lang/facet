@@ -1,0 +1,65 @@
+
+[E] A desugars to E -> ¬¬A, and an effect handler eliminates both of these:
+
+- the effect cases eliminate the E -> portion by providing a dictionary
+- the pure cases eliminate the ¬¬A portion by instantiating the quantifier (we will represent ¬¬A as ∀ X . (A -> X) -> X) with the handler’s return type and providing a continuation
+
+It’s a sequent
+
+(A → ⊥) → (E → ⊥)
+
+
+
+
+Effect calculus
+
+Γ ⊢ Δ, b : [r : ¬¬Int] T
+---------------------------------
+Γ ⊢ Δ, let r : Int { 2 } in b : T
+
+
+r : ¬¬Int, Γ ⊢ Δ, b : T
+---------------------------------
+Γ ⊢ Δ, let r : Int { 2 } in b : T
+
+
+Γ ⊢ Δ, h : [e : E] A -> B   Γ ⊢ Δ, a : [e : E] A
+Γ ⊢ Δ, h . a : T
+
+
+Γ ⊢ Δ, e : E   A, Γ ⊢ Δ
+------------------------
+[e : E] A, Γ ⊢ Δ
+
+e : E, Γ ⊢ Δ, A
+----------------
+Γ ⊢ Δ, [e : E] A
+
+context/effect types (both?) carry computations introduced by handlers
+which are propagated inwards and therefore made available for use by actions
+
+handlers: introduce variables
+variables: consume references from context/effect type (both?)
+
+makes arg/takes res
+Γ ⊢ Δ, A   B, Γ ⊢ Δ
+-------------------
+A → B, Γ ⊢ Δ
+
+
+x : X, Γ ⊢ Δ, B
+--------------------------
+Γ ⊢ Δ, λ x . b : [x : X] B
+
+
+
+                    ----- init
+                    B ⊢ B
+-------- init    -------- w⊢
+A, B ⊢ A         A, B ⊢ B
+---------- ~⊢    ---------- ~⊢
+~A, A, B ⊢       ~B, A, B ⊢
+--------------------------- ⊕⊢
+      ~A ⊕ ~B, A, B ⊢
+     ----------------- ⊗⊢
+     ~A ⊕ ~B, A ⊗ B ⊢

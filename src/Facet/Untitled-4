@@ -1,0 +1,91 @@
+
+how do we do bidi typechecking when we don’t have syntactic structure to guide us?
+
+e.g. we think of constructor/eliminator syntax as being key, but if the type is key…
+
+when we hit a term of type [E] A, we must elaborate a lambda from the dictionary to the term
+
+e.g.:
+
+```facet
+guard : Bool -> [Empty] Unit
+{ (true)  -> unit
+, (false) -> empty }
+```
+
+the body of both clauses is [Empty] Unit, which means the effective expected type is Empty -> Unit, where Empty is the type of dictionaries for the Empty effect. The success branch uses the constructor unit : Unit, so we must lift it into Empty -> Unit using a constant function. The failure branch uses the effect operation empty : {A : Type} -> [Empty] A, with A instantiated to Unit, and is thus already [Empty] Unit, so we’re done.
+
+```facet
+guard : Bool -> Empty -> Unit
+{ (true)  -> {_ -> unit}
+, (false) -> empty }
+```
+
+Alternatively, we could elaborate both branches to eta-long form:
+
+```facet
+guard : Bool -> Empty -> Unit
+{ (true)  _    -> unit
+, (false) dict -> empty dict }
+```
+
+This is _probably_ the easier route to take.
+
+
+
+
+```facet
+modify : {S : Type} -> (S -> S) -> [State S] Unit
+{ f -> put (f get) }
+```
+
+```facet
+modify : {S : Type} -> (S -> S) -> State S -> Unit
+{ {S} f dict -> put (f (get dict)) dict }
+```
+
+
+
+-------------------------------
+Γ ⊢ ask : [E] A  ~~>  _ : E -> A
+
+
+
+[] Γ ⊢ reader : {R : Type} -> {A : Type} -> R -> [Reader R] A -> A
+[?A = _ : Type] Γ ⊢ reader : {A : Type} -> ?A -> [Reader ?A] A -> A
+[?A = _ : Type, ?B = _ : Type] Γ ⊢ reader : ?A -> [Reader ?A] ?B -> ?B
+
+[?A = _ : Type, ?B = _ : Type] Γ ⊢ r : R
+
+---------------------------------------------
+Γ ⊢ reader r ask : R  ~~>  _ : String
+
+
+
+Γ ⊢ ask ; ask : _
+
+ask : [Reader R] R
+_ ; _ : {A : Type} -> {B : Type} -> A -> B -> B
+
+ask ; ask : [Reader R] R -> [Reader R] R -> [Reader R] R
+ask ; ask : (Reader R -> R) -> (Reader R -> R) -> (Reader R -> R)
+= { a b dict -> a dict ; b dict } -- probably not this, since it makes the expansion the caller’s job which is antimodular
+or maybe:
+= { a b dict -> case (a dict) { _ -> b dict } } -- there’s probably a more concise way to express this that doesn’t require the callout to case
+= { a b dict -> let {_ = a dict} in b dict } -- and there it is
+
+
+
+
+
+
+
+can/should let be suspended?
+
+
+Γ ⊢ y ⤋ y′   Γ, x = y′ ⊢ z ⤋ z′
+-------------------------------
+   Γ ⊢ let {x = y} in z ⤋ z′
+
+
+it would be nice to preserve let in normal forms since substitution can yield exponential blowups, but doing so means it’s no longer a normal form since you can always bind variables that you don’t then use. could maybe view the context as part of the term instead.

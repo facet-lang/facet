@@ -1,0 +1,1339 @@
+
+a lambdas specifies handlers for zero or more effect operations, as well as values of a given type. (if the type has no constructors—e.g. Void—there may be no cases for the latter, but since it can’t be called anyway, that doesn’t matter)
+
+the cases for effect patterns constitute the effect handler portion
+
+the cases for value patterns constitute the function portion
+
+the effect handler portion is pushed onto the context used to evaluate arguments
+
+the function portion is applied to the return value
+
+
+all of this means that function application needs the lambda in order to evaluate the arguments, meaning that it can’t do fully eager evaluation of the arguments; and so neutral terms are harder (and may not work at all)
+
+(we could store the argument—the expression—in the neutral term)
+
+
+
+
+if we allow scoped operations to take computations instead of suspended computations, we can’t reduce much because we don’t know whether or not it might have been interpreted differently
+
+on the other hand, if we require them to take suspended computations, then we have a strange distinction where `[E] A` doesn’t mean the same thing in an interface sig as it does in a free function’s sig
+
+(can higher-order functions handle effects? that seems useful)
+
+
+
+
+the evaluator has a handler and an environment
+
+the handler is managed by the monad, the environment is managed by the eval function
+
+
+
+if we manage the environment in the monad, it doesn’t work ~~for some unknown reason~~ because it’s the difference between dynamic and lexical scoping
+
+if we pass the handler around instead of managing it in the monad, then evaluating arguments doesn’t work properly because we’ve already called go recursively on the Expr by the time we get the handler to extend with
+
+
+
+
+if eval reduces to Value then the lambda cases have to wrap things up in thunks and it becomes super convoluted, and still doesn’t handle the problem of having to put a value in the environment for the continuation variable
+
+the continuation variable must reference the actual continuation so that control flow can return correctly. it has to be a variable not just because that’s the shape of patterns, but because the environment holds values, not computations.
+
+therefore, we need some systematic way to decide whether to return or force. I don’t think the types help us out much here, or at least not without the adjunction.
+
+
+
+----
+
+
+scoped operations such as local
+
+```facet
+local : { R, A : Type } -> (R -> R) -> [Reader R] A -> A
+```
+
+act sort of as interpreted interpreters: they’re syntax and thus are interpreted, but in so doing they have the opportunity to affect the interpretation of their own operands
+
+in the case of local, that means that any `ask`s or nested `local`s occurring in the body will receive the current environment value modulo whatever transformation the function applies. Since it applies to `local`s, we can infer that this also applies recursively, effectively composing these functions as we move inwards through more and more `local`s.
+
+Our evaluation strategy for applications works by examining the lambda for any effect handlers, and pushing them onto the (notional) handler context. the lambdas for effect ops don’t match effect patterns, so they don’t get this treatment—and even if they did, they’d have no way of providing the right handlers anyway, since it’s only available dynamically.
+
+Example:
+
+```facet
+reader true (local not (ask : Bool))
+```
+
+We want this to return `false`. As things stand, however, it returns `true`, because it’s reduced before `local` can be applied.
+
+The definition of `local` is of course not the operation which will be interpreted, but rather a lambda taking those arguments which then constructs the operation in question. Thus, partial application of the lambda will not result in the reduction of the operation.
+
+We can think of that `local` as being written like so:
+
+```facet
+interface Reader : (R : Type) -> Interface
+{ ask : R
+, local : { A : Type } -> (R -> R) -> [Reader R] A -> A
+  { f a -> #[local f a] } }
+```
+
+where `#[<name> …]` represents a fully-applied effect operator. Note that the patterns are all value patterns—that’s what forces the behaviour we’re seeing here. If we instead used an effect pattern (like the catchall patterns which we removed) we would obtain an implementation which would be pushed onto the context before the evaluation of its argument:
+
+```facet
+local : { A : Type } -> (R -> R) -> [Reader R] A -> A
+{ f [a] -> #[local f a] } }
+```
+
+Catchall patterns match both computations and values, so they presumably imply that the argument is not reduced—an unreduced thunk, invisible to the surface language, could work.
+
+More precisely, the presence of the effect pattern means that the case will be lifted into the handler context used to evaluate the action.
+
+Unfortunately, `PAll` only works when we know precisely what effects it can catch, i.e. when effect dispatch doesn’t failover linearly but rather indexes into the handler context. This is because it will match every effect operation—there’s no way to limit to only those of the handler’s type. We knew we needed to change this behaviour anyway, this just makes it more urgent.
+
+
+Pattern-matching an operation against `PAll` instantiates its variable to a thunk which the body of the constructor then fills into an operation computation. However, we don’t evaluate computations, they’re already evaluated, so this doesn’t accomplish much. Really what we want is to instead _send the request_, but we don’t have a way to do that since the enclosing `VThunk` wraps a `Comp m`, not an `m (Comp m)`. And we can’t make it take an `m (Comp m)` because then we can’t examine the contents in the `vthunk` smart constructor to see if they can be eliminated or not. (It might well be the case that the strategy we’re using to wrap/unwrap computations in/from thunks is incorrect. This might have to occur at the level of elaboration instead, so that it’s type-directed, which would give us a much stronger indication of how to drive the evaluation relation.)
+
+
+----
+
+if the elaborator is to generate syntax for computations and values then it needs to do so very precisely to generate the specific sequence of steps we are going to evaluate. this makes the core language much more precise and specific than the surface language since evaluation order is no longer implicit.
+
+----
+
+synthesize eliminations positive or negative
+check introductions positive or negative
+
+
+----
+
+the reason term variables are positive is because they represent the results of computations (introduced via M to x. N, λ{x . M}, or the global environment), i.e. they are values.
+
+that doesn’t apply to type variables, introduced by foralls and globals—there is no notion of computation or sequencing at that level.
+
+so foralls take a kind to quantify over, but the type variable introduced at that kind can be positive, negative, or whatever. ditto type constructor applications therefore. unfortunately I think this means that Foo could be negative while Foo A is positive, or vice versa? maybe not.
+
+
+----
+
+data Def
+  = DTerm (Maybe (Expr P)) (Type P)
+  | DData Scope (Type T)
+  | DInterface Scope (Type T)
+  | DModule Scope (Type T)
+
+----
+
+how do you know when to force vs. when to ret?
+
+I don’t think the answer is just “whenever possible.” I think we want a heuristic to determine when a thunk will be inserted before shifting.
+
+
+----
+
+checking and synthesis are related to polarity in some fashion
+
+we check introductions and synthesize eliminations
+
+lam -> check
+app -> synth
+
+polarity has to do with the structure of the judgements?
+
+λ x . y : P -> N
+
+
+  Γ, x : A+ ⊢ y :< B-
+----------------------- check-function-intro
+Γ ⊢ λ x . y :< (A+ -> B-)-
+
+
+Γ ⊢ f :> A+ -> B-   Γ ⊢ a :< A+
+------------------------------- synth-function-elim
+         Γ ⊢ f a :> B-
+
+are these both - because + -> - is -? I think yes, if functions returned + then app would have to be +
+
+
+Γ ⊢ x :< X+   Γ ⊢ y :< Y+
+------------------------- check-product₊-intro
+Γ ⊢ (x, y) :< (X+ ✕ Y+)+
+
+
+Γ ⊢ p :> (X+ ✕ Y+)+
+------------------- synth-product₊-elim₀
+   Γ ⊢ p₀ :> X+
+
+Γ ⊢ p :> (X+ ✕ Y+)+
+------------------- synth-product₊-elim₁
+    Γ ⊢ p₁ :> Y+
+
+
+Polarity is determined by the structure of the rules. There’s a different product type with “the same” introduction rule (modulo polarities) and a single, different elim which /requires/ both fields to be evaluated first. That one is negative:
+
+Γ ⊢ x :< X₋   Γ ⊢ y :< Y₋
+------------------------- check-product₋-intro
+Γ ⊢ (x, y) :< (X₋ ✕ Y₋)₋
+
+
+Γ ⊢ p :> (X₋ ✕ Y₋)₋  Γ, x : X₋, y : Y₋ ⊢ z : Z₋
+-----------------------------------------------synth-product₋-elim
+        Γ ⊢ match p (λ x y . z) :> Z₋
+
+
+I don’t see any reason why you couldn’t have a negative-and-positive connective (two of them, really).
+
+
+Via proof theory, polarity is related to normal forms. cf focalization.
+
+
+P ✕ P ∈ P
+
+----
+
+data Kind
+  = KType
+  | KInterface
+  | KArrow (Maybe Name) Kind Kind
+
+data Interface = IInterface (Q Name) (Snoc (Either NType PType))
+
+data PType
+  = PString
+  | PNe (Var Meta Level) (Snoc (Either NType PType))
+  | PThunk NType
+
+data NType
+  = NForAll Name Kind (Either NType PType -> NType)
+  | NArrow (Maybe Name) Quantity PType NType
+  | NComp [Interface] PType
+
+
+data PType t where
+  PString :: PType String
+  PNe :: Tele t -> PType t
+  PThunk :: NType t -> PType t
+
+data Tele t where
+  THead :: Var Meta Level -> Tele t
+  TApp :: Tele (t -> u) -> _ t -> Tele u
+
+data NType
+  = NForAll Name Kind (Either NType PType -> NType)
+  | NArrow (Maybe Name) Quantity PType NType
+  | NComp [Interface] PType
+
+
+----
+
+we have polarized the type theory so that the compiler guarantees that we have inserted shifts where they belong, in order to guide the elaboration of the polarized expression language, and in turn elaborate the correct elaboration order
+
+----
+
+application rule is receiving thunks that need forcing
+abstracting nullary, monomorphic data constructors like true and false seems to double-wrap them. we should have the constructors in the global env without any shifts.
+quantifiers like forall should be polarity-polymorphic so that nil can be a value without having to thunk a forall around a comp of the constructor.
+
+
+----
+
+Γ ⊢ K : Type   Γ, X : K ⊢ B : Type
+----------------------------------
+    Γ ⊢ { X : K } -> B : Type
+
+
+        Γ, X : K ⊢ y :< B
+----------------------------------
+Γ ⊢ { {X} -> y } :< { X : K } -> B
+
+
+Γ ⊢ p :< A₊ ⊣ Γ′   Γ, Γ′ ⊢ x :< B₋
+----------------------------------
+    Γ ⊢ { p -> x } :< A₊ -> B₋
+
+----
+
+Abel identifies polarity with variance: ✕ is covariant and thus positive; -> is contravariant and thus negative; weirder things might be “nonvariant.” He also identifies variance with the monotonicity of the type: as A and B grows, so does A ✕ B, whereas as A grows, A -> B shrinks. (Is this true? A -> B is generally interpreted as B^A, thus 2 -> 3 is 3^2, = 9 inhabitants, 3 -> 3 = 3^3 = 27 inhabitants. What’s going on here?)
+
+He also gives a partial order on polarities (using o to indicate nonvariant):
+
+  +   -
+   \ /
+    o
+
+And even the polarity of composed functions (which I believe refers to type constructors here):
+
+    o + -
+    -----
+o | o o o
++ | o + -
+- | o - +
+
+And then remarks that you can consider this like the signs {0, +1, -1} and their multiplication table, with a nonstandard ordering.
+
+Using one of these symbols over the arrows, we can give the polarity of constructors as part of their kinds:
+
+       +     +
+✕ : * --> * --> *
+
+This notation gives the function arrow polarity with the expected variance, i.e. contravariant in its domain, covariant in its codomain, but note that this is precisely the opposite of the polarity we see in CBPV:
+
+       -     +
+→ : * --> * --> *
+
+It also doesn’t indicate the polarity of the connective itself; only the polarity of the input of the kind arrow. So something subtler is going on here. Maybe this is a distinct meaning of polarity? I.e. where we get “x occurs in a negative position” meaning “x occurs in an argument position” (modulo inversions from higher-order functions) from?
+
+Quantifiers are meanwhile covariant w.r.t. their scope, which is itself nonvariant w.r.t. the domain.
+
+         o      +
+∀κ : (κ --> *) --> *
+
+
+
+-----
+
+Harper characterizes [polarity in terms of laziness][], with exactly the opposite relationship to the one I expect: the positive product rules above are lazy (if you have a pair, and you don’t project out one field, why evaluate the other?), while the lazy ones are strict (you have to evaluate both fields to provide values in the env for the variables used in the match). Zeilberger calls the different styles of these rules the “pragmatist” and “verificationist” approaches.
+
+Harper also calls the former ✕ (since “it behaves like a Cartesian product”), and the latter ⊗ (since “it behaves like a tensor”). He concludes by relating the tensor/verificationist approach to the positive types, and the product/pragmatist approach to the negative types. That means my rule for products above is wrong: I flipped the polarities. The amended rules (using ⊗ for the positive product):
+
+
+Γ ⊢ x :< X₋   Γ ⊢ y :< Y₋
+------------------------- check-✕-intro
+  Γ ⊢ (x, y) :< X₋ ✕ Y₋
+
+
+Γ ⊢ p :> X₋ ✕ Y₋
+---------------- synth-✕-elim₀
+  Γ ⊢ p₀ :> X₋
+
+Γ ⊢ p :> X₋ ✕ Y₋
+---------------- synth-✕-elim₁
+  Γ ⊢ p₁ :> Y₋
+
+
+
+Γ ⊢ x :< X₊   Γ ⊢ y :< Y₊
+------------------------- check-⊗-intro
+  Γ ⊢ (x, y) :< X₊ ⊗ Y₊
+
+
+Γ ⊢ p :> X₊ ⊗ Y₊  Γ, x : X₊, y : Y₊ ⊢ z : Z₊
+--------------------------------------------synth-⊗-elim
+        Γ ⊢ match p (λ x y . z) :> Z₊
+
+
+This seems to line up with Facet’s datatypes: we have strict fields, and access is mediated by pattern matching. (Lazy fields, insofar as these are things, would be defined by thunking a computation. There is not currently syntax for this in the surface language, however, so functions from Unit are employed instead.)
+
+[polarity in terms of laziness]: https://existentialtype.wordpress.com/2012/08/25/polarity-in-type-theory/
+
+----
+
+Neel Krishnaswami [distinguishes focusing and CBPV][], noting that focusing employs negative hypotheses where CBPV employs positive ones. I’m still working on parsing the details in their entirety, the discussion of invertible rules suggests that we can play that exercise out with Facet’s rules. E.g., function introduction and elimination:
+
+
+    Γ, x : A₊ ⊢ y :< B₋
+-------------------------- check-function-intro
+Γ ⊢ { x -> y } :< A₊ -> B₋
+
+
+Γ ⊢ f :> A₊ -> B₋   Γ ⊢ a :< A₊
+------------------------------- synth-function-elim
+         Γ ⊢ f a :> B₋
+
+> The key idea behind polarization is that one should specify the calculus modulo the invertible rules. That is, the judgement on the right should fundamentally be a judgement that a term has a positive type, and the hypotheses in the context should be negative.
+
+…
+
+> The eliminations for positive types are derived and the introductions for negative types are derived judgements (which end up being rules for pattern matching and lambda-abstractions) which make cut-elimination hold, plus a few book-keeping rules to hook these two judgements together.
+
+I’m not really sure how that works for function application, since while it eliminates a negative, it doesn’t result in a positive. And it’s not clear how to derive the judgement for lambdas from the judgement for application! So maybe I need to read Zeilberger some more.
+
+The examples of invertible rules Neel gives are intuitionistic logical rules, and not typechecking terms. E.g.:
+
+ Γ, S ⊢ T
+----------
+Γ ⊢ S -> T
+
+which can be inverted to
+
+Γ ⊢ S -> T
+----------
+ Γ, S ⊢ T
+
+(and a similar example involving disjunctions).
+
+Erasing the proof terms, we have a very similar rule for Facet functions:
+
+ Γ, A₊ ⊢ B₋
+------------
+Γ ⊢ A₊ -> B₋
+
+Really, the only difference (up to renaming) is the labels indicating polarities. So it’s the invertible rules you discard, then—that’s what he meant by “modulo the invertible rules”—and application isn’t invertible.
+
+I think the motivation for that idea is that if a rule is invertible then it doesn’t add any information or expressiveness to the system; it isn’t essential. If you can discard it, do.
+
+What about applications?
+
+Γ ⊢ A₊ -> B₋   Γ ⊢ A₊
+---------------------
+        Γ ⊢ B₋
+
+Holy shit, it’s cut! And this is clearly non-invertible.
+
+[distinguishes focusing and CBPV]: https://semantic-domain.blogspot.com/2014/10/focusing-is-not-call-by-push-value.html
+
+
+----
+
+Whither quantifiers? Revisiting the rules from above:
+
+Formation:
+
+Γ ⊢ κ : Type   Γ, X : κ ⊢ A : Type
+----------------------------------
+    Γ ⊢ { X : κ } -> A : Type
+
+
+Introduction:
+
+        Γ, X : κ ⊢ y :< A
+----------------------------------
+Γ ⊢ { {X} -> y } :< { X : κ } -> A
+
+
+Elimination:
+
+Γ ⊢ f :> { X : κ } -> A   Γ ⊢ τ :< κ
+------------------------------------
+        Γ ⊢ f {τ} :> [X↦τ]A
+
+(Note that there is not currently surface syntax for this, but it exists in Core.)
+
+
+Removing proof terms from the introduction leaves us with:
+
+  Γ, X : κ ⊢ A
+------------------
+Γ ⊢ { X : κ } -> A
+
+This is indeed invertible:
+
+Γ ⊢ { X : κ } -> A
+------------------
+  Γ, X : κ ⊢ A
+
+We can’t really remove proof terms from the rule for elimination, because of the necessity of substitution. We could attempt to replace the substitution with an extension of the context, but that seems to just be introduction again, inverted, and with an extra case asserting κ.
+
+Γ ⊢ { X : κ } -> A   Γ ⊢ κ
+--------------------------
+      Γ, X : κ ⊢ A
+
+So that likewise appears to be invertible, strongly suggesting that forall is in fact not polarized. But we can probably treat it as if it were, for now.
+
+
+----
+
+Heterogeneous types are making this pretty hard. We don’t have any reasonable way to track the kinds of symbols in the env so it ends up being guesswork anyway. It’ll be harder to ensure well-formedness within a local type/kind if we don’t have indexed types, but easier to work with overall.
+
+----
+
+check intros, synth elims
+
+
+Γ ⊢ t :> S    S ≡ T
+------------------- switch
+     Γ ⊢ t :< T
+
+
+this is boolean elim but we’re checking??
+
+Γ ⊢ c :< Bool   Γ ⊢ x :< T   Γ ⊢ y :< T
+---------------------------------------
+      Γ ⊢ if c then x else y :< T
+
+
+----
+
+how is instantiation supposed to work?
+
+e.g.:
+
+```facet
+nil : ↓ ({ A : Type } -> ↑ (BinaryTree A))
+```
+
+Given a reference to this in a negative position, we force the thunk, and end up attempting to prove something like:
+
+             ???
+-----------------------------
+Γ ⊢ force nil :< ↑ (BinaryTree B)
+
+which doesn’t work because the types don’t match—the forall hasn’t been instantiated.
+
+Previously, we would instantiate on reference, but variables are positive, and instantiation is negative. That means we instead have to instantiate the variable _on use_.
+
+(I think this means that a rank-n function passed as an argument will be instantiated fresh each time it’s used, which is the correct behaviour. Globals are similarly generalized. Likewise, typing polymorphic recursion isn’t a problem if you have a type signature, and we do.)
+
+
+Synthesis and checking should probably not be split up the way they are into separate positive and negative forms for each, now that we have the single type.
+
+----
+
+[Max S. New comments](https://semantic-domain.blogspot.com/2018/08/polarity-and-bidirectional-typechecking.html?showComment=1556653188557&m=1#c4918606150427353155) that CBPV and focusing could be seen as “the same” modulo how disciplined they’re being about focusing. CBPV has a fairly standard intro rule for lambdas, whereas focusing requires you to pattern match immediately, which (somehow?) ends up with variables being negative.
+
+
+----
+
+from beka
+
+Frank Pfenning’s lecture re: focusing & polarization: https://www.youtube.com/watch?v=_XtflAEN6aA
+
+lecture notes: http://www.cs.cmu.edu/~fp/courses/15317-f09/lectures/11-inversion.pdf
+
+
+simplefp v 2
+
+----
+
+I don’t know how to apply bidi typechecking to polarized logics. I’m not alone in this, tho: [Neel Krishnaswami has written about this](https://semantic-domain.blogspot.com/2018/08/polarity-and-bidirectional-typechecking.html?m=1), for one.
+
+For example, I wrote (most of) a typechecker for a little language encoded using GADTs indexed by polarity (but not by type, because then what’s there to typecheck?)
+
+```haskell
+data Pos
+data Neg
+
+data Ty u where
+  Arr :: Ty Pos -> Ty Neg -> Ty Neg
+  Prd :: Ty Pos -> Ty Pos -> Ty Pos
+  Unit :: Ty Pos
+
+data Tm u where
+  Lam :: Tm Neg -> Tm Neg
+  App :: Tm Neg -> Tm Pos -> Tm Neg
+
+  Pair :: Tm Pos -> Tm Pos -> Tm Pos
+  Match :: Tm Pos -> Tm Neg -> Tm Neg
+  Var :: Index -> Tm Pos
+
+data Some t where
+  Some :: t u -> Some t
+
+syn :: Snoc (Some Ty) -> Tm u -> Maybe (Tm u ::: Ty u)
+syn ctx = \case
+  App f a -> do
+    f' ::: Arr _A _B <- syn ctx f
+    a' <- chk ctx a _A
+    pure $ App f' a' ::: _B
+  Match a b -> do
+    a' ::: Prd _L _R <- syn ctx a
+    b' <- chk ctx b (Arr _L (Arr _R _))
+    pure $ Match a' b' ::: _
+
+chk :: Snoc (Some Ty) -> Tm u -> Ty u -> Maybe (Tm u)
+chk ctx = \case
+  Lam b -> \ _T -> do
+    Arr _A _B <- Just _T
+    Lam <$> chk (ctx:>Some _A) b _B
+  Pair a b -> \ _T -> do
+    Prd _A _B <- Just _T
+    Pair <$> chk ctx a _A
+         <*> chk ctx b _B
+  e@App{} -> synth e
+  e@Match{} -> synth e
+  e@Var{} -> synth e
+  where
+  synth :: Tm u -> Ty u -> Maybe (Tm u)
+  synth e = \ _T -> do
+    e' ::: _T' <- syn ctx e
+    e' <$ unify _T _T'
+  unify :: Ty u -> Ty u -> Maybe ()
+  unify t1 t2 = case (t1, t2) of
+    (Unit, Unit)           -> pure ()
+    (Unit, _)              -> Nothing
+    (Arr a1 b1, Arr a2 b2) -> unify a1 a2 *> unify b1 b2
+    -- (Arr{}, _)             -> Nothing
+    (Prd a1 b1, Prd a2 b2) -> unify a1 a2 *> unify b1 b2
+    (Prd{}, _)             -> Nothing
+```
+
+We have positive and negative intros (tensors and lambdas) and elims. The tensor elim is weird, tho. A bidi typechecker checks intros and synthesizes elims. It’s not novel that we could also define a synthesis rule for pair intros, but the fact that we _can’t_ synthesize pair elims is what interests me. We simply don’t have enough information to fill in the result type of the function (at least not without appeal to constraint solving).
+
+I wonder if the rule isn’t “check intros, synth elims” but rather “check negative intros, synth negative elims, synth positive intros, check positive elims”?
+
+We can synthesize:
+
+- variables
+- ascriptions
+- applications (neg elim)
+- string literals (pos intro)
+
+
+Γ ⊢ a : A    Γ ⊢ b : B
+----------------------
+  Γ ⊢ a ⊗ b : A ⊗ B
+
+(this is invertible, so we would derive it in a focused logic)
+
+
+Γ ⊢ p : A ⊗ B   Γ, a : A, b : B ⊢ c : C
+---------------------------------------
+     Γ ⊢ prj p to a, b in c : C
+
+(non-invertible)
+
+
+Γ ⊢ p : A ✕ B
+--------------
+Γ ⊢ prj₀ p : A
+
+(nnn-invertible)
+
+----
+
+current problems:
+
+1. the types of (nullary? but maybe n-ary) constructors aren’t shifted correctly in the return position
+
+2. we don’t instantiate any more, because variables are positive
+
+3. nullary constructors are being downshifted unnecessarily?
+
+----
+
+when checking, the expected type tells us whether we need to produce a positive or negative expression.
+
+when synthesizing, we return a positive or negative expression and its type based on the surface syntax.
+
+thus, we never need to guess.
+
+
+synthesis is bottom-up, so synthesizing a variable should probably do the instantiation still. then if it’s being used in a positive position, we should introduce the right machinery to force its value and put it into the value position.
+
+also, instantiation should not be treated as computation. instantiation is only positive or negative depending on its contents.
+
+
+----
+
+correct-by-construction exprs and types
+
+a few approaches:
+
+1. GADT representation. Tried this, found it intractable.
+
+2. Mutually recursive datatypes. Have to parameterize just about everything by the type of types being checked against, e.g. Check PType m PExpr or w/e.
+
+3. Smart constructors w/ Pos/Neg newtype wrappers. This could be at the level of type/expr smart constructors or elaborator combinators (or both). We already do something similar for elaborators with Synth and Check. Synth m (Pos Expr) is kind of a useful contract.
+
+4. Add lots of checking and shifts to every smart constructor/elaborator combinator. Sort of where we are right now except we only do this when elaborating surface types/expressions, not when building misc. other syntax.
+
+5. Maybe a type/expr smart constructor DSL which produces typed syntax? This doesn’t work out well because the intermediate types don’t get used by eliminations, and you end up needing to do typechecking; it’s a job for the elaborator instead.
+
+----
+
+nested applications are being elaborated wrong, e.g. this case from the definition of map for BinaryTree:
+
+```facet
+(leaf a) -> leaf (f a)
+```
+
+CBPV’s rules are such that applications get reordered. We can’t apply `leaf` directly to the composite `f a` in Core (tho it remains fine to do so in the surface syntax), because given:
+
+f : A₊ -> B₋                    -- fine
+a : A₊                          -- fine
+leaf : B₊ -> ((BinaryTree B)₊)₋ -- fine
+
+we therefore conclude:
+
+f a : B₋
+
+and so the polarities don’t match. Sure enough:
+
+```
+  expected:
+       ↑ BinaryTree B
+    actual:
+       ↑ BinaryTree (↑ B)
+```
+
+(which tells me we should probably do polarity checking on datatype parameters since I don’t know what it means to have computation type parameters to them)
+
+so we can’t have `leaf (f a)` elaborated quite so literally in Core. instead we need to make the evaluation order explicit:
+
+```
+f a to x. leaf x
+```
+
+this is where the rubber meets the road: however we do this, it’s going to have to deal with scoped effect operations, too. for example, effect operations take positive types, so they’ll either have to be evaluated or thunked before passing them in.
+
+----
+
+now instantiations are being done too much: a variable `a : A` is being instantiated to `↑ A` unnecessarily. I think this is the same case as the above, tho: we can handle it by sequencing in application.
+
+----
+
+Context [Sig] ⊢ term ⇒ Type ∋ Expr  --  elab/check
+Context [Sig] ⊢ term ⇒ Expr ∈ Type  --  elab/synth
+
+Γ [Σ] ⊢ f ⟹ f′ ∈ [σ]A₊ → B₋    Γ [Σ, σ] ⊢ a ⟹ a′ ∋ A₊
+-------------------------------------------------------
+              Γ [Σ] ⊢ f a ⟹ f′ a′ ∈ B₋
+
+
+
+    Γ ⊢ f ⟹ f′ ∈ A₊ → B₋    Γ ⊢ a ⟹ A₊ ∋ a′
+-------------------------------------------------   CBV translation
+Γ ⊢ f a ⟹ f′ to f″. a′ to a″. (force f″) a″ ∈ B₋
+
+
+Γ ⊢ f ⟹ f′ ∈ A₊ → B₋    Γ ⊢ a ⟹ A₊ ∋ a′
+-----------------------------------------   CBN translation
+     Γ ⊢ f a ⟹ f′ (thunk a′) ∈ B₋
+
+
+
+
+Context [Sig] ⊢ Expr ⤋ Value  --  eval
+
+_ [_] |- _ ⤋ _ : (Context, Sig, Expr, Value) s.t. (Context, Sig, Expr) -> Value
+
+
+-------------------   eval string
+Γ [Σ] ⊢ "…" ⤋₊ "…"
+
+---------------------------   eval thunk
+Γ [Σ] ⊢ thunk c ⤋₊ thunk c
+
+      Γ [Σ] ⊢ c ⤋₋ c′
+---------------------------   eval thunk (alternate)
+Γ [Σ] ⊢ thunk c ⤋₊ thunk c′
+
+---------------------------------   eval lambda, pure
+Γ [Σ] ⊢ { x -> y } ⤋₋ { x -> y }
+
+------------------------------------------   eval lambda, pure, decomposed
+Γ [Σ] ⊢ { xᵢ -> yᵢ, … } ⤋₋ { ∑ᵢ xᵢ -> yᵢ }
+
+-----------------------------------------------------   eval lambda
+Γ [Σ] ⊢ { x -> y, [e] -> z } ⤋₋ { x -> y, [e] -> z }
+
+       Γ, x [Σ] ⊢ y ⤋₋ y′
+----------------------------------   eval lambda, pure (alternate)
+Γ [Σ] ⊢ { x -> y } ⤋₋ { x -> y′ }
+
+
+     Γ [Σ] ⊢ y ⤋₋ y′
+---------------------------   eval type lambda
+Γ [Σ] ⊢ { {X} -> y } ⤋₋ y′
+
+  Γ [Σ] ⊢ f ⤋ f′
+-------------------   eval type application
+Γ [Σ] ⊢ f {X} ⤋₋ f′
+
+
+       Γ [Σ] ⊢ v ⤋₊ v′
+-----------------------------   eval return
+Γ [Σ] ⊢ return v ⤋₋ return v′
+
+
+Γ [Σ] ⊢ v ⤋₊ thunk c   Γ [Σ] ⊢ c ⤋₋ c′
+---------------------------------------   eval force
+        Γ [Σ] ⊢ force v ⤋₋ c′
+
+
+   Γ ∋ x = v
+---------------   eval variable
+Γ [Σ] ⊢ x ⤋₊ v
+
+Γ [Σ] ⊢ f ⤋₋ { x -> y }   Γ [Σ] ⊢ a ⤋₊ a′   Γ, x = a′ [Σ] ⊢ y ⤋₋ y′
+--------------------------------------------------------------------   eval application, pure
+                         Γ [Σ] ⊢ f a ⤋₋ y′
+
+Γ [Σ] ⊢ f ⤋₋ { x -> y, [e] -> z }   Γ [Σ, [e] -> z] ⊢ a ⤋₊ a′   Γ, x = a′ [Σ] ⊢ y ⤋₋ y′
+----------------------------------------------------------------------------------------   eval application, effectful
+                                  Γ [Σ] ⊢ f a ⤋₋ y′
+
+
+Σ ∋ [op y̅] -> c   Γ, y̅ = x̅ [Σ] ⊢ c ⤋ c′
+---------------------------------------   eval operation (CPS should be straightforward)
+          Γ [Σ] ⊢ op x̅ ⤋₋ c′
+
+
+reader : { R, A : Type } -> (r : R) -> [Reader R] A -> A
+{ a               -> a
+, [ask       ; k] -> reader r (k r)
+, [local f m ; k] -> reader r (k (reader (f r) m)) }
+
+reader : { R : Type } -> { A : Type } -> R -> [Reader R] A -> A
+= { {R} -> { {A} -> { r ->
+  { a                       -> a
+  , [ask {R}           ; k] -> reader {R} {A} r (k r)
+  , [local {R} {A} f m ; k] -> reader {R} {A} r (k (reader {R} {A} (f r) m)) }}}}
+
+reader : R -> [Reader R] A -> A
+= { r ->
+  { a               -> a
+  , [ask       ; k] -> reader r (k r)
+  , [local f m ; k] -> reader r (k (reader (f r) m)) } }
+
+reader true (local not (ask : Bool))
+
+reader {Bool} {Bool} true (local {Bool} {Bool} not (ask {Bool}))
+
+reader true (local not ask)
+
+Γ [Σ] ⊢ reader ⤋ { r -> { a -> a, [ask ; k] -> reader r (k r), [local f m ; k] -> reader r (k (reader (f r) m)) } }   Γ [Σ] ⊢ true ⤋ true   Γ, r = true ⊢ { a -> a, [ask ; k] -> reader r (k r), [local f m ; k] -> reader r (k (reader (f r) m)) } ⤋ { a -> a, [ask ; k] -> reader true (k true), [local f m ; k] -> reader true (k (reader (f true) m)) }
+-------------
+Γ [Σ] ⊢ reader true ⤋ { a -> a, [ask ; k] -> reader true (k true), [local f m ; k] -> reader true (k (reader (f true) m)) }
+
+
+Γ [Σ] ⊢ { a -> a, [ask ; k] -> reader true (k true), [local f m ; k] -> reader true (k (reader (f true) m)) } ⤋ (local not ask)
+
+Γ [Σ] ⊢ local not ask
+
+Γ [Σ] ⊢ local ⤋ { f -> { m -> op "local" f m } }   Γ [Σ] ⊢ not ⤋ { (true) -> false, (false) -> true }   Γ, f = { (true) -> false, (false) -> true } ⊢ { m -> op "local" f m } ⤋ { m -> op "local" { (true) -> false, (false) -> true } m }
+---------------------------------------
+Γ [Σ] ⊢ local not ⤋ { m -> op "local" { (true) -> false, (false) -> true } m }
+
+
+interesting: I think this means that computation args à la [X] A must be thunked. kinda already knew that, but how we handle it is going to determine the correctness of the whole process. I think it also implies that we can’t reduce under thunks (and probably lambdas)!
+
+Γ [Σ] ⊢ ask ⤋ { op "ask" }   Γ, m = { op "ask" } [Σ] ⊢ op "local" { (true) -> false, (false) -> true } m ⤋ op "local" { (true) -> false, (false) -> true } { op "ask }
+-----------------------------------------------------------------------------------------------------
+Γ [Σ] ⊢ { m -> op "local" { (true) -> false, (false) -> true } m } ask ⤋ op "local" { (true) -> false, (false) -> true } { op "ask }
+
+
+dunno quite how to express the continuation properly here. maybe we have to put the entire judgement into CPS?
+
+Γ [Σ, [ask ; k] -> reader true (k true), [local f m ; k] -> reader true (k (reader (f true) m))] ⊢ op "local" { (true) -> false, (false) -> true } { op "ask } ⤋ reader true (k (reader ({ (true) -> false, (false) -> true } true) { op "ask })) ⤋ reader true (k (reader false { op "ask })) ⤋ reader true (k false) ⤋ reader true false ⤋ false
+---------------------------------------------------------------------------------------------------
+Γ [Σ] ⊢ { a -> a, [ask ; k] -> reader true (k true), [local f m ; k] -> reader true (k (reader (f true) m)) } (op "local" { (true) -> false, (false) -> true } { op "ask }) ⤋ false
+
+----
+
+maybe someday I’ll write a program to typeset stuff like this:
+
+
+data Rule p c = [Judgement p c] :---: Judgement p c
+
+infixl 0 :---:
+
+data Judgement p c = Premise p :|-: c
+
+infix 1 :|-:
+
+data Syntax
+  = MVar String
+  | Syntax :$ Syntax
+  | Lam String Syntax
+
+data Eval = Syntax :⤋: Syntax
+
+data Premise p
+  = G
+  | Premise p :>> p
+
+infixl 2 :>>
+
+evalApplicationPure =
+  [G :|-: f :⤋: Lam x y, G :|-: a :⤋: a', G :>> (x :=: a') :|-: y :⤋: y']
+  :---:
+  G :|-: (f :$ a) :⤋: y'
+  where
+  (f, a, x, y, a', y') = (MVar "f", MVar "a", "x", MVar "y", MVar "a′", MVar "y′")
+
+
+----
+
+idea:
+
+distinguish between eval and exec. eval is Expr -> m Value, exec is Value -> m Value, Value -> m (), or even Value -> m a (i.e. noreturn). eval doesn’t have to run effects, so it doesn’t need a stack of handlers, it just builds the normal form. exec actually runs the effect operations and so has to happen in a context providing them.
+
+Value is therefore a normal form, but has to include operators and presumably neutral terms. shouldn’t need thunks?
+
+this should give us a way to store values in modules I think
+
+----
+
+the CBV -> CBPV translation (and our own, slightly subtler one accommodating the existence of F in the surface lang) maps CBV(ish) functions with types like A -> B -> C to CBPV functions with types like U (A -> F (U (B -> F C))). so constructing a lambda must expect a thunk type; applying one must force one.
+
+I don’t want the lam constructor to take a positive body, because then everything has to be unnecessarily thunked and forced. instead, I want elaboration at negative types to proceed in lambda bodies.
+
+when elaborating terms and abstracting them over the arguments bound in the type signature, we insert type lambdas and lambdas to do the abstraction. a type lambda’s body is also negative and so if we want to continue abstracting in the body we have to take the positive recursive call and make it negative by mapping return over it. but for the final one, the body is already negative—a computation—and so we shouldn’t do that. which makes this weird. if the body isn’t abstracted at all, then we don’t want to thunk it and return that, we want to just use the damned thing. if it is abstracted, we don’t want to thunk a return of a thunk of the (type) lambdas, we just want to return the thunk they’re already in. so I guess the abstraction process should be neg -> neg, the body should be the elaborated term, and we should decide whether to thunk or not based on the type? or something? “wtf do you do with the global environment,” the eternal question
+
+
+----
+
+hello : [Output] Unit
+{ print "hello" }
+
+⇓
+
+hello : {[Output] Unit}
+hello = thunk (op "print" "hello")
+
+
+say : (s : String) -> [Output] Unit
+{ s -> print s }
+
+⇓
+
+say : {String -> [Output] Unit}
+say = thunk (λ s . op "print" s)
+
+note: no inner thunk here. could also elaborate to:
+
+say : {String -> [Output] Unit}
+say = thunk (λ s . force (thunk (op "print" s)))
+
+----
+
+elaboration of thunks for terms (in `elabTermDef`) is not working quite right. example and counterexample:
+
+this one fails. we bind the argument in the signature, which means its lambda is elaborated in `elabTermDef`.
+
+```facet
+force : { A : Type } -> (c : Unit -> A) -> A
+{ c unit }
+```
+
+by contrast, this one succeeds. we bind the argument in the body, only elaborating the quantifier in `elabTermDef`.
+
+```facet
+force : { A : Type } -> (Unit -> A) -> A
+{ c -> c unit }
+```
+
+for the former, the expected type is A (which (hopefully) really means ↑ A). the argument to `bind` is negative, but bind returns a positive, so we thunk it. (we take a negative argument in the first place because if it’s going to be in the body of a lambda, it should just be executed, and only _actually_ thunked if it’s at the top level.)
+
+the calling convention is that functions are thunked, so if we write (a : A) -> B -> C, it’s elaborated to ↓ ((a : A) -> ↑ ↓ (B -> ↑ C)), and then downshifted again at the outermost since globals are positive. notably, ↑ C is not thunked—C is already positive, and so we’re saying that we return a C, not a thunk of a C.
+
+Thus, the thunk we insert is incorrect. But what to do about it…?
+
+Some examples we want to work:
+
+1. Should elaborate to an un-thunked String.
+
+    ```facet
+    hello : String
+    { "hello" }
+    ```
+
+2. Should elaborate to a thunked function taking and returning an un-thunked String.
+
+    ```facet
+    idString : (s : String) -> String
+    { s }
+    ```
+
+    ```facet
+    idString : String -> String
+    { s -> s }
+    ```
+
+    ⇓
+
+    ```facet
+    idString
+    : ↓ (String -> ↑ String)
+    = thunk { s -> return s }
+    ```
+
+3.  ```facet
+    id : { A : Type } -> (x : A) -> A
+    { x }
+    ```
+
+    ```facet
+    id : { A : Type } -> A -> A
+    { x -> x }
+    ```
+
+    ⇓
+
+    ```facet
+    id
+    : { A : Type } -> ↓ (A -> ↑ A)
+    = { {A} -> thunk { x -> return x } }
+    ```
+
+We could return a negative, don’t change anything in the body, and then decide to thunk it or extract it from the return based on the Either?
+
+const : { A : Type } -> { B : Type } -> (x : A) -> (_ : B) -> A
+{ x }
+
+const
+: { A : Type } -> { B : Type } -> ↓ (A -> ↑ ↓ (B -> ↑ A))
+= thunk { x -> return thunk { _ -> return x }}
+
+----
+
+semantically, do we even need to follow the CBPV translation?
+
+const : { A, B : Type } -> (a : A) -> (_ : B) -> A
+const : { A : Type } -> { B : Type } -> ↓ (A -> ↑ ↓ (B -> ↑ A)) # CBV translation
+const : { A : Type } -> { B : Type } -> ↓ (A -> B -> ↑ A) # minimal translation
+
+----
+
+what does CBPV/polarization actually give us? I intended to seek fine-grained control over the evaluation of scoped operations but it doesn’t look like this is panning out. specifically, it seems like this is overcomplicating things, without being either necessary or sufficient.
+
+I want to be able to implement the evaluation rules for scoped operations defined above in a way that is clearly correct, but that’s just not really happening here.
+
+----
+
+I don’t see how this can possibly be this hard. The eval judgement specifies a relation—a function, really, since it has a functional dependency—relating the value env, handler env, and expression to the evaluated result.
+
+I think using a constructor function for the scoped operation causes the action to be evaluated strictly, before it even gets supplied to the operation.
+
+```facet
+local : { A : Type } -> (R -> R) -> [Reader R] A -> A
+{ f [a] -> [local f a!] }
+```
+
+NB: the above definition is a lie at the time of writing, as catch-all patterns do not exist.
+
+We could resolve this by treating all arguments as essentially lazy w.r.t. their handlers, but maybe a more nuanced approach is possible: elaboration could emit explicit thunks and forces for computation parameters. Catch-all patterns would return the thunk, whereas regular patterns would evaluate the thunk (more or less).
+
+
+effect operations are essentially CBN. I think this is what the computation type means.
+
+```facet
+reader true (local not (ask : Bool))
+```
+
+evaluating `local not (ask : Bool)` with the current implementation:
+
+1. resolves `local` to `{ f a -> [local f a] }`, then
+2. resolves `not` to `{ (false) -> true, (true) -> false }`
+3. reduces `{ f a -> [local f a] } { (false) -> true, (true) -> false }` to `{ a -> [local { (false) -> true, (true) -> false } a] }`, then
+4. reduces `ask : Bool` to `ask`, then
+5. resolves `ask` to `[ask]`
+6. reduces `[ask]` using the topmost handler provided by the corresponding case of the `reader` call and thus to `true`, and finally
+7. reduces `{ a -> [local { (false) -> true, (true) -> false } a] } true` to `[local { (false) -> true, (true) -> false } true]`, to the corresponding case of the `reader` call, and thus to `true`
+
+if we use a catch-all pattern, it instead:
+
+1. resolves `local` to `{ f [a] -> [local f a] }`, then
+2. resolves `not` to `{ (false) -> true, (true) -> false }`
+3. reduces `{ f [a] -> [local f a] } { (false) -> true, (true) -> false }` to `{ [a] -> [local { (false) -> true, (true) -> false } a] }`, then
+4. reduces `ask : Bool` to `ask`, then
+5. resolves `ask` to `[ask]`
+6. reduces `[ask]` using the topmost handler provided by the corresponding case of the `local` call and thus to `[local { (false) -> true, (true) -> false } [ask]]`
+
+one question that remains is what we use for the continuation in that definition? catch-all patterns catch both values and computations but that doesn’t make much sense with our current semantics. catch-all patterns don’t receive a continuation either tho, so maybe they aren’t supposed to work like handlers?
+
+they don’t—they thunk up the computation and apply as a continuation.
+
+doing the same means that we can now provide the thunk to the effect operation underlying the thing.
+
+-----
+
+   Γ, x : A ⊢ y : B
+-----------------------
+Γ ⊢ { x -> y } : A -> B
+
+ Γ, A ⊢ B
+----------
+Γ ⊢ A -> B
+
+Γ ⊢ A -> B
+----------
+ Γ, A ⊢ B
+
+
+
+Γ ⊢ f : A -> B   Γ ⊢ a : A
+--------------------------
+        Γ ⊢ f a : B
+
+Γ ⊢ A -> B   Γ ⊢ A
+------------------
+       Γ ⊢ B
+
+Γ ⊢ B
+----------
+Γ ⊢ A -> B
+
+Γ ⊢ B
+-----
+Γ ⊢ A
+
+
+      Γ, x : A ⊢₋ B
+--------------------------
+Γ ⊢₊ { x -> y } : A -> {B}
+
+
+Γ ⊢₊ t : {B}
+------------
+Γ ⊢₋ t! : B
+
+doesn’t seem like making functions positive changes anything, maybe it’s not really positive at all?
+
+----
+
+by convention, if we treat foralls as negative, we can make everything in the graph negative pretty easily
+
+- foralls become negative
+- functions are negative
+- computations are negative
+
+effect ops are already computations, nullary constructors get wrapped in computations, non-nullary constructors are already wrapped in functions
+
+instantiation becomes negative to negative, we don’t have to thunk _everything_, but we can still tell the difference between unifying a shift and unifying something positive. arguments would have to be positive so we would still need thunks to deal with that. so maybe instantiation would force…? we could store thunks in the graph and only have to force the once since everything within would be negative
+
+partial application would be a pain in the ass however
+
+----
+
+Neel Krishnaswami notes that while CBPV has only positive hypotheses, focusing has only negative ones. CBPV arrow types are P -> N ∈ N; so are focused arrow types. but as Max S. New points out, a fully focused logic requires you to deeply pattern match on the argument, and I suppose this must introduce negative hypotheses.
+
+----
+
+```
+data NType
+  = NComp [Type] PType
+  | NArrow (Maybe Name) Quantity PType NType
+
+data PType
+  = PString
+  | PNe (Var (Either Meta Level)) (Snoc PType)
+  | PThunk NType
+  | PForAll Name Kind (PType -> PType)
+```
+
+----
+
+it seems like `reader` is returning a computation type? no, but the variable is being solved internally with a computation type, and then when it tries to unify against the existing solution it fails? or something like that.
+
+we should decompose computation types in unification I guess? which ought to mean designing a principled approach to doing so
+
+----
+
+fun idea:
+
+decompose computation types into signatures and computations (if polarized), and signatures into each interface. then represent the signature types using HOAS with an index representing the index of the interface in the contained signature.
+
+```
+data NType
+  = …
+  | NComp PType -- shift
+  | NSig (Interface PType) (Index -> NType)
+```
+
+this would make pretty-printing and a bunch of other stuff significantly harder but it would make it obvious that the type’s contents are usable by virtue of the fact that you’ve satisfied the requirement by providing the interface.
+
+on the other hand, these are type-level, so it would be a bit like a variable that doesn’t actually get used anywhere in the type. (maybe it can be reified into terms from the type, tho?) so it would be more useful to be able to do this in term level expressions: represent functions which use effects in dictionary-passing style, essentially.
+
+```
+ask : [Reader R] R
+↝
+ask : Reader R -> R
+
+modify : (S -> S) -> [State S] Unit
+↝
+modify : (S -> S) -> State S -> Unit
+```
+
+so instead of passing an index, we’d desugar `[X] Y` into a function taking the witness (dictionary) for the interface. handlers would have to be elaborated to provide these:
+
+```
+reader : { R, A : Type } -> (r : R) -> [Reader R] A -> A
+{ [ask       ; k] -> reader r (k r)
+, [local f m ; k] -> reader r (k (reader (f r) (m!)))
+, a               -> a
+}
+↝
+reader : { R : Type } -> { A : Type } -> R -> (Reader R -> A) -> A
+reader =
+{ {R} {A} r [ask       ; k] -> reader r (k r)
+, {R} {A} r [local f m ; k] -> reader r (k (reader (f r) (m readerWitness)))
+, {R} {A} r a               -> a readerWitness
+}
+```
+
+this should handle scoped operations just fine while also making for a much simpler construction overall.
+
+how would we elaborate more general applications? e.g. the transitive cases of effect handling where the handler isn’t the immediately surrounding context (e.g. a handler around a handler around an op from the first handler). this corresponds to the indexing/variable scoping part of the problem, I think.
+
+
+G, r : R |- { [ask       ; k] -> reader r (k r)
+            , [local f m ; k] -> reader r (k (reader (f r) (m!)))
+            , a               -> a }
+
+
+```
+--------------   norm string
+Γ ⊢ "…" ⤋ "…"
+```
+
+```
+---------------------   norm type lambda
+Γ ⊢ { {T} -> b } ⤋ b
+```
+
+```
+--------------   norm type app
+Γ ⊢ f {T} ⤋ f
+```
+
+```
+--------------   norm constructor
+Γ ⊢ c x̅ ⤋ c x̅
+```
+
+```
+Γ ⊢ f ⤋ { x -> b }   Γ ⊢ a ⤋ a'   Γ, x = a ⊢ b ⤋ b'
+-----------------------------------------------------   norm application pure
+                    Γ ⊢ f a ⤋ b'
+```
+
+```
+Γ ⊢ f ⤋ { [e̅ ; k̅] -> h̅, x -> b }   Γ ⊢ a ([e̅ ; k̅] -> h̅) ⤋ a'   Γ, x = a ⊢ b ⤋ b'
+----------------------------------------------------------------------------------   norm application effectful
+                                  Γ ⊢ f a ⤋ b'
+```
+
+
+----
+
+how should we match signatures? prolly not syntactic equality. but lookup is harder than equality because we equality is just unifying the list whereas lookup needs to be conditional. interfaces are more restricted than types, but only at the outermost level, since they can be parameterized by types.
+
+----
+
+normalization vs evaluation
+
+----
+
+substitutions don’t get applied as widely/early/automatically as we’d like
+
+----
+
+
+```
+Γ ⊢ f ⤋ { [e̅ ; k̅] -> h̅, x -> b }   Γ, e̅ = [e̅ ; k̅] -> h̅ ⊢ a ⤋ a'   Γ, x = a ⊢ b ⤋ b'
+-------------------------------------------------------------------------------------   eval app
+                                  Γ ⊢ f a ⤋ b'
+```
+
+```
+--------------------------------------------------------   eval lam
+Γ ⊢ { [e̅ ; k̅] -> h̅, x -> b } ⤋ { [e̅ ; k̅] -> h̅, x -> b }
+```
+
+does normalization need a context? probably not…? except:
+
+```
+         Γ, [e̅ ; k̅] ⊢ h̅ ⤋ h̅′   Γ, x ⊢ b ⤋ b′
+--------------------------------------------------------   norm lam
+Γ ⊢ { [e̅ ; k̅] -> h̅, x -> b } ⤋ { [e̅ ; k̅] -> h̅′, x -> b′ }
+```
+
+----
+
+-- add terms for dictionary construction and application
+-- do we need record syntax (or at least some conventions for it)?
+-- construct the interface directly: Effect.Reader.Reader.ask = { k -> … }
+
+data Norm
+  = NTLam (T.Type -> Norm)
+  | NLam
+  | NNe (Var Level) (Snoc Elim)
+  | NCon RName (Snoc Elim)
+  | NString Text
+
+data Elim
+  = NInst T.Type
+  | NApp Norm
+
+----
+
+elaboration
+
+
+Γ ⊢ { [e̅ ; k̅] -> h̅, x -> b } ~~> {  }
+
+----
+
+consequences of dictionary-passing style:
+
+1. effect patterns won’t exist in core
+2. efect operations won’t exist in core
+
+these are both a result of representing effect operations at runtime as their handlers
+
+3. surface lambdas elaborate to one or more functions; one for the return, and more for the effect paths, with the latter stored in a dictionary
+4. lookup in sig will no longer be necessary. (require/provide and the elab-time signature will, however, for dictionary resolution.)
+5. we won’t elaborate functions for effect operations, because effects wll just be looked up in the regular context instead
+6. the evaluator won’t have to maintain a separate handler stack
+7. providing default effects means pushing them onto the context instead of the handler stack
+
+contexts will have to accept resolved/qualified names because you should be able to mention Effect.Reader.ask and have it resolve in the local context appropriately. Or any rename of it, so resolution will have to resolve the name globally and then look it up locally? Or resolve it locally with a process that knows about renames? renames don’t exist yet, so maybe don’t worry about them yet.
+
+are we handling the context correctly for patterns? I kinda think no, since we extend the context once per variable and not once per overall pattern.
+
+----
+
+Do dictionary patterns nest…? E.g. can you have (some [ask, local])? I guess there’s no reason not to?
+
+----
+
+state modifies the return value and so we have to return in CPS
+
+runState : {S, A : Type} -> (s : S) -> [State S] A -> Pair S A
+{ [ get   ; k ] -> runState s (k s)
+, [ put s ; k ] -> runState s (k unit)
+, a             -> pair     s a }
+
+~~>
+
+runState : {S, A : Type} -> S -> (State S -> A) -> Pair S A
+{ s a -> pair s (a dict) # I can’t tell if this is right or not
+where
+dict = State
+  { get = {   k -> runState s (k s) }
+  , put = { s k -> runState s (k unit) } } }
+
+runState : {S, A : Type} -> S -> (State S -> A) -> Pair S A
+{ s a -> a dict (pair _)
+where
+  { dict = … } }
+
+
+
+
+state : { S, A, R : Type } -> (z : S -> A -> R) -> (s : S) -> [State S] A -> R
+{ [ get   ; k ] -> state z s (k s)
+, [ put s ; k ] -> state z s (k unit)
+, a             ->       z s a }
+
+the semantics given for Frank have handlers operate over evaluation contexts (essentially a CK machine). regular functions just execute directly.
+
+----
+
+when elaborating a lambda
+
+1. if the arg type is a computation type, this is a handler
+
+2. if the return type is a computation type, this uses effects; make a lambda to push the dictionary onto the context
+
+
+----
+
+elaborating to dictionary-passing style like the above should lend itself to polarization much more naturally, because the weird CBPV dance around application arguments becomes unnecessary when we are constructing a computation since the operand is a thunked function. on the other hand, it’s not clear that we get much real benefit.
+
+
+----
+
+pass around Level/Level pairs as Ratio Level?
+
+
+- commands have no input or output; they “return” via the context
+- they are given output by a µ-abstraction
+- they are given input by a µ̃-abstraction (which we do not currently model)
+- µ-abstractions are not normal forms, as they reduce to whatever their command produces
+- commands are neither terms nor co-terms

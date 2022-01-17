@@ -1,0 +1,15 @@
+effect calculus
+
+[x : τ = e] y
+
+handling an effect x with type τ and handler e scoped to y
+
+λ x . y
+
+is shorthand for an operation requiring an operation x which produces a value. i.e.
+
+λ x . y  ~~>  [x = _] y
+
+an application like `f a` is shorthand for supplying such an operation. i.e.
+
+f a  ~~>  [x = a] f
