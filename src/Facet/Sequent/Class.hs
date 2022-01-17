@@ -6,7 +6,7 @@ module Facet.Sequent.Class
   Sequent(..)
   -- * Effectful abstractions
 , µRA
-, Clause(..)
+, C.Clause(..)
 , funRA
 , µLA
 , sumLA
@@ -22,19 +22,20 @@ module Facet.Sequent.Class
 , Pat(..)
 ) where
 
-import Control.Applicative (Alternative(..), liftA2)
-import Control.Effect.Reader
-import Control.Monad (ap, guard, (<=<))
-import Data.Bifunctor (Bifunctor(..))
-import Data.Text (Text)
-import Data.These
-import Facet.Functor.Compose
-import Facet.Name (Level, Name, RName)
-import Facet.Syntax (Var, type (~>))
-import Fresnel.Getter ((^.))
-import Fresnel.Lens
-import Fresnel.Setter
-import Fresnel.Traversal (traverseOf)
+import           Control.Applicative (Alternative(..), liftA2)
+import           Control.Effect.Reader
+import           Control.Monad (ap, guard, (<=<))
+import           Data.Bifunctor (Bifunctor(..))
+import           Data.Text (Text)
+import           Data.These
+import           Facet.Functor.Compose hiding (Clause)
+import qualified Facet.Functor.Compose as C
+import           Facet.Name (Level, Name, RName)
+import           Facet.Syntax (Var, type (~>))
+import           Fresnel.Getter ((^.))
+import           Fresnel.Lens
+import           Fresnel.Setter
+import           Fresnel.Traversal (traverseOf)
 
 -- * Term abstraction
 
@@ -80,9 +81,9 @@ funRA f = fmap funR <$> binder f
 
 sumLA
   :: (Sequent t c d, Applicative i, Applicative m)
-  => [Clause m i t d]
+  => [C.Clause m i t d]
   -> m (i c)
-sumLA cs = runC (sumL <$> traverse (\ (Clause c) -> C (binder c)) cs)
+sumLA cs = runC (sumL <$> traverse (\ (C.Clause c) -> C (binder c)) cs)
 
 {-
 
