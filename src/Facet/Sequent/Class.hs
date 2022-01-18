@@ -284,6 +284,14 @@ pop f = Covers $ \ ctx fork leaf nil -> case ctx of
   []   -> nil
   t:ts -> runCovers (f t) ts fork leaf nil
 
+
+-- foo = pop $ \case
+--   Zero    -> _
+--   One     -> _
+--   s :+ t  -> _
+--   s :* t  -> _
+--   s :-> t -> _
+
 {-
 
 - use Alternative to indicate branching
