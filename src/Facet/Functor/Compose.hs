@@ -13,6 +13,7 @@ module Facet.Functor.Compose
 ) where
 
 import Control.Applicative (Alternative(..))
+import Data.Coerce (coerce)
 import Data.Functor.Identity (Identity(..))
 
 -- Composition functor
@@ -36,7 +37,7 @@ mapCInner :: Functor i => (j a -> j' b) -> ((i . j) a -> (i . j') b)
 mapCInner = mapCOuter . fmap
 
 mapCOuter :: (i (j a) -> i' (j' b)) -> ((i . j) a -> (i' . j') b)
-mapCOuter f = C . f . runC
+mapCOuter = coerce
 
 
 strengthen :: Applicative m => m (Identity a) -> m a
