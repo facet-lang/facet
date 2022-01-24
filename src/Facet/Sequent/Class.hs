@@ -52,30 +52,30 @@ class Sequent term coterm command | coterm -> term command, term -> coterm comma
   :: (Sequent t c d, Applicative i, Applicative m)
   => (forall j . Applicative j => (forall x . i x -> j x) -> j c -> m (j d))
   -> m (i t)
-µRA f = fmap µR <$> binder f
+µRA = binder (fmap µR)
 
 funRA :: (Sequent t c d, Applicative i, Applicative m) => (forall j . Applicative j => (forall x . i x -> j x) -> j t -> m (j t))-> m (i t)
-funRA f = fmap funR <$> binder f
+funRA = binder (fmap funR)
 
 
 µLA
   :: (Sequent t c d, Applicative i, Applicative m)
   => (forall j . Applicative j => (forall x . i x -> j x) -> j t -> m (j d))
   -> m (i c)
-µLA f = fmap µL <$> binder f
+µLA = binder (fmap µL)
 
 sumLA
   :: (Sequent t c d, Applicative i, Applicative m)
   => [C.Clause m i t d]
   -> m (i c)
-sumLA cs = runC (sumL <$> traverse (\ (C.Clause c) -> C (binder c)) cs)
+sumLA cs = runC (sumL <$> traverse (\ (C.Clause c) -> C (binder id c)) cs)
 
 prdLA
   :: (Sequent t c d, Applicative i, Applicative m)
   => Int
   -> (forall j . Applicative j => (forall x . i x -> j x) -> j [t] -> m (j d))
   -> m (i c)
-prdLA i f = fmap (prdL i) <$> binder f
+prdLA i = binder (fmap (prdL i))
 
 
 (.||.) :: (Applicative m, Applicative i, Sequent t c d) => m (i t) -> m (i c) -> m (i d)
