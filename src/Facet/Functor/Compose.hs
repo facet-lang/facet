@@ -49,7 +49,7 @@ weaken = C . fmap pure
 
 -- Binding syntax
 
-binder :: (Functor m, Applicative i) => (i (c -> d) -> e) -> (forall j . Applicative j => (forall x . i x -> j x) -> j c -> m (j d)) -> m e
-binder f c = f . runC <$> c weaken (liftCInner id)
+binder :: (Functor m, Applicative i) => ((c -> d) -> e) -> (forall j . Applicative j => (forall x . i x -> j x) -> j c -> m (j d)) -> m (i e)
+binder f c = fmap f . runC <$> c weaken (liftCInner id)
 
 newtype Clause m i a b = Clause { runClause :: forall j . Applicative j => (forall x . i x -> j x) -> j a -> m (j b) }

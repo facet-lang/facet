@@ -52,17 +52,17 @@ class Sequent term coterm command | coterm -> term command, term -> coterm comma
   :: (Sequent t c d, Applicative i, Applicative m)
   => (forall j . Applicative j => (forall x . i x -> j x) -> j c -> m (j d))
   -> m (i t)
-µRA = binder (fmap µR)
+µRA = binder µR
 
 funRA :: (Sequent t c d, Applicative i, Applicative m) => (forall j . Applicative j => (forall x . i x -> j x) -> j t -> m (j t))-> m (i t)
-funRA = binder (fmap funR)
+funRA = binder funR
 
 
 µLA
   :: (Sequent t c d, Applicative i, Applicative m)
   => (forall j . Applicative j => (forall x . i x -> j x) -> j t -> m (j d))
   -> m (i c)
-µLA = binder (fmap µL)
+µLA = binder µL
 
 sumLA
   :: (Sequent t c d, Applicative i, Applicative m)
@@ -75,7 +75,7 @@ prdLA
   => Int
   -> (forall j . Applicative j => (forall x . i x -> j x) -> j [t] -> m (j d))
   -> m (i c)
-prdLA i = binder (fmap (prdL i))
+prdLA i = binder (prdL i)
 
 
 (.||.) :: (Applicative m, Applicative i, Sequent t c d) => m (i t) -> m (i c) -> m (i d)
