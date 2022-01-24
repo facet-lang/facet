@@ -5,7 +5,7 @@ module Facet.Sequent.Class
   Sequent(..)
   -- * Effectful abstractions
 , µRA
-, Clause(..)
+, C.Clause(..)
 , funRA
 , µLA
 , sumLA
@@ -18,7 +18,7 @@ module Facet.Sequent.Class
 import Control.Applicative (Alternative(..), liftA2)
 import Control.Monad (guard)
 import Data.Text (Text)
-import Facet.Functor.Compose
+import Facet.Functor.Compose as C
 import Facet.Name (Level, Name, RName)
 import Facet.Syntax (Var, type (~>))
 
@@ -66,9 +66,9 @@ funRA f = fmap funR <$> binder f
 
 sumLA
   :: (Sequent t c d, Applicative i, Applicative m)
-  => [Clause m i t d]
+  => [C.Clause m i t d]
   -> m (i c)
-sumLA cs = runC (sumL <$> traverse (\ (Clause c) -> C (binder c)) cs)
+sumLA cs = runC (sumL <$> traverse (\ (C.Clause c) -> C (binder c)) cs)
 
 prdLA
   :: (Sequent t c d, Applicative i, Applicative m)
