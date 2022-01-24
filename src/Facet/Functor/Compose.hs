@@ -33,7 +33,7 @@ liftCInner :: Applicative i => j a -> (i . j) a
 liftCInner = C . pure
 
 mapCInner :: Functor i => (j a -> j' b) -> ((i . j) a -> (i . j') b)
-mapCInner f = C . fmap f . runC
+mapCInner = mapCOuter . fmap
 
 mapCOuter :: (i (j a) -> i' (j' b)) -> ((i . j) a -> (i' . j') b)
 mapCOuter f = C . f . runC
