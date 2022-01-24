@@ -7,7 +7,6 @@ module Facet.Elab.Term
   -- * Term combinators
 , global
 , var
-, varS
 , tlam
 , lam
 , app
