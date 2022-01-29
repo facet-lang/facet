@@ -87,7 +87,9 @@ infix 1 .||.
 
 data Ctx j t
   = Nil
-  | forall i . Entry Name (Ctx i t) (i ~> j) (j t)
+  | forall i . Ctx i t :> Binding i j t
+
+infixl 5 :>
 
 data Binding i j t = Binding Name (i ~> j) (j t)
 
@@ -96,5 +98,5 @@ lookupCtx n = go id
   where
   go :: (i ~> j) -> Ctx i t -> Maybe (j t)
   go wk = \case
-    Nil              -> Nothing
-    Entry n' c wk' t -> wk t <$ guard (n == n') <|> go (wk . wk') c
+    Nil                   -> Nothing
+    c :> Binding n' wk' t -> wk t <$ guard (n == n') <|> go (wk . wk') c
