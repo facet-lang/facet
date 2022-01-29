@@ -12,6 +12,7 @@ module Facet.Sequent.Class
 , prdLA
 , (.||.)
 , Ctx(..)
+, Binding(..)
 , lookupCtx
 ) where
 
@@ -87,6 +88,8 @@ infix 1 .||.
 data Ctx j t
   = Nil
   | forall i . Entry Name (Ctx i t) (i ~> j) (j t)
+
+data Binding j t = forall i . Binding Name (i ~> j) (j t)
 
 lookupCtx :: Name -> Ctx i t -> Maybe (i t)
 lookupCtx n = go id
