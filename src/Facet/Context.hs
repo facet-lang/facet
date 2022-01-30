@@ -2,6 +2,7 @@ module Facet.Context
 ( -- * Contexts
   Quantity
 , Context(..)
+, Binding(..)
 , empty
 , (|>)
 , level
@@ -24,6 +25,8 @@ import           GHC.Stack
 import           Prelude hiding (lookup)
 
 newtype Context = Context { elems :: S.Snoc (Quantity, Pattern (Name :==> Classifier)) }
+
+data Binding = Binding Quantity (Pattern (Name :==> Classifier))
 
 
 empty :: Context
