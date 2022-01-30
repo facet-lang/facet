@@ -24,7 +24,7 @@ import           Facet.Usage
 import           GHC.Stack
 import           Prelude hiding (lookup)
 
-newtype Context = Context { elems :: S.Snoc (Quantity, Pattern (Name :==> Classifier)) }
+newtype Context = Context { elems :: S.Snoc Binding }
 
 data Binding = Binding Quantity (Pattern (Name :==> Classifier))
 
@@ -32,7 +32,7 @@ data Binding = Binding Quantity (Pattern (Name :==> Classifier))
 empty :: Context
 empty = Context S.Nil
 
-(|>) :: Context -> (Quantity, Pattern (Name :==> Classifier)) -> Context
+(|>) :: Context -> Binding -> Context
 Context as |> a = Context (as S.:> a)
 
 infixl 5 |>
@@ -40,7 +40,7 @@ infixl 5 |>
 level :: Context -> Used
 level (Context es) = Used (Level (length es))
 
-(!) :: HasCallStack => Context -> Index -> (Quantity, Pattern (Name :==> Classifier))
+(!) :: HasCallStack => Context -> Index -> Binding
 Context es' ! Index i' = withFrozenCallStack $ go es' i'
   where
   go (es S.:> e) i
@@ -52,10 +52,10 @@ lookupIndex :: E.Has E.Empty sig m => Name -> Context -> m (LName Index, Quantit
 lookupIndex n = go (Index 0) . elems
   where
   go _ S.Nil                                      = E.empty
-  go i (cs S.:> (q, p))
+  go i (cs S.:> Binding q p)
     | Just (n' :==> t) <- find ((== n) . proof) p = pure (LName i n', q, t)
     | otherwise                                   = go (succ i) cs
 
 
 toEnv :: Context -> Env.Env Type
-toEnv c = Env.Env (S.fromList (zipWith (\ (_, p) d -> (\ b -> proof b :=: free (LName (getUsed d) (proof b))) <$> p) (toList (elems c)) [0..pred (level c)]))
+toEnv c = Env.Env (S.fromList (zipWith (\ (Binding _ p) d -> (\ b -> proof b :=: free (LName (getUsed d) (proof b))) <$> p) (toList (elems c)) [0..pred (level c)]))
