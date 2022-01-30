@@ -42,7 +42,7 @@ rethrowElabErrors opts = L.runThrow (pure . rethrow)
     (_, _, printCtx, ctx) = foldl' combine (0, Env.empty, Env.empty, Nil) (elems context)
     subst' = map (\ (m :=: v) -> getPrint (Print.meta m <+> pretty '=' <+> maybe (pretty '?') (print opts printCtx) v)) (metas subst)
     sig' = getPrint . print opts printCtx . fmap (apply subst (toEnv context)) <$> (interfaces =<< sig)
-    combine (d, env, prints, ctx) (Binding m p) =
+    combine (d, env, prints, ctx) (Binding m _ p) =
       let roundtrip = apply subst env
           binding (n :==> _T) = ann (intro n d ::: mult m (case _T of
             CK _K -> print opts prints _K

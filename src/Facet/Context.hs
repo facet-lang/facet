@@ -1,3 +1,4 @@
+{-# LANGUAGE ExistentialQuantification #-}
 module Facet.Context
 ( -- * Contexts
   Quantity
@@ -26,7 +27,7 @@ import           Prelude hiding (lookup)
 
 newtype Context = Context { elems :: S.Snoc Binding }
 
-data Binding = Binding Quantity (Pattern (Name :==> Classifier))
+data Binding = forall i j . Binding Quantity (i ~> j) (Pattern (Name :==> Classifier))
 
 
 empty :: Context
@@ -52,10 +53,10 @@ lookupIndex :: E.Has E.Empty sig m => Name -> Context -> m (LName Index, Quantit
 lookupIndex n = go (Index 0) . elems
   where
   go _ S.Nil                                      = E.empty
-  go i (cs S.:> Binding q p)
+  go i (cs S.:> Binding q _ p)
     | Just (n' :==> t) <- find ((== n) . proof) p = pure (LName i n', q, t)
     | otherwise                                   = go (succ i) cs
 
 
 toEnv :: Context -> Env.Env Type
-toEnv c = Env.Env (S.fromList (zipWith (\ (Binding _ p) d -> (\ b -> proof b :=: free (LName (getUsed d) (proof b))) <$> p) (toList (elems c)) [0..pred (level c)]))
+toEnv c = Env.Env (S.fromList (zipWith (\ (Binding _ _ p) d -> (\ b -> proof b :=: free (LName (getUsed d) (proof b))) <$> p) (toList (elems c)) [0..pred (level c)]))

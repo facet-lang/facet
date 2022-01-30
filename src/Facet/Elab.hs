@@ -148,7 +148,7 @@ lookupInSig (m :. n) mod graph = foldMapC $ foldMapC (\ (Interface q@(m':.:_) _)
 (q, p) |- b = do
   sigma <- asks scale
   d <- depth
-  (u, a) <- censor (`Usage.withoutVars` Vars.singleton (getUsed d)) $ listen $ locally context_ (|> Binding q p) b
+  (u, a) <- censor (`Usage.withoutVars` Vars.singleton (getUsed d)) $ listen $ locally context_ (|> Binding q id p) b
   for_ p $ \ (n :==> _T) -> do
     let exp = sigma >< q
         act = Usage.lookup (LName (getUsed d) n) u
