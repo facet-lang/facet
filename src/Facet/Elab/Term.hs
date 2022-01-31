@@ -141,11 +141,10 @@ lam1 :: (HasCallStack, Has (Throw Err) sig m) => Bind m (Pattern (Name :==> Type
 lam1 p b = lam [(p, b)]
 
 -- FIXME: scope-safety requires an outer environment and weakening
-lamS :: (HasCallStack, Has (Throw Err) sig m, SQ.Sequent  t c d) => (forall j . Applicative j => (j t :==> Type) -> (Type <==: Elab m (j t))) -> Type <==: Elab m t
+lamS :: (HasCallStack, Has (Throw Err) sig m, SQ.Sequent  t c d) => (forall j . Applicative j => (j t :@ Quantity :==> Type) -> (Type <==: Elab m (j t))) -> Type <==: Elab m t
 lamS f = runC . strengthen $ SQ.funRA $ \ _ v -> C $ Check $ \ _T -> do
-  -- FIXME: how should we pass the quantity along to the higher-order function?
-  (_, _q, _A, _B) <- assertTacitFunction _T
-  check (f (v :==> _A) ::: _B)
+  (_, q, _A, _B) <- assertTacitFunction _T
+  check (f (v :@ q :==> _A) ::: _B)
 
 app :: (HasCallStack, Has (Throw Err) sig m) => (a -> b -> c) -> (HasCallStack => Elab m (a :==> Type)) -> (HasCallStack => Type <==: Elab m b) -> Elab m (c :==> Type)
 app mk operator operand = do
