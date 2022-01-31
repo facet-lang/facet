@@ -1,4 +1,3 @@
-{-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE FunctionalDependencies #-}
 module Facet.Sequent.Class
 ( -- * Sequent abstraction
@@ -17,12 +16,11 @@ module Facet.Sequent.Class
 -- , lookupCtx
 ) where
 
-import Control.Applicative (Alternative(..), liftA2)
-import Control.Monad (guard)
+import Control.Applicative (liftA2)
 import Data.Text (Text)
 import Facet.Functor.Compose as C
-import Facet.Name (Level, Name, RName)
-import Facet.Syntax (Var, type (~>))
+import Facet.Name (Level, RName)
+import Facet.Syntax (Var)
 
 -- * Term abstraction
 
