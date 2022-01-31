@@ -2,7 +2,9 @@
 {-# LANGUAGE StandaloneKindSignatures #-}
 {-# LANGUAGE UndecidableInstances #-}
 module Facet.Syntax
-( (:::)(..)
+( -- * Term containers
+  HasTerm(..)
+, (:::)(..)
 , tm
 , _tm
 , ty
@@ -44,6 +46,12 @@ import Facet.Name
 import Facet.Snoc
 import Facet.Span
 import Fresnel.Lens (Lens, Lens', lens)
+
+-- Term containers
+
+class HasTerm p where
+  tm_ :: Lens (p s t) (p s' t') s s'
+
 
 data a ::: b = a ::: b
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
