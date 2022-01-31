@@ -49,11 +49,10 @@ rethrowElabErrors opts = L.runThrow (pure . rethrow)
       , prints Env.|> PVar (n :=: intro n d)
       , ctx :> getPrint (print opts prints (ann (intro n d ::: print opts prints _K))) )
     combine (d, env, prints, ctx) (C.Type m _ p) =
-      let binding (n :==> _T) = ann (intro n d ::: mult m (print opts prints (apply subst env _T)))
-      in  ( succ d
-          , env Env.|> ((\ (n :==> _T) -> n :=: free (LName d n)) <$> p)
-          , prints Env.|> ((\ (n :==> _) -> n :=: intro n d) <$> p)
-          , ctx :> getPrint (print opts prints (binding <$> p)) )
+      ( succ d
+      , env Env.|> ((\ (n :==> _T) -> n :=: free (LName d n)) <$> p)
+      , prints Env.|> ((\ (n :==> _) -> n :=: intro n d) <$> p)
+      , ctx :> getPrint (print opts prints ((\ (n :==> _T) -> ann (intro n d ::: mult m (print opts prints (apply subst env _T)))) <$> p)) )
   mult m
     | m == zero = (pretty "0" <+>)
     | m == one  = (pretty "1" <+>)
