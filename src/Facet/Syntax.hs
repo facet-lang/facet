@@ -50,7 +50,7 @@ import Fresnel.Lens (Lens, Lens', lens)
 -- Term containers
 
 class HasTerm p where
-  tm_ :: Lens (p s t) (p s' t') s s'
+  tm_ :: Lens (p s t) (p s' t) s s'
 
 
 data a ::: b = a ::: b
