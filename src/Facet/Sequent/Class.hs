@@ -8,6 +8,7 @@ module Facet.Sequent.Class
 , C.Clause(..)
 , funRA
 , µLA
+, funLA
 , sumLA
 , prdLA
 , (.||.)
@@ -64,6 +65,13 @@ funRA = binder funR
   => (forall j . Applicative j => (forall x . i x -> j x) -> j t -> m (j d))
   -> m (i c)
 µLA = binder µL
+
+funLA
+  :: (Sequent t c d, Applicative i, Applicative m)
+  => m (i t)
+  -> m (i c)
+  -> m (i c)
+funLA f a = liftA2 funL <$> f <*> a
 
 sumLA
   :: (Sequent t c d, Applicative i, Applicative m)
