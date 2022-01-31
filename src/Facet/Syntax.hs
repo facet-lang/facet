@@ -106,6 +106,9 @@ instance Bifunctor (:=:) where
 instance Bitraversable (:=:) where
   bitraverse f g (a :=: b) = (:=:) <$> f a <*> g b
 
+instance HasTerm (:=:) where
+  tm_ = lens (\ (a :=: _) -> a) (\ (_ :=: t) s' -> s' :=: t)
+
 nm :: a :=: b -> a
 nm (a :=: _) = a
 
