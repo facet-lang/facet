@@ -9,6 +9,7 @@ module Facet.Elab.Term
 , var
 , tlam
 , lam
+, lamS
 , app
 , appS
 , string
