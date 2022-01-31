@@ -44,7 +44,7 @@ import Data.Text (Text)
 import Facet.Name
 import Facet.Snoc
 import Facet.Span
-import Fresnel.Getter ((^.))
+import Fresnel.Getter (view)
 import Fresnel.Lens (Lens, Lens', lens)
 
 -- Term containers
@@ -53,7 +53,7 @@ class HasTerm p where
   tm_ :: Lens (p s t) (p s' t) s s'
 
 tm :: HasTerm p => a `p` b -> a
-tm c = c^.tm_
+tm = view tm_
 
 
 data a ::: b = a ::: b
