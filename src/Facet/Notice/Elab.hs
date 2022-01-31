@@ -44,11 +44,10 @@ rethrowElabErrors opts = L.runThrow (pure . rethrow)
     subst' = map (\ (m :=: v) -> getPrint (Print.meta m <+> pretty '=' <+> maybe (pretty '?') (print opts printCtx) v)) (metas subst)
     sig' = getPrint . print opts printCtx . fmap (apply subst (toEnv context)) <$> (interfaces =<< sig)
     combine (d, env, prints, ctx) (C.Kind (n :==> _K)) =
-      let binding = ann (intro n d ::: print opts prints _K)
-      in  ( succ d
-          , env Env.|> PVar (n :=: free (LName d n))
-          , prints Env.|> PVar (n :=: intro n d)
-          , ctx :> getPrint (print opts prints binding) )
+      ( succ d
+      , env Env.|> PVar (n :=: free (LName d n))
+      , prints Env.|> PVar (n :=: intro n d)
+      , ctx :> getPrint (print opts prints (ann (intro n d ::: print opts prints _K))) )
     combine (d, env, prints, ctx) (C.Type m _ p) =
       let roundtrip = apply subst env
           binding (n :==> _T) = ann (intro n d ::: mult m (print opts prints (roundtrip _T)))
