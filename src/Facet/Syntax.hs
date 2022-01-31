@@ -4,8 +4,8 @@
 module Facet.Syntax
 ( -- * Term containers
   HasTerm(..)
-, (:::)(..)
 , tm
+, (:::)(..)
 , _tm
 , ty
 , _ty
@@ -45,12 +45,16 @@ import Data.Text (Text)
 import Facet.Name
 import Facet.Snoc
 import Facet.Span
+import Fresnel.Getter ((^.))
 import Fresnel.Lens (Lens, Lens', lens)
 
 -- Term containers
 
 class HasTerm p where
   tm_ :: Lens (p s t) (p s' t) s s'
+
+tm :: HasTerm p => a `p` b -> a
+tm c = c^.tm_
 
 
 data a ::: b = a ::: b
@@ -81,9 +85,6 @@ instance Ord2 (:::) where
 
 instance HasTerm (:::) where
   tm_ = lens (\ (a ::: _) -> a) (\ (_ ::: t) s' -> s' ::: t)
-
-tm :: a ::: b -> a
-tm (a ::: _) = a
 
 _tm :: Lens (s ::: t) (s' ::: t) s s'
 _tm = lens tm (\ (_ ::: t) s' -> s' ::: t)
