@@ -79,6 +79,9 @@ instance Eq2 (:::) where
 instance Ord2 (:::) where
   liftCompare2 compareA compareB (a1 ::: b1) (a2 ::: b2) = compareA a1 a2 <> compareB b1 b2
 
+instance HasTerm (:::) where
+  tm_ = lens (\ (a ::: _) -> a) (\ (_ ::: t) s' -> s' ::: t)
+
 tm :: a ::: b -> a
 tm (a ::: _) = a
 
