@@ -142,7 +142,7 @@ lam1 :: (HasCallStack, Has (Throw Err) sig m) => Bind m (Pattern (Name :==> Type
 lam1 p b = lam [(p, b)]
 
 -- FIXME: scope-safety requires an outer environment and weakening
-lamS :: (HasCallStack, Has (Throw Err) sig m, SQ.Sequent  t c d) => (forall j . Applicative j => (j t :@ Quantity :==> Type) -> (Type <==: Elab m (j t))) -> Type <==: Elab m t
+lamS :: (HasCallStack, Has (Throw Err) sig m, SQ.Sequent t c d) => (forall j . Applicative j => (j t :@ Quantity :==> Type) -> (Type <==: Elab m (j t))) -> Type <==: Elab m t
 lamS f = runC . strengthen $ SQ.funRA $ \ _ v -> C $ Check $ \ _T -> do
   (_, q, _A, _B) <- assertTacitFunction _T
   check (f (v :@ q :==> _A) ::: _B)
