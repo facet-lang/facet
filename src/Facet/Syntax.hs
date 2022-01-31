@@ -108,7 +108,7 @@ def (_ :=: b) = b
 data a :@ b = a :@ b
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
-infixr 2 :@
+infixl 1 :@
 
 instance Bifoldable (:@) where
   bifoldMap = bifoldMapDefault
