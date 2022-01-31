@@ -9,6 +9,7 @@ module Facet.Syntax
 , _ty
 , (:=:)(..)
 , nm, def
+, (:@)(..)
   -- * Variables
 , Var(..)
   -- * Decomposition
@@ -101,6 +102,21 @@ nm (a :=: _) = a
 
 def :: a :=: b -> b
 def (_ :=: b) = b
+
+
+data a :@ b = a :@ b
+  deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
+
+infixr 2 :@
+
+instance Bifoldable (:@) where
+  bifoldMap = bifoldMapDefault
+
+instance Bifunctor (:@) where
+  bimap = bimapDefault
+
+instance Bitraversable (:@) where
+  bitraverse f g (a :@ b) = (:@) <$> f a <*> g b
 
 
 -- Variables
