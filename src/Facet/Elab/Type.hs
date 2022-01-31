@@ -14,7 +14,6 @@ import           Control.Applicative (liftA2)
 import           Control.Effect.Throw
 import           Control.Monad (unless)
 import           Data.Foldable (foldl')
-import           Data.Functor (($>))
 import           Facet.Elab
 import           Facet.Functor.Check
 import           Facet.Functor.Synth
@@ -23,7 +22,6 @@ import           Facet.Kind
 import           Facet.Lens (views)
 import           Facet.Module
 import           Facet.Name
-import           Facet.Pattern
 import           Facet.Semiring (Few(..), one, zero)
 import           Facet.Snoc
 import qualified Facet.Surface.Type.Expr as S
@@ -34,8 +32,8 @@ import           GHC.Stack
 
 tvar :: (HasCallStack, Has (Throw Err) sig m) => QName -> Elab m (TX.Type :==> Kind)
 tvar n = views context_ (lookupInContext n) >>= \case
-  [(n', q, CK _K)] -> use n' q $> (TX.Var (Free (Right n')) :==> _K)
-  _                -> resolveQ n >>= \case
+  [(n', Left _K)] -> pure (TX.Var (Free (Right n')) :==> _K)
+  _               -> resolveQ n >>= \case
     q :=: DSubmodule _ _K -> pure $ TX.Var (Global q) :==> _K
     _                     -> freeVariable n
 
@@ -51,7 +49,7 @@ _String = pure $ TX.String :==> KType
 
 forAll :: (HasCallStack, Has (Throw Err) sig m) => Name ::: Kind -> Elab m (TX.Type :==> Kind) -> Elab m (TX.Type :==> Kind)
 forAll (n ::: t) b = do
-  b' <- (zero, PVar (n :==> CK t)) |- switch b <==: KType
+  b' <- n :==> t ||- switch b <==: KType
   pure $ TX.ForAll n t b' :==> KType
 
 arrow :: (HasCallStack, Has (Throw Err) sig m) => (a -> b -> c) -> Elab m (a :==> Kind) -> Elab m (b :==> Kind) -> Elab m (c :==> Kind)

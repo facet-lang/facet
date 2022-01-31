@@ -68,7 +68,7 @@ import           Facet.Lens as Lens (locally, view, views, (.=), (<~))
 import           Facet.Module as Module
 import           Facet.Name
 import           Facet.Pattern
-import           Facet.Semiring (Few(..), zero, (><<))
+import           Facet.Semiring (Few(..), (><<))
 import qualified Facet.Sequent.Class as SQ
 import           Facet.Snoc
 import           Facet.Snoc.NonEmpty as NE
@@ -116,7 +116,7 @@ global (q ::: _T) = (\ (v ::: _T) -> v :==> _T) <$> instantiate const (Var (Glob
 -- FIXME: effect ops in the sig are available whether or not they’re in scope
 var :: (HasCallStack, Has (Throw Err) sig m) => QName -> Elab m (Term :==> Type)
 var n = views context_ (lookupInContext n) >>= \case
-  [(n', q, CT _T)] -> use n' q $> (Var (Free n') :==> _T)
+  [(n', Right (q, _T))] -> use n' q $> (Var (Free n') :==> _T)
   _                -> resolveQ n >>= \case
     n :=: DTerm _ _T -> global (n ::: _T)
     _ :=: _          -> freeVariable n
@@ -130,7 +130,7 @@ tlam :: (HasCallStack, Has (Throw Err) sig m) => Type <==: Elab m Term -> Type <
 tlam b = Check $ \ _T -> do
   (n, _A, _B) <- assertQuantifier _T
   d <- depth
-  (zero, PVar (n :==> CK _A)) |- check (b ::: _B (T.free (LName (getUsed d) n)))
+  n :==> _A ||- check (b ::: _B (T.free (LName (getUsed d) n)))
 
 lam :: (HasCallStack, Has (Throw Err) sig m) => [(Bind m (Pattern (Name :==> Type)), Type <==: Elab m Term)] -> Type <==: Elab m Term
 lam cs = Check $ \ _T -> do
@@ -184,7 +184,7 @@ comp b = Check $ \ _T -> do
       interfacePattern (Interface n _) = maybe (freeVariable (toQ n)) (\ (n' :=: _T) -> pure ((n .:. n') :=: (n' :==> _T))) (listToMaybe (scopeToList . tm =<< unDInterface . def =<< lookupQ graph module' (toQ n)))
   p' <- traverse interfacePattern (interfaces sig)
   -- FIXME: can we apply quantities to dictionaries? what would they mean?
-  b' <- (Many, PDict (map (fmap (fmap CT)) p')) |- check (b ::: _B)
+  b' <- (Many, PDict p') |- check (b ::: _B)
   pure $ E.Comp (map (fmap proof) p') b'
 
 
@@ -269,12 +269,10 @@ bindPattern = withSpanB $ \case
 -- | Elaborate a type abstracted over another type’s parameters.
 --
 -- This is used to elaborate data constructors & effect operations, which receive the type/interface parameters as implicit parameters ahead of their own explicit ones.
-abstractType :: (HasCallStack, Has (Throw Err) sig m) => Elab m TX.Type -> Kind -> Elab m TX.Type
-abstractType body = go
-  where
-  go = \case
-    KArrow (Just n) a b -> TX.ForAll n a <$> ((zero, PVar (n :==> CK a)) |- go b)
-    _                   -> body
+abstractType :: Algebra sig m => Elab m TX.Type -> Kind -> Elab m TX.Type
+abstractType body = \case
+  KArrow (Just n) a b -> TX.ForAll n a <$> (n :==> a ||- abstractType body b)
+  _                   -> body
 
 abstractTerm :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => (Snoc TX.Type -> Snoc Term -> Term) -> Type <==: Elab m Term
 abstractTerm body = go Nil Nil
@@ -432,7 +430,7 @@ check (m ::: _T) = case _T of
 
 
 bind :: (HasCallStack, Has (Throw Err) sig m) => Bind m (Pattern (Name :==> Type)) ::: (Quantity, Type) -> Elab m b -> Elab m (Pattern Name, b)
-bind (p ::: (q, _T)) m = runBind p _T (\ p' -> (proof <$> p',) <$> ((q, fmap (fmap CT) p') |- m))
+bind (p ::: (q, _T)) m = runBind p _T (\ p' -> (proof <$> p',) <$> ((q, p') |- m))
 
 newtype Bind m a = Bind { runBind :: forall x . Type -> (a -> Elab m x) -> Elab m x }
   deriving (Functor)

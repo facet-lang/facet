@@ -16,6 +16,7 @@ import qualified Control.Effect.Empty as E
 import           Data.Foldable (find, toList)
 import qualified Facet.Env as Env
 import           Facet.Functor.Synth
+import           Facet.Kind (Kind)
 import           Facet.Name
 import           Facet.Pattern
 import qualified Facet.Snoc as S
@@ -27,7 +28,9 @@ import           Prelude hiding (lookup)
 
 newtype Context = Context { elems :: S.Snoc Binding }
 
-data Binding = forall i j . Binding Quantity (i ~> j) (Pattern (Name :==> Classifier))
+data Binding
+  = forall i j . Type Quantity (i ~> j) (Pattern (Name :==> Type))
+  | Kind (Name :==> Kind)
 
 
 empty :: Context
@@ -49,14 +52,23 @@ Context es' ! Index i' = withFrozenCallStack $ go es' i'
     | otherwise    = go es (i - 1)
   go _           _ = error $ "Facet.Context.!: index (" <> show i' <> ") out of bounds (" <> show (length es') <> ")"
 
-lookupIndex :: E.Has E.Empty sig m => Name -> Context -> m (LName Index, Quantity, Classifier)
+lookupIndex :: E.Has E.Empty sig m => Name -> Context -> m (LName Index, Either Kind (Quantity, Type))
 lookupIndex n = go (Index 0) . elems
   where
-  go _ S.Nil                                      = E.empty
-  go i (cs S.:> Binding q _ p)
-    | Just (n' :==> t) <- find ((== n) . proof) p = pure (LName i n', q, t)
-    | otherwise                                   = go (succ i) cs
+  go _ S.Nil       = E.empty
+  go i (cs S.:> b) = case b of
+    Type q _ p
+      | Just (n' :==> t) <- find ((== n) . proof) p -> pure (LName i n', Right (q, t))
+    Kind (n' :==> k)
+      | n == n'                                     -> pure (LName i n', Left k)
+    _                                               -> go (succ i) cs
 
 
 toEnv :: Context -> Env.Env Type
-toEnv c = Env.Env (S.fromList (zipWith (\ (Binding _ _ p) d -> (\ b -> proof b :=: free (LName (getUsed d) (proof b))) <$> p) (toList (elems c)) [0..pred (level c)]))
+toEnv c = Env.Env (S.fromList (zipWith toType (toList (elems c)) [0..pred (level c)]))
+  where
+  toType b d = case b of
+    Type _ _ p      -> (\ b -> proof b :=: bind d (proof b)) <$> p
+    Kind (n :==> _) -> PVar (n :=: bind d n)
+
+  bind d b = free (LName (getUsed d) b)

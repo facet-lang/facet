@@ -8,13 +8,14 @@ import           Data.Foldable (foldl')
 import           Data.Semigroup (stimes)
 import qualified Facet.Carrier.Throw.Inject as L
 import qualified Facet.Carrier.Write.Inject as L
-import           Facet.Context
+import           Facet.Context as C
 import           Facet.Elab as Elab
 import qualified Facet.Env as Env
 import           Facet.Functor.Synth
 import           Facet.Interface (interfaces)
 import           Facet.Name (LName(..))
 import           Facet.Notice as Notice hiding (level)
+import           Facet.Pattern
 import           Facet.Pretty
 import           Facet.Print as Print
 import           Facet.Semiring (Few(..), one, zero)
@@ -22,7 +23,7 @@ import           Facet.Snoc
 import           Facet.Style
 import           Facet.Subst (metas)
 import           Facet.Syntax hiding (ann)
-import           Facet.Type.Norm (Classifier(..), apply, free, metavar)
+import           Facet.Type.Norm (apply, free, metavar)
 import           GHC.Stack
 import           Prelude hiding (print, unlines)
 import           Silkscreen
@@ -42,11 +43,15 @@ rethrowElabErrors opts = L.runThrow (pure . rethrow)
     (_, _, printCtx, ctx) = foldl' combine (0, Env.empty, Env.empty, Nil) (elems context)
     subst' = map (\ (m :=: v) -> getPrint (Print.meta m <+> pretty '=' <+> maybe (pretty '?') (print opts printCtx) v)) (metas subst)
     sig' = getPrint . print opts printCtx . fmap (apply subst (toEnv context)) <$> (interfaces =<< sig)
-    combine (d, env, prints, ctx) (Binding m _ p) =
+    combine (d, env, prints, ctx) (C.Kind (n :==> _K)) =
+      let binding = ann (intro n d ::: print opts prints _K)
+      in  ( succ d
+          , env Env.|> PVar (n :=: free (LName d n))
+          , prints Env.|> PVar (n :=: intro n d)
+          , ctx :> getPrint (print opts prints binding) )
+    combine (d, env, prints, ctx) (C.Type m _ p) =
       let roundtrip = apply subst env
-          binding (n :==> _T) = ann (intro n d ::: mult m (case _T of
-            CK _K -> print opts prints _K
-            CT _T -> print opts prints (roundtrip _T)))
+          binding (n :==> _T) = ann (intro n d ::: mult m (print opts prints (roundtrip _T)))
       in  ( succ d
           , env Env.|> ((\ (n :==> _T) -> n :=: free (LName d n)) <$> p)
           , prints Env.|> ((\ (n :==> _) -> n :=: intro n d) <$> p)

@@ -23,10 +23,8 @@ import           Facet.Functor.Synth
 import           Facet.Interface
 import           Facet.Kind
 import           Facet.Name
-import           Facet.Pattern
 import           Facet.Quote
 import           Facet.Semialign
-import           Facet.Semiring
 import           Facet.Snoc
 import           Facet.Subst
 import           Facet.Syntax
@@ -61,7 +59,7 @@ unifyType = curry $ \case
   (TN.Ne (Free (Left v1)) Nil, TN.Ne (Free (Left v2)) Nil) -> flexFlex v1 v2
   (TN.Ne (Free (Left v1)) Nil, t2)                         -> solve v1 t2
   (t1, TN.Ne (Free (Left v2)) Nil)                         -> solve v2 t1
-  (TN.ForAll _ t1 b1, TN.ForAll n t2 b2)                   -> depth >>= \ d -> evalTExpr =<< mkForAll d n <$> unifyKind t1 t2 <*> ((zero, PVar (n :==> CK t2)) |- unifyType (b1 (free (LName (getUsed d) n))) (b2 (free (LName (getUsed d) n))))
+  (TN.ForAll _ t1 b1, TN.ForAll n t2 b2)                   -> depth >>= \ d -> evalTExpr =<< mkForAll d n <$> unifyKind t1 t2 <*> (n :==> t2 ||- unifyType (b1 (free (LName (getUsed d) n))) (b2 (free (LName (getUsed d) n))))
   (TN.ForAll{}, _)                                         -> mismatch
   (TN.Arrow _ _ a1 b1, TN.Arrow n q a2 b2)                 -> TN.Arrow n q <$> unifyType a1 a2 <*> unifyType b1 b2
   (TN.Arrow{}, _)                                          -> mismatch

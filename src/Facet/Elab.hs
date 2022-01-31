@@ -11,6 +11,7 @@ module Facet.Elab
 , meta
 , instantiate
 , (|-)
+, (||-)
   -- * Errors
 , pushSpan
 , Err(..)
@@ -127,7 +128,7 @@ resolveC = resolveWith lookupC
 resolveQ :: (HasCallStack, Has (Throw Err) sig m) => QName -> Elab m (RName :=: Def)
 resolveQ = resolveWith lookupD
 
-lookupInContext :: Has (Choose :+: Empty) sig m => QName -> Context -> m (LName Index, Quantity, Classifier)
+lookupInContext :: Has (Choose :+: Empty) sig m => QName -> Context -> m (LName Index, Either Kind (Quantity, Type))
 lookupInContext (m:.n)
   | m == Nil  = lookupIndex n
   | otherwise = const empty
@@ -144,11 +145,11 @@ lookupInSig (m :. n) mod graph = foldMapC $ foldMapC (\ (Interface q@(m':.:_) _)
   interfaceScope (_ :=: d) = case d of { DSubmodule (SInterface defs) _K -> pure defs ; _ -> empty }
 
 
-(|-) :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err :+: Writer Usage) sig m) => (Quantity, Pattern (Name :==> Classifier)) -> m a -> m a
+(|-) :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err :+: Writer Usage) sig m) => (Quantity, Pattern (Name :==> Type)) -> m a -> m a
 (q, p) |- b = do
   sigma <- asks scale
   d <- depth
-  (u, a) <- censor (`Usage.withoutVars` Vars.singleton (getUsed d)) $ listen $ locally context_ (|> Binding q id p) b
+  (u, a) <- censor (`Usage.withoutVars` Vars.singleton (getUsed d)) $ listen $ locally context_ (|> Type q id p) b
   for_ p $ \ (n :==> _T) -> do
     let exp = sigma >< q
         act = Usage.lookup (LName (getUsed d) n) u
@@ -157,6 +158,11 @@ lookupInSig (m :. n) mod graph = foldMapC $ foldMapC (\ (Interface q@(m':.:_) _)
   pure a
 
 infix 1 |-
+
+(||-) :: Has (Reader ElabContext) sig m => (Name :==> Kind) -> m a -> m a
+k ||- b = locally context_ (|> Kind k) b
+
+infix 1 ||-
 
 -- | Test whether the first quantity suffices to satisfy a requirement of the second.
 sat :: Quantity -> Quantity -> Bool
