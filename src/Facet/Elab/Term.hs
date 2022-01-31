@@ -348,7 +348,7 @@ elabModule (S.Ann _ _ (S.Module mname is os ds)) = execState (Module mname [] os
     -- FIXME: check for redundant naming
 
     let elabScope :: (Has (State Module) sig m, Monoid a) => Name -> Prism' Submodule a -> Kind -> Kind <==: ReaderC Module m b -> (b -> m a) -> m ()
-        elabScope dname p _K elab ret = letrec (scope_.decls_) dname (_DSubmodule._tm.p) (DSubmodule (review p mempty) _K) (runModule (elab <==: _K) >>= ret)
+        elabScope dname p _K elab ret = letrec (scope_.decls_) dname (_DSubmodule.tm_.p) (DSubmodule (review p mempty) _K) (runModule (elab <==: _K) >>= ret)
 
     -- elaborate all the types first
     es <- for ds $ \ (S.Ann _ _ (dname, S.Ann _ _ def)) -> case def of

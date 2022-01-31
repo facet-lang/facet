@@ -6,7 +6,6 @@ module Facet.Syntax
   HasTerm(..)
 , tm
 , (:::)(..)
-, _tm
 , ty
 , _ty
 , (:=:)(..)
@@ -85,9 +84,6 @@ instance Ord2 (:::) where
 
 instance HasTerm (:::) where
   tm_ = lens (\ (a ::: _) -> a) (\ (_ ::: t) s' -> s' ::: t)
-
-_tm :: Lens (s ::: t) (s' ::: t) s s'
-_tm = lens tm (\ (_ ::: t) s' -> s' ::: t)
 
 ty :: a ::: b -> b
 ty (_ ::: b) = b
