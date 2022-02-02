@@ -20,7 +20,7 @@ import Control.Applicative (liftA2)
 import Data.Text (Text)
 import Facet.Functor.Compose as C
 import Facet.Name (Level, RName)
-import Facet.Syntax (Var)
+import Facet.Syntax (Var, type (~>))
 
 -- * Term abstraction
 
@@ -50,17 +50,17 @@ class Sequent term coterm command | coterm -> term command, term -> coterm comma
 
 µRA
   :: (Sequent t c d, Applicative i, Applicative m)
-  => (forall j . Applicative j => (forall x . i x -> j x) -> j c -> m (j d))
+  => (forall j . Applicative j => (i ~> j) -> j c -> m (j d))
   -> m (i t)
 µRA = binder µR
 
-funRA :: (Sequent t c d, Applicative i, Applicative m) => (forall j . Applicative j => (forall x . i x -> j x) -> j t -> m (j t))-> m (i t)
+funRA :: (Sequent t c d, Applicative i, Applicative m) => (forall j . Applicative j => (i ~> j) -> j t -> m (j t))-> m (i t)
 funRA = binder funR
 
 
 µLA
   :: (Sequent t c d, Applicative i, Applicative m)
-  => (forall j . Applicative j => (forall x . i x -> j x) -> j t -> m (j d))
+  => (forall j . Applicative j => (i ~> j) -> j t -> m (j d))
   -> m (i c)
 µLA = binder µL
 
@@ -80,7 +80,7 @@ sumLA cs = runC (sumL <$> traverse (\ (C.Clause c) -> C (binder id c)) cs)
 prdLA
   :: (Sequent t c d, Applicative i, Applicative m)
   => Int
-  -> (forall j . Applicative j => (forall x . i x -> j x) -> j [t] -> m (j d))
+  -> (forall j . Applicative j => (i ~> j) -> j [t] -> m (j d))
   -> m (i c)
 prdLA i = binder (prdL i)
 
