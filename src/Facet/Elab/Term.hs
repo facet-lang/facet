@@ -185,8 +185,8 @@ appS f a = do
 string :: Text -> Elab m (Term :==> Type)
 string s = pure $ E.String s :==> T.String
 
-stringS :: SQ.Sequent t c d => Text -> Elab m (t :==> Type)
-stringS s = pure $ SQ.stringR s :==> T.String
+stringS :: (SQ.Sequent t c d, Applicative i) => Text -> Elab m (i t :==> Type)
+stringS s = (:==> T.String) <$> SQ.stringRA s
 
 
 let' :: (HasCallStack, Has (Throw Err) sig m) => Bind m (Pattern (Name :==> Type)) -> Elab m (Term :==> Type) -> Type <==: Elab m Term -> Type <==: Elab m Term
