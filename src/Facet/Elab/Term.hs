@@ -6,6 +6,7 @@ module Facet.Elab.Term
 , as
   -- * Term combinators
 , global
+, globalS
 , var
 , tlam
 , lam
@@ -111,6 +112,10 @@ as (m ::: _T) = do
 -- FIXME: we’re instantiating when inspecting types in the REPL.
 global :: Algebra sig m => RName ::: Type -> Elab m (Term :==> Type)
 global (q ::: _T) = (\ (v ::: _T) -> v :==> _T) <$> instantiate const (Var (Global q) ::: _T)
+
+-- FIXME: we’re instantiating when inspecting types in the REPL.
+globalS :: (Algebra sig m, SQ.Sequent t c d) => RName ::: Type -> Elab m (t :==> Type)
+globalS (q ::: _T) = (\ (v ::: _T) -> v :==> _T) <$> instantiate const (SQ.var (Global q) ::: _T)
 
 -- FIXME: do we need to instantiate here to deal with rank-n applications?
 -- FIXME: effect ops not in the sig are reported as not in scope
