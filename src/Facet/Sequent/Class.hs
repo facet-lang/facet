@@ -7,6 +7,7 @@ module Facet.Sequent.Class
 , µRA
 , C.Clause(..)
 , funRA
+, stringRA
 , covarA
 , µLA
 , funLA
@@ -61,6 +62,9 @@ varA v = pure (pure (var v))
 
 funRA :: (Sequent t c d, Applicative i, Applicative m) => (forall j . Applicative j => (i ~> j) -> j t -> m (j t))-> m (i t)
 funRA = binder funR
+
+stringRA :: (Sequent t c d, Applicative i, Applicative m) => Text -> m (i t)
+stringRA = pure . pure . stringR
 
 
 covarA :: (Sequent t c d, Applicative i, Applicative m) => Var Level -> m (i c)
