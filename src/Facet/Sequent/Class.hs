@@ -3,6 +3,7 @@ module Facet.Sequent.Class
 ( -- * Sequent abstraction
   Sequent(..)
   -- * Effectful abstractions
+, varA
 , µRA
 , C.Clause(..)
 , funRA
@@ -47,6 +48,9 @@ class Sequent term coterm command | coterm -> term command, term -> coterm comma
 
 
 -- * Effectful abstractions
+
+varA :: (Sequent t c d, Applicative i, Applicative m) => Var Level -> m (i t)
+varA v = pure (pure (var v))
 
 µRA
   :: (Sequent t c d, Applicative i, Applicative m)
