@@ -283,7 +283,7 @@ abstractTerm body = go Nil Nil
     T.Arrow  n q _A _B -> do
       d <- depth
       check (lam [(patternForArgType _A (fromMaybe __ n), go ts (fs :> \ d' -> Var (Free (LName (toIndexed d' (getUsed d)) (fromMaybe __ n)))))] ::: T.Arrow n q _A _B)
-    _T                -> do
+    _T                 -> do
       d <- depth
       pure $ body (TX.Var . Free . Right . toIndexed d <$> ts) (fs <*> pure d)
 
