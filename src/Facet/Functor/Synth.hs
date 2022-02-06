@@ -1,6 +1,8 @@
 module Facet.Functor.Synth
 ( -- * Synth judgement
   (:==>)(..)
+  -- * Construction
+, (==>)
   -- * Elimination
 , proof
 , prop
@@ -25,6 +27,12 @@ instance Bifoldable (:==>) where
 
 instance Bitraversable (:==>) where
   bitraverse f g (a :==> _T) = (:==>) <$> f a <*> g _T
+
+
+-- Construction
+
+(==>) :: Applicative m => m (i tm) -> m ty -> m (i tm :==> ty)
+tm ==> ty = (:==>) <$> tm <*> ty
 
 
 -- Elimination
