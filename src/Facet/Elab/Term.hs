@@ -8,6 +8,7 @@ module Facet.Elab.Term
 , global
 , globalS
 , var
+, varS
 , tlam
 , lam
 , lamS
@@ -55,7 +56,7 @@ import           Data.Monoid (Ap(..), First(..))
 import qualified Data.Set as Set
 import           Data.Text (Text)
 import           Data.Traversable (for, mapAccumL)
-import           Facet.Context (toEnv)
+import           Facet.Context (level, toEnv)
 import           Facet.Effect.Write
 import           Facet.Elab
 import           Facet.Elab.Type hiding (switch)
@@ -125,6 +126,19 @@ var n = views context_ (lookupInContext n) >>= \case
   [(n', Right (q, _T))] -> use n' q $> (Var (Free n') :==> _T)
   _                     -> resolveQ n >>= \case
     n :=: DTerm _ _T -> global (n ::: _T)
+    _ :=: _          -> freeVariable n
+
+-- FIXME: do we need to instantiate here to deal with rank-n applications?
+-- FIXME: effect ops not in the sig are reported as not in scope
+-- FIXME: effect ops in the sig are available whether or not they’re in scope
+varS :: (HasCallStack, Has (Throw Err) sig m, SQ.Sequent t c d) => QName -> Elab m (t :==> Type)
+varS n = views context_ (lookupInContext n) >>= \case
+  [(n', Right (q, _T))] -> do
+    use n' q
+    d <- views context_ level
+    pure (SQ.var (Free (toLeveled d (ident n'))) :==> _T)
+  _                     -> resolveQ n >>= \case
+    n :=: DTerm _ _T -> globalS (n ::: _T)
     _ :=: _          -> freeVariable n
 
 
