@@ -123,7 +123,7 @@ globalS (q ::: _T) = (\ (v ::: _T) -> v :==> _T) <$> instantiate const (SQ.var (
 var :: (HasCallStack, Has (Throw Err) sig m) => QName -> Elab m (Term :==> Type)
 var n = views context_ (lookupInContext n) >>= \case
   [(n', Right (q, _T))] -> use n' q $> (Var (Free n') :==> _T)
-  _                -> resolveQ n >>= \case
+  _                     -> resolveQ n >>= \case
     n :=: DTerm _ _T -> global (n ::: _T)
     _ :=: _          -> freeVariable n
 
