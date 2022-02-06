@@ -412,12 +412,12 @@ provide sig m = do
 require :: (HasCallStack, Has (Throw Err) sig m) => Signature Type -> Elab m ()
 require req = do
   prv <- view sig_
-  for_ (interfaces req) $ \ i -> findMaybeM (findMaybeM (runUnifyMaybe . unifyInterface i) . interfaces) prv >>= \case
+  for_ (interfaces req) $ \ i -> findMaybeA (findMaybeA (runUnifyMaybe . unifyInterface i) . interfaces) prv >>= \case
     Nothing -> missingInterface i
     Just _  -> pure ()
 
-findMaybeM :: (Foldable t, Applicative m) => (a -> m (Maybe b)) -> t a -> m (Maybe b)
-findMaybeM p = getAp . fmap getFirst . foldMap (Ap . fmap First . p)
+findMaybeA :: (Foldable t, Applicative m) => (a -> m (Maybe b)) -> t a -> m (Maybe b)
+findMaybeA p = getAp . fmap getFirst . foldMap (Ap . fmap First . p)
 
 
 -- Judgements
