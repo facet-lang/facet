@@ -416,7 +416,7 @@ require req = do
     Nothing -> missingInterface i
     Just _  -> pure ()
 
-findMaybeM :: (Foldable t, Monad m) => (a -> m (Maybe b)) -> t a -> m (Maybe b)
+findMaybeM :: (Foldable t, Applicative m) => (a -> m (Maybe b)) -> t a -> m (Maybe b)
 findMaybeM p = getAp . fmap getFirst . foldMap (Ap . fmap First . p)
 
 
