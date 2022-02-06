@@ -138,7 +138,7 @@ varS n = views context_ (lookupInContext n) >>= \case
   [(n', Right (q, _T))] -> do
     use n' q
     d <- views context_ level
-    (:==> _T) <$> SQ.varA (Free (toLeveled d (ident n')))
+    SQ.varA (Free (toLeveled d (ident n'))) ==> pure _T
   _                     -> resolveQ n >>= \case
     n :=: DTerm _ _T -> globalS (n ::: _T)
     _ :=: _          -> freeVariable n
@@ -186,7 +186,7 @@ string :: Text -> Elab m (Term :==> Type)
 string s = pure $ E.String s :==> T.String
 
 stringS :: (SQ.Sequent t c d, Applicative i) => Text -> Elab m (i t :==> Type)
-stringS s = (:==> T.String) <$> SQ.stringRA s
+stringS s = SQ.stringRA s ==> pure T.String
 
 
 let' :: (HasCallStack, Has (Throw Err) sig m) => Bind m (Pattern (Name :==> Type)) -> Elab m (Term :==> Type) -> Type <==: Elab m Term -> Type <==: Elab m Term
