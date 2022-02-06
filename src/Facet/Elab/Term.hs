@@ -115,8 +115,10 @@ global :: Algebra sig m => RName ::: Type -> Elab m (Term :==> Type)
 global (q ::: _T) = (\ (v ::: _T) -> v :==> _T) <$> instantiate const (Var (Global q) ::: _T)
 
 -- FIXME: we’re instantiating when inspecting types in the REPL.
-globalS :: (Algebra sig m, SQ.Sequent t c d) => RName ::: Type -> Elab m (t :==> Type)
-globalS (q ::: _T) = (\ (v ::: _T) -> v :==> _T) <$> instantiate const (SQ.var (Global q) ::: _T)
+globalS :: (Algebra sig m, SQ.Sequent t c d, Applicative i) => RName ::: Type -> Elab m (i t :==> Type)
+globalS (q ::: _T) = do
+  v <- SQ.varA (Global q)
+  (\ (v ::: _T) -> v :==> _T) <$> instantiate const (v ::: _T)
 
 -- FIXME: do we need to instantiate here to deal with rank-n applications?
 -- FIXME: effect ops not in the sig are reported as not in scope
@@ -131,12 +133,12 @@ var n = views context_ (lookupInContext n) >>= \case
 -- FIXME: do we need to instantiate here to deal with rank-n applications?
 -- FIXME: effect ops not in the sig are reported as not in scope
 -- FIXME: effect ops in the sig are available whether or not they’re in scope
-varS :: (HasCallStack, Has (Throw Err) sig m, SQ.Sequent t c d) => QName -> Elab m (t :==> Type)
+varS :: (HasCallStack, Has (Throw Err) sig m, SQ.Sequent t c d, Applicative i) => QName -> Elab m (i t :==> Type)
 varS n = views context_ (lookupInContext n) >>= \case
   [(n', Right (q, _T))] -> do
     use n' q
     d <- views context_ level
-    pure (SQ.var (Free (toLeveled d (ident n'))) :==> _T)
+    (:==> _T) <$> SQ.varA (Free (toLeveled d (ident n')))
   _                     -> resolveQ n >>= \case
     n :=: DTerm _ _T -> globalS (n ::: _T)
     _ :=: _          -> freeVariable n
