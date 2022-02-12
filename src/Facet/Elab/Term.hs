@@ -254,14 +254,14 @@ newtype Tableau = Tableau { clauses :: [Clause] }
 type Ctx = [Type]
 
 coverTableau :: Tableau -> Ctx -> Bool
-coverTableau (Tableau t) c = run (evalState (Tableau t) (execEmpty (go c)))
+coverTableau tableau context = run (execEmpty (go context tableau))
   where
-  go = \case
-    []     -> get >>= guard . all (null . patterns) . clauses
-    ty:tys -> coverClauses ty >>= \ ty' -> go (ty' <> tys)
+  go context tableau = case context of
+    []     -> guard (all (null . patterns) (clauses tableau))
+    ty:tys -> coverClauses ty tableau >>= \ ty' -> go (ty' <> tys) tableau
 
-coverClauses :: Has Empty sig m => Type -> m [Type]
-coverClauses = \case
+coverClauses :: Has Empty sig m => Type -> Tableau -> m [Type]
+coverClauses ty clauses = case ty of
   T.String   -> pure [] -- FIXME: check for wildcard/variable patterns
   -- FIXME: type patterns to bind type variables?
   T.ForAll{} -> pure [] -- FIXME: check for wildcard/variable patterns
