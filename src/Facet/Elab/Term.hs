@@ -53,6 +53,7 @@ import           Control.Effect.Throw
 import           Data.Bifunctor (first)
 import           Data.Either (partitionEithers)
 import           Data.Foldable
+import           Data.Function ((&))
 import           Data.Functor
 import           Data.Maybe (catMaybes, fromMaybe, listToMaybe)
 import           Data.Monoid (Ap(..), First(..))
@@ -90,11 +91,13 @@ import           Facet.Type.Norm as T hiding (global)
 import           Facet.Unify
 import           Facet.Usage hiding (restrict)
 import           Fresnel.At as At
+import           Fresnel.Fold (allOf, folded)
+import           Fresnel.Iso (Iso', coerced)
 import           Fresnel.Ixed
 import           Fresnel.Prism (Prism')
 import           Fresnel.Review (review)
-import           Fresnel.Setter (Setter')
-import           Fresnel.Traversal (Traversal')
+import           Fresnel.Setter (Setter', (%~))
+import           Fresnel.Traversal (Traversal', traversed)
 import           GHC.Stack
 
 -- General combinators
@@ -249,7 +252,13 @@ allP n = Bind $ \ _A k -> do
 
 newtype Clause = Clause { patterns :: [Pattern ()] }
 
+patterns_ :: Iso' Clause [Pattern ()]
+patterns_ = coerced
+
 newtype Tableau = Tableau { clauses :: [Clause] }
+
+clauses_ :: Iso' Tableau [Clause]
+clauses_ = coerced
 
 type Ctx = [Type]
 
@@ -258,16 +267,23 @@ coverTableau tableau context = run (execEmpty (go context tableau))
   where
   go context tableau = case context of
     []     -> guard (all (null . patterns) (clauses tableau))
-    ty:tys -> coverClauses ty tableau >>= \ ty' -> go (ty' <> tys) tableau
+    ty:tys -> coverClauses ty tableau >>= \ (ty', tableau') -> go (ty' <> tys) tableau'
 
-coverClauses :: Has Empty sig m => Type -> Tableau -> m [Type]
-coverClauses ty clauses = case ty of
-  T.String   -> pure [] -- FIXME: check for wildcard/variable patterns
+coverClauses :: Has Empty sig m => Type -> Tableau -> m ([Type], Tableau)
+coverClauses ty tableau = case ty of
+  T.String   -> ([], tableau & clauses_.traversed.patterns_ %~ tail) <$ guard (allOf (clauses_.folded.patterns_.folded) isCatchAll tableau)
   -- FIXME: type patterns to bind type variables?
-  T.ForAll{} -> pure [] -- FIXME: check for wildcard/variable patterns
-  T.Arrow{}  -> pure [] -- FIXME: check for wildcard/variable patterns
+  T.ForAll{} -> pure ([], tableau) -- FIXME: check for wildcard/variable patterns
+  T.Arrow{}  -> pure ([], tableau) -- FIXME: check for wildcard/variable patterns
   T.Ne{}     -> empty
   T.Comp{}   -> empty -- resolve signature, then treat as effect patterns
+
+isCatchAll :: Pattern a -> Bool
+isCatchAll = \case
+  PWildcard -> True
+  PVar _    -> True
+  _         -> False
+
 
 -- Expression elaboration
 
