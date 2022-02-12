@@ -24,6 +24,8 @@ module Facet.Elab.Term
 , conP
 , fieldsP
 , allP
+  -- * Pattern compilation
+, coverTableau
   -- * Expression elaboration
 , synthExpr
 , checkExpr
@@ -43,10 +45,11 @@ module Facet.Elab.Term
 ) where
 
 import           Control.Algebra
+import           Control.Carrier.Empty.Church
 import           Control.Carrier.Reader
 import           Control.Carrier.State.Church
+import           Control.Carrier.Writer.Church
 import           Control.Effect.Throw
-import           Control.Effect.Writer (censor)
 import           Data.Bifunctor (first)
 import           Data.Either (partitionEithers)
 import           Data.Foldable
@@ -62,7 +65,7 @@ import           Facet.Elab
 import           Facet.Elab.Type hiding (switch)
 import qualified Facet.Elab.Type as Type
 import           Facet.Functor.Check
-import           Facet.Functor.Compose
+import           Facet.Functor.Compose hiding (Clause)
 import           Facet.Functor.Synth
 import           Facet.Graph
 import           Facet.Interface
@@ -241,6 +244,30 @@ allP n = Bind $ \ _A k -> do
   (sig, _T) <- assertComp _A
   k (PVar (n :==> T.Arrow Nothing Many (T.Ne (Global (NE.FromList ["Data", "Unit"] :.: U "Unit")) Nil) (T.Comp sig _T)))
 
+
+-- Pattern compilation
+
+newtype Clause = Clause { patterns :: [Pattern ()] }
+
+newtype Tableau = Tableau { clauses :: [Clause] }
+
+type Ctx = [Type]
+
+coverTableau :: Tableau -> Ctx -> Bool
+coverTableau (Tableau t) c = run (evalState (Tableau t) (execEmpty (go c)))
+  where
+  go = \case
+    []     -> get >>= guard . all (null . patterns) . clauses
+    ty:tys -> coverClauses ty >>= \ ty' -> go (ty' <> tys)
+
+coverClauses :: Has Empty sig m => Type -> m [Type]
+coverClauses = \case
+  T.String   -> pure [] -- FIXME: check for wildcard/variable patterns
+  -- FIXME: type patterns to bind type variables?
+  T.ForAll{} -> pure [] -- FIXME: check for wildcard/variable patterns
+  T.Arrow{}  -> pure [] -- FIXME: check for wildcard/variable patterns
+  T.Ne{}     -> empty
+  T.Comp{}   -> empty -- resolve signature, then treat as effect patterns
 
 -- Expression elaboration
 
