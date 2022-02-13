@@ -266,32 +266,30 @@ clauses_ = coerced
 type Ctx = [Type]
 
 coverTableau :: (HasCallStack, Has (Reader ElabContext) sig m, Has (Reader StaticContext) sig m, Has (State (Subst Type)) sig m, Has (Throw Err) sig m) => Tableau -> Ctx -> m Bool
-coverTableau tableau context = runNonDet (liftA2 (&&)) (const (pure True)) (pure False) (evalState tableau (evalState context coverClauses))
+coverTableau tableau context = runNonDet (liftA2 (&&)) (const (pure True)) (pure False) (coverClauses tableau context)
 
-coverClauses :: (HasCallStack, Has Choose sig m, Has Empty sig m, Has (Reader ElabContext) sig m, Has (Reader StaticContext) sig m, Has (State Ctx) sig m, Has (State (Subst Type)) sig m, Has (State Tableau) sig m, Has (Throw Err) sig m) => m ()
-coverClauses = do
-  ctx <- get
-  tableau <- get
+coverClauses :: (HasCallStack, Has Choose sig m, Has Empty sig m, Has (Reader ElabContext) sig m, Has (Reader StaticContext) sig m, Has (State (Subst Type)) sig m, Has (Throw Err) sig m) => Tableau -> Ctx -> m (Tableau, Ctx)
+coverClauses tableau ctx = do
   let skipped = tableau & clauses_.traversed.patterns_ %~ tail
       decomposeSum = \case
-        []   -> guard (eachClauseHead isCatchAll tableau) <* put skipped <* put ctx
+        []   -> guard (eachClauseHead isCatchAll tableau) *> coverClauses skipped ctx
         [x]  -> decomposeProduct x
         -- FIXME: construct binary tree of eliminations
         x:xs -> decomposeProduct x <|> decomposeSum xs
       decomposeProduct = \case
         _ -> empty
   case ctx of
-    T.String:ctx   -> guard (eachClauseHead isCatchAll tableau) *> put skipped *> put ctx *> coverClauses
+    T.String:ctx   -> guard (eachClauseHead isCatchAll tableau) *> coverClauses skipped ctx
     -- FIXME: type patterns to bind type variables?
-    T.ForAll{}:ctx -> guard (eachClauseHead isCatchAll tableau) *> put skipped *> put ctx *> coverClauses
-    T.Arrow{}:ctx  -> guard (eachClauseHead isCatchAll tableau) *> put skipped *> put ctx *> coverClauses
+    T.ForAll{}:ctx -> guard (eachClauseHead isCatchAll tableau) *> coverClauses skipped ctx
+    T.Arrow{}:ctx  -> guard (eachClauseHead isCatchAll tableau) *> coverClauses skipped ctx
     T.Ne h _:_     -> case h of
       Global n -> resolveQ (toQ n) >>= \case
         _ :=: DSubmodule (SData scope) _ -> decomposeSum (scopeToList scope)
         _                                -> empty
       _        -> empty
     T.Comp{}:_     -> empty -- resolve signature, then treat as effect patterns
-    []             -> guard (eachClauseHead null tableau)
+    []             -> (tableau, ctx) <$ guard (eachClauseHead null tableau)
 
 eachClauseHead :: (Pattern () -> Bool) -> Tableau -> Bool
 eachClauseHead = allOf (clauses_.folded.patterns_.folded)
