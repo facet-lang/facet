@@ -97,7 +97,7 @@ import           Fresnel.At as At
 import           Fresnel.Fold (allOf, folded)
 import           Fresnel.Iso (Iso', coerced)
 import           Fresnel.Ixed
-import           Fresnel.Prism (Prism')
+import           Fresnel.Prism (Prism', is)
 import           Fresnel.Review (review)
 import           Fresnel.Setter (Setter', (%~))
 import           Fresnel.Traversal (Traversal', traversed)
@@ -299,9 +299,7 @@ eachClauseHead :: (Pattern () -> Bool) -> Tableau -> Bool
 eachClauseHead = allOf (clauses_.folded.patterns_.folded)
 
 isCatchAll :: Pattern a -> Bool
-isCatchAll
-  =   \case{ PWildcard -> True ; _ -> False }
-  ||| \case{ PVar _    -> True ; _ -> False }
+isCatchAll = is _PWildcard ||| is _PVar
 
 (|||) :: (a -> Bool) -> (a -> Bool) -> (a -> Bool)
 (|||) = liftA2 (||)
