@@ -269,7 +269,7 @@ coverTableau :: (HasCallStack, Has (Reader ElabContext) sig m, Has (Reader Stati
 coverTableau tableau context = runNonDet (liftA2 (&&)) (const (pure True)) (pure False) (evalState tableau (go context))
   where
   go context = case context of
-    []     -> get >>= \ tableau -> guard (all (null . patterns) (clauses tableau))
+    []     -> get >>= guard . eachClauseHead null
     ty:tys -> coverClauses ty >>= \ ty' -> go (ty' <> tys)
 
 coverClauses :: (HasCallStack, Has Choose sig m, Has Empty sig m, Has (Reader ElabContext) sig m, Has (Reader StaticContext) sig m, Has (State (Subst Type)) sig m, Has (State Tableau) sig m, Has (Throw Err) sig m) => Type -> m [Type]
