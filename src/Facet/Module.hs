@@ -10,6 +10,7 @@ module Facet.Module
 , lookupD
 , Scope(..)
 , decls_
+, toList_
 , scopeFromList
 , scopeToList
 , lookupScope
@@ -42,7 +43,7 @@ import           Facet.Syntax
 import           Facet.Term.Expr
 import           Facet.Type.Norm
 import           Fresnel.Fold (preview)
-import           Fresnel.Iso (coerced)
+import           Fresnel.Iso (Iso, coerced, iso)
 import           Fresnel.Lens (Lens, Lens', lens)
 import           Fresnel.Prism
 import           Fresnel.Review (review)
@@ -104,6 +105,9 @@ newtype Scope a = Scope { decls :: Map.Map Name a }
 
 decls_ :: Lens (Scope a) (Scope b) (Map.Map Name a) (Map.Map Name b)
 decls_ = coerced
+
+toList_ :: Iso (Scope a) (Scope b) [Name :=: a] [Name :=: b]
+toList_ = iso scopeToList scopeFromList
 
 scopeFromList :: [Name :=: a] -> Scope a
 scopeFromList = Scope . Map.fromList . map (\ (n :=: v) -> (n, v))
