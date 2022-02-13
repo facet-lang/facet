@@ -44,7 +44,7 @@ import           Facet.Term.Expr
 import           Facet.Type.Norm
 import           Fresnel.Fold (preview)
 import           Fresnel.Iso (Iso, coerced, iso)
-import           Fresnel.Lens (Lens, Lens', lens)
+import           Fresnel.Lens (Lens', lens)
 import           Fresnel.Prism
 import           Fresnel.Review (review)
 
@@ -103,7 +103,7 @@ lookupD n Module{ name, scope } = maybe empty (pure . first (name:.:)) (lookupSc
 newtype Scope a = Scope { decls :: Map.Map Name a }
   deriving (Monoid, Semigroup)
 
-decls_ :: Lens (Scope a) (Scope b) (Map.Map Name a) (Map.Map Name b)
+decls_ :: Iso (Scope a) (Scope b) (Map.Map Name a) (Map.Map Name b)
 decls_ = coerced
 
 toList_ :: Iso (Scope a) (Scope b) [Name :=: a] [Name :=: b]
