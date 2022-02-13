@@ -3,7 +3,8 @@
 {-# LANGUAGE UndecidableInstances #-}
 module Facet.Syntax
 ( -- * Term containers
-  HasTerm(..)
+  IsPair(..)
+, HasTerm(..)
 , tm
 , (:::)(..)
 , ty
@@ -45,9 +46,14 @@ import Facet.Name
 import Facet.Snoc
 import Facet.Span
 import Fresnel.Getter (view)
+import Fresnel.Iso (Iso, iso)
 import Fresnel.Lens (Lens, Lens', lens)
 
 -- Term containers
+
+class IsPair p where
+  pair_ :: Iso (p a b) (p a' b') (a, b) (a', b')
+
 
 class HasTerm p where
   tm_ :: Lens (p s t) (p s' t) s s'
@@ -82,6 +88,9 @@ instance Eq2 (:::) where
 instance Ord2 (:::) where
   liftCompare2 compareA compareB (a1 ::: b1) (a2 ::: b2) = compareA a1 a2 <> compareB b1 b2
 
+instance IsPair (:::) where
+  pair_ = iso ((,) <$> tm <*> ty) (uncurry (:::))
+
 instance HasTerm (:::) where
   tm_ = lens (\ (a ::: _) -> a) (\ (_ ::: t) s' -> s' ::: t)
 
@@ -106,6 +115,9 @@ instance Bifunctor (:=:) where
 instance Bitraversable (:=:) where
   bitraverse f g (a :=: b) = (:=:) <$> f a <*> g b
 
+instance IsPair (:=:) where
+  pair_ = iso ((,) <$> nm <*> def) (uncurry (:=:))
+
 instance HasTerm (:=:) where
   tm_ = lens (\ (a :=: _) -> a) (\ (_ :=: t) s' -> s' :=: t)
 
@@ -129,6 +141,9 @@ instance Bifunctor (:@) where
 
 instance Bitraversable (:@) where
   bitraverse f g (a :@ b) = (:@) <$> f a <*> g b
+
+instance IsPair (:@) where
+  pair_ = iso ((,) <$> tm <*> qty) (uncurry (:@))
 
 instance HasTerm (:@) where
   tm_ = lens (\ (a :@ _) -> a) (\ (_ :@ t) s' -> s' :@ t)
