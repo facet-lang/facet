@@ -253,12 +253,12 @@ allP n = Bind $ \ _A k -> do
 
 -- Pattern compilation
 
-newtype Clause = Clause { patterns :: [Pattern ()] }
+newtype Clause = Clause [Pattern ()]
 
 patterns_ :: Iso' Clause [Pattern ()]
 patterns_ = coerced
 
-newtype Tableau = Tableau { clauses :: [Clause] }
+newtype Tableau = Tableau [Clause]
 
 clauses_ :: Iso' Tableau [Clause]
 clauses_ = coerced
