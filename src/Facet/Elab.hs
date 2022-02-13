@@ -113,10 +113,10 @@ instantiate inst = go
 
 
 resolveWith
-  :: (HasCallStack, Has (Throw Err) sig m)
+  :: (HasCallStack, Has (Reader ElabContext) sig m, Has (Reader StaticContext) sig m, Has (State (Subst Type)) sig m, Has (Throw Err) sig m)
   => (forall sig m . Has (Choose :+: Empty) sig m => Name -> Module -> m (RName :=: d))
   -> QName
-  -> Elab m (RName :=: d)
+  -> m (RName :=: d)
 resolveWith lookup n = asks (\ StaticContext{ module', graph } -> lookupWith lookup graph module' n) >>= \case
   []  -> freeVariable n
   [v] -> pure v
