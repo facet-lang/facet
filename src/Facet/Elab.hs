@@ -122,10 +122,10 @@ resolveWith lookup n = asks (\ StaticContext{ module', graph } -> lookupWith loo
   [v] -> pure v
   ds  -> ambiguousName n (map (\ (q :=: _) -> q) ds)
 
-resolveC :: (HasCallStack, Has (Throw Err) sig m) => QName -> Elab m (RName :=: Maybe Term ::: Type)
+resolveC :: (HasCallStack, Has (Reader ElabContext) sig m, Has (Reader StaticContext) sig m, Has (State (Subst Type)) sig m, Has (Throw Err) sig m) => QName -> m (RName :=: Maybe Term ::: Type)
 resolveC = resolveWith lookupC
 
-resolveQ :: (HasCallStack, Has (Throw Err) sig m) => QName -> Elab m (RName :=: Def)
+resolveQ :: (HasCallStack, Has (Reader ElabContext) sig m, Has (Reader StaticContext) sig m, Has (State (Subst Type)) sig m, Has (Throw Err) sig m) => QName -> m (RName :=: Def)
 resolveQ = resolveWith lookupD
 
 lookupInContext :: Has (Choose :+: Empty) sig m => QName -> Context -> m (LName Index, Either Kind (Quantity, Type))
