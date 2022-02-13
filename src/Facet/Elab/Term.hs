@@ -45,6 +45,7 @@ module Facet.Elab.Term
 ) where
 
 import           Control.Algebra
+import           Control.Applicative (liftA2)
 import           Control.Carrier.Empty.Church
 import           Control.Carrier.Reader
 import           Control.Carrier.State.Church
@@ -279,10 +280,14 @@ coverClauses ty tableau = case ty of
   T.Comp{}   -> empty -- resolve signature, then treat as effect patterns
 
 isCatchAll :: Pattern a -> Bool
-isCatchAll = \case
-  PWildcard -> True
-  PVar _    -> True
-  _         -> False
+isCatchAll
+  =   \case{ PWildcard -> True ; _ -> False }
+  ||| \case{ PVar _    -> True ; _ -> False }
+
+(|||) :: (a -> Bool) -> (a -> Bool) -> (a -> Bool)
+(|||) = liftA2 (||)
+
+infixr 2 |||
 
 
 -- Expression elaboration
