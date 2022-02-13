@@ -269,11 +269,11 @@ coverTableau :: (HasCallStack, Has (Reader ElabContext) sig m, Has (Reader Stati
 coverTableau tableau context = runNonDet (liftA2 (&&)) (const (pure True)) (pure False) (evalState tableau (go context))
   where
   go context = case context of
-    []     -> get >>= guard . eachClauseHead null
-    ty:tys -> coverClauses ty >>= \ ty' -> go (ty' <> tys)
+    []  -> get >>= guard . eachClauseHead null
+    ctx -> coverClauses ctx >>= go
 
-coverClauses :: (HasCallStack, Has Choose sig m, Has Empty sig m, Has (Reader ElabContext) sig m, Has (Reader StaticContext) sig m, Has (State (Subst Type)) sig m, Has (State Tableau) sig m, Has (Throw Err) sig m) => Type -> m [Type]
-coverClauses ty = do
+coverClauses :: (HasCallStack, Has Choose sig m, Has Empty sig m, Has (Reader ElabContext) sig m, Has (Reader StaticContext) sig m, Has (State (Subst Type)) sig m, Has (State Tableau) sig m, Has (Throw Err) sig m) => [Type] -> m [Type]
+coverClauses ctx = do
   tableau <- get
   let skipped = tableau & clauses_.traversed.patterns_ %~ tail
       decomposeSum = \case
@@ -283,17 +283,18 @@ coverClauses ty = do
         x:xs -> decomposeProduct x <|> decomposeSum xs
       decomposeProduct = \case
         _ -> empty
-  case ty of
-    T.String   -> [] <$ guard (eachClauseHead isCatchAll tableau) <* put skipped
+  case ctx of
+    T.String:ctx   -> ctx <$ guard (eachClauseHead isCatchAll tableau) <* put skipped
     -- FIXME: type patterns to bind type variables?
-    T.ForAll{} -> [] <$ guard (eachClauseHead isCatchAll tableau) <* put skipped
-    T.Arrow{}  -> [] <$ guard (eachClauseHead isCatchAll tableau) <* put skipped
-    T.Ne h _   -> case h of
+    T.ForAll{}:ctx -> ctx <$ guard (eachClauseHead isCatchAll tableau) <* put skipped
+    T.Arrow{}:ctx  -> ctx <$ guard (eachClauseHead isCatchAll tableau) <* put skipped
+    T.Ne h _:_     -> case h of
       Global n -> resolveQ (toQ n) >>= \case
         _ :=: DSubmodule (SData scope) _ -> decomposeSum (scopeToList scope)
         _                                -> empty
       _        -> empty
-    T.Comp{}   -> empty -- resolve signature, then treat as effect patterns
+    T.Comp{}:_     -> empty -- resolve signature, then treat as effect patterns
+    []             -> [] <$ guard (eachClauseHead null tableau)
 
 eachClauseHead :: (Pattern () -> Bool) -> Tableau -> Bool
 eachClauseHead = allOf (clauses_.folded.patterns_.folded)
