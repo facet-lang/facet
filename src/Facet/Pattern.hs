@@ -3,6 +3,7 @@ module Facet.Pattern
   Pattern(..)
 , _PWildcard
 , _PVar
+, _PCon
 , fill
 ) where
 
@@ -29,6 +30,11 @@ _PVar :: Prism' (Pattern a) a
 _PVar = prism' PVar (\case
   PVar a -> Just a
   _      -> Nothing)
+
+_PCon :: Prism' (Pattern a) (RName, [Pattern a])
+_PCon = prism' (uncurry PCon) (\case
+  PCon h sp -> Just (h, sp)
+  _         -> Nothing)
 
 
 fill :: Traversable t => (b -> (b, c)) -> b -> t a -> (b, t c)
