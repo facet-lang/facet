@@ -272,7 +272,7 @@ coverTableau tableau context = runNonDet (liftA2 (&&)) (const (pure True)) (pure
     []  -> get >>= guard . eachClauseHead null
     ctx -> coverClauses ctx >>= go
 
-coverClauses :: (HasCallStack, Has Choose sig m, Has Empty sig m, Has (Reader ElabContext) sig m, Has (Reader StaticContext) sig m, Has (State (Subst Type)) sig m, Has (State Tableau) sig m, Has (Throw Err) sig m) => [Type] -> m [Type]
+coverClauses :: (HasCallStack, Has Choose sig m, Has Empty sig m, Has (Reader ElabContext) sig m, Has (Reader StaticContext) sig m, Has (State (Subst Type)) sig m, Has (State Tableau) sig m, Has (Throw Err) sig m) => Ctx -> m Ctx
 coverClauses ctx = do
   tableau <- get
   let skipped = tableau & clauses_.traversed.patterns_ %~ tail
