@@ -272,14 +272,14 @@ coverTableau tableau context = run (execEmpty (go context tableau))
 
 coverClauses :: Has Empty sig m => Type -> Tableau -> m ([Type], Tableau)
 coverClauses ty tableau = case ty of
-  T.String   -> ([], skip) <$ guard (eachClauseHead isCatchAll)
+  T.String   -> ([], skip) <$ eachClauseHead isCatchAll
   -- FIXME: type patterns to bind type variables?
-  T.ForAll{} -> ([], skip) <$ guard (eachClauseHead isCatchAll)
-  T.Arrow{}  -> ([], skip) <$ guard (eachClauseHead isCatchAll)
+  T.ForAll{} -> ([], skip) <$ eachClauseHead isCatchAll
+  T.Arrow{}  -> ([], skip) <$ eachClauseHead isCatchAll
   T.Ne{}     -> empty
   T.Comp{}   -> empty -- resolve signature, then treat as effect patterns
   where
-  eachClauseHead f = allOf (clauses_.folded.patterns_.folded) f tableau
+  eachClauseHead f = guard (allOf (clauses_.folded.patterns_.folded) f tableau)
   skip = tableau & clauses_.traversed.patterns_ %~ tail
 
 isCatchAll :: Pattern a -> Bool
