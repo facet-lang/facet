@@ -43,7 +43,8 @@ import           Facet.Syntax
 import           Facet.Term.Expr
 import           Facet.Type.Norm
 import           Fresnel.Fold (preview)
-import           Fresnel.Iso (Iso, coerced, iso)
+import           Fresnel.Getter (view)
+import           Fresnel.Iso (Iso, coerced, fmapping, iso)
 import           Fresnel.Lens (Lens', lens)
 import           Fresnel.Prism
 import           Fresnel.Review (review)
@@ -85,14 +86,14 @@ foldMapC f = getChoosing #. foldMap (Choosing #. f)
 
 
 lookupC :: Has (Choose :+: Empty) sig m => Name -> Module -> m (RName :=: Maybe Term ::: Type)
-lookupC n Module{ name, scope } = foldMapC matchDef (decls scope)
+lookupC n Module{ name, scope } = foldMapC matchDef (map def (decls scope))
   where
   matchDef = matchTerm <=< lookupScope n . tm <=< unDData
   matchTerm (n :=: d) = (name :.: n :=:) <$> unDTerm d
 
 -- | Look up effect operations.
 lookupE :: Has (Choose :+: Empty) sig m => Name -> Module -> m (RName :=: Def)
-lookupE n Module{ name, scope } = foldMapC matchDef (decls scope)
+lookupE n Module{ name, scope } = foldMapC matchDef (map def (decls scope))
   where
   matchDef = fmap (bimap (name:.:) (DTerm Nothing)) . lookupScope n . tm <=< unDInterface
 
@@ -100,23 +101,23 @@ lookupD :: Has Empty sig m => Name -> Module -> m (RName :=: Def)
 lookupD n Module{ name, scope } = maybe empty (pure . first (name:.:)) (lookupScope n scope)
 
 
-newtype Scope a = Scope { decls :: Map.Map Name a }
+newtype Scope a = Scope { decls :: [Name :=: a] }
   deriving (Monoid, Semigroup)
 
 decls_ :: Iso (Scope a) (Scope b) (Map.Map Name a) (Map.Map Name b)
-decls_ = coerced
+decls_ = toList_.fmapping pair_.iso Map.fromList Map.toList
 
 toList_ :: Iso (Scope a) (Scope b) [Name :=: a] [Name :=: b]
-toList_ = iso scopeToList scopeFromList
+toList_ = coerced
 
 scopeFromList :: [Name :=: a] -> Scope a
-scopeFromList = Scope . Map.fromList . map (\ (n :=: v) -> (n, v))
+scopeFromList = review toList_
 
 scopeToList :: Scope a -> [Name :=: a]
-scopeToList = map (uncurry (:=:)) . Map.toList . decls
+scopeToList = view toList_
 
 lookupScope :: Has Empty sig m => Name -> Scope a -> m (Name :=: a)
-lookupScope n (Scope ds) = maybe empty (pure . (n :=:)) (Map.lookup n ds)
+lookupScope n (Scope ds) = maybe empty (pure . (n :=:)) (lookup n (map (\ (n :=: a) -> (n, a)) ds))
 
 
 newtype Import = Import { name :: MName }
