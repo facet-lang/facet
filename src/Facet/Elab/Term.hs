@@ -267,7 +267,7 @@ type Ctx = [Type]
 coverTableau :: (HasCallStack, Has (Reader ElabContext) sig m, Has (Reader StaticContext) sig m, Has (State (Subst Type)) sig m, Has (Throw Err) sig m) => Tableau -> Ctx -> m Bool
 coverTableau tableau context = runNonDet (liftA2 (&&)) (const (pure True)) (pure False) (coverClauses tableau context)
 
-coverClauses :: (HasCallStack, Has Choose sig m, Has Empty sig m, Has (Reader ElabContext) sig m, Has (Reader StaticContext) sig m, Has (State (Subst Type)) sig m, Has (Throw Err) sig m) => Tableau -> Ctx -> m (Tableau, Ctx)
+coverClauses :: (HasCallStack, Has Choose sig m, Has Empty sig m, Has (Reader ElabContext) sig m, Has (Reader StaticContext) sig m, Has (State (Subst Type)) sig m, Has (Throw Err) sig m) => Tableau -> Ctx -> m ()
 coverClauses tableau ctx = do
   let decomposeSum = \case
         []   -> eachClauseHead isCatchAll tableau *> coverClauses (dropClauseHead tableau) ctx
@@ -287,7 +287,7 @@ coverClauses tableau ctx = do
         _                                -> empty
       _        -> empty
     T.Comp{}:_     -> empty -- resolve signature, then treat as effect patterns
-    []             -> (tableau, ctx) <$ eachClauseHead null tableau
+    []             -> eachClauseHead null tableau
 
 dropClauseHead :: Tableau -> Tableau
 dropClauseHead = clauses_.traversed.patterns_ %~ drop 1
