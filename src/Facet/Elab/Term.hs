@@ -57,7 +57,7 @@ import           Data.Bifunctor (first)
 import           Data.Either (partitionEithers)
 import           Data.Foldable
 import           Data.Functor
-import           Data.Maybe (catMaybes, fromMaybe, listToMaybe)
+import           Data.Maybe (catMaybes, fromMaybe, isJust, listToMaybe)
 import           Data.Monoid (Ap(..), First(..))
 import qualified Data.Set as Set
 import           Data.Text (Text)
@@ -93,10 +93,11 @@ import           Facet.Type.Norm as T hiding (global)
 import           Facet.Unify
 import           Facet.Usage hiding (restrict)
 import           Fresnel.At as At
-import           Fresnel.Fold (allOf, folded)
+import           Fresnel.Fold (Fold, Union(..), allOf, folded, preview)
+import           Fresnel.Getter (to)
 import           Fresnel.Iso (Iso', coerced)
 import           Fresnel.Ixed
-import           Fresnel.Prism (Prism', is)
+import           Fresnel.Prism (Prism')
 import           Fresnel.Review (review)
 import           Fresnel.Setter (Setter', (%~))
 import           Fresnel.Traversal (Traversal', traversed)
@@ -296,10 +297,10 @@ eachClauseHead :: Has Empty sig m => (Pattern () -> Bool) -> Tableau -> m ()
 eachClauseHead pred = guard . allOf (clauses_.folded.patterns_.folded) pred
 
 isCatchAll :: Pattern a -> Bool
-isCatchAll = is _PWildcard ||| is _PVar
+isCatchAll = isJust . preview (_PWildcard ||| _PVar)
 
-(|||) :: (a -> Bool) -> (a -> Bool) -> (a -> Bool)
-(|||) = liftA2 (||)
+(|||) :: Fold s a1 -> Fold s a2 -> Fold s ()
+p ||| q = getUnion (Union (p . to (const ())) <> Union (q . to (const ())))
 
 infixr 2 |||
 
