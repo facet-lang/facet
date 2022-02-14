@@ -1,4 +1,3 @@
-{-# LANGUAGE ImportQualifiedPost #-}
 module Facet.Type.Norm
 ( -- * Types
   Type(..)
