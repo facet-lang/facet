@@ -270,11 +270,6 @@ coverTableau tableau context = runNonDet (liftA2 (&&)) (const (pure True)) (pure
 
 coverClauses :: (HasCallStack, Has Choose sig m, Has Empty sig m, Has (Reader ElabContext) sig m, Has (Reader StaticContext) sig m, Has (State (Subst Type)) sig m, Has (Throw Err) sig m) => Tableau -> Ctx -> m ()
 coverClauses tableau ctx = do
-  let decomposeSum tableau = \case
-        []   -> eachClauseHead isCatchAll tableau *> coverClauses (dropClauseHead tableau) ctx
-        [x]  -> decomposeProduct tableau x
-        -- FIXME: construct binary tree of eliminations
-        x:xs -> decomposeProduct tableau x <|> decomposeSum tableau xs
   case ctx of
     T.String:ctx   -> eachClauseHead isCatchAll tableau *> coverClauses (dropClauseHead tableau) ctx
     -- FIXME: type patterns to bind type variables?
@@ -282,11 +277,18 @@ coverClauses tableau ctx = do
     T.Arrow{}:ctx  -> eachClauseHead isCatchAll tableau *> coverClauses (dropClauseHead tableau) ctx
     T.Ne h _:_     -> case h of
       Global n -> resolveQ (toQ n) >>= \case
-        _ :=: DSubmodule (SData scope) _ -> decomposeSum tableau (scopeToList scope)
+        _ :=: DSubmodule (SData scope) _ -> decomposeSum tableau ctx (scopeToList scope)
         _                                -> empty
       _        -> empty
     T.Comp{}:_     -> empty -- resolve signature, then treat as effect patterns
     []             -> eachClauseHead null tableau
+
+decomposeSum :: (HasCallStack, Has Choose sig m, Has Empty sig m, Has (Reader ElabContext) sig m, Has (Reader StaticContext) sig m, Has (State (Subst Type)) sig m, Has (Throw Err) sig m) => Tableau -> Ctx -> [Name :=: Def] -> m ()
+decomposeSum tableau ctx = \case
+  []   -> eachClauseHead isCatchAll tableau *> coverClauses (dropClauseHead tableau) ctx
+  [x]  -> decomposeProduct tableau x
+  -- FIXME: construct binary tree of eliminations
+  x:xs -> decomposeProduct tableau x <|> decomposeSum tableau ctx xs
 
 decomposeProduct :: Has Empty sig m => Tableau -> Name :=: Def -> m a
 decomposeProduct _tableau = \case
