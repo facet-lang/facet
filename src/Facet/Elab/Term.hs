@@ -272,10 +272,10 @@ coverClauses :: (HasCallStack, Has Choose sig m, Has Empty sig m, Has (Reader El
 coverClauses tableau ctx = do
   let decomposeSum tableau = \case
         []   -> eachClauseHead isCatchAll tableau *> coverClauses (dropClauseHead tableau) ctx
-        [x]  -> decomposeProduct x
+        [x]  -> decomposeProduct tableau x
         -- FIXME: construct binary tree of eliminations
-        x:xs -> decomposeProduct x <|> decomposeSum tableau xs
-      decomposeProduct = \case
+        x:xs -> decomposeProduct tableau x <|> decomposeSum tableau xs
+      decomposeProduct _tableau = \case
         _ -> empty
   case ctx of
     T.String:ctx   -> eachClauseHead isCatchAll tableau *> coverClauses (dropClauseHead tableau) ctx
