@@ -270,11 +270,11 @@ coverTableau tableau context = runNonDet (liftA2 (&&)) (const (pure True)) (pure
 
 coverClauses :: (HasCallStack, Has Choose sig m, Has Empty sig m, Has (Reader ElabContext) sig m, Has (Reader StaticContext) sig m, Has (State (Subst Type)) sig m, Has (Throw Err) sig m) => Tableau -> Ctx -> m ()
 coverClauses tableau ctx = do
-  let decomposeSum = \case
+  let decomposeSum tableau = \case
         []   -> eachClauseHead isCatchAll tableau *> coverClauses (dropClauseHead tableau) ctx
         [x]  -> decomposeProduct x
         -- FIXME: construct binary tree of eliminations
-        x:xs -> decomposeProduct x <|> decomposeSum xs
+        x:xs -> decomposeProduct x <|> decomposeSum tableau xs
       decomposeProduct = \case
         _ -> empty
   case ctx of
@@ -284,7 +284,7 @@ coverClauses tableau ctx = do
     T.Arrow{}:ctx  -> eachClauseHead isCatchAll tableau *> coverClauses (dropClauseHead tableau) ctx
     T.Ne h _:_     -> case h of
       Global n -> resolveQ (toQ n) >>= \case
-        _ :=: DSubmodule (SData scope) _ -> decomposeSum (scopeToList scope)
+        _ :=: DSubmodule (SData scope) _ -> decomposeSum tableau (scopeToList scope)
         _                                -> empty
       _        -> empty
     T.Comp{}:_     -> empty -- resolve signature, then treat as effect patterns
