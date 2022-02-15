@@ -269,19 +269,18 @@ coverTableau :: (HasCallStack, Has (Reader ElabContext) sig m, Has (Reader Stati
 coverTableau tableau context = runNonDet (liftA2 (&&)) (const (pure True)) (pure False) (coverClauses tableau context)
 
 coverClauses :: (HasCallStack, Has Choose sig m, Has Empty sig m, Has (Reader ElabContext) sig m, Has (Reader StaticContext) sig m, Has (State (Subst Type)) sig m, Has (Throw Err) sig m) => Tableau -> Ctx -> m ()
-coverClauses tableau ctx = do
-  case ctx of
-    T.String:ctx   -> eachClauseHead isCatchAll tableau *> coverClauses (dropClauseHead tableau) ctx
-    -- FIXME: type patterns to bind type variables?
-    T.ForAll{}:ctx -> eachClauseHead isCatchAll tableau *> coverClauses (dropClauseHead tableau) ctx
-    T.Arrow{}:ctx  -> eachClauseHead isCatchAll tableau *> coverClauses (dropClauseHead tableau) ctx
-    T.Ne h _:_     -> case h of
-      Global n -> resolveQ (toQ n) >>= \case
-        _ :=: DSubmodule (SData scope) _ -> decomposeSum tableau ctx (scopeToList scope)
-        _                                -> empty
-      _        -> empty
-    T.Comp{}:_     -> empty -- resolve signature, then treat as effect patterns
-    []             -> eachClauseHead null tableau
+coverClauses tableau = \case
+  T.String:ctx   -> eachClauseHead isCatchAll tableau *> coverClauses (dropClauseHead tableau) ctx
+  -- FIXME: type patterns to bind type variables?
+  T.ForAll{}:ctx -> eachClauseHead isCatchAll tableau *> coverClauses (dropClauseHead tableau) ctx
+  T.Arrow{}:ctx  -> eachClauseHead isCatchAll tableau *> coverClauses (dropClauseHead tableau) ctx
+  c@(T.Ne h _:_) -> case h of
+    Global n -> resolveQ (toQ n) >>= \case
+      _ :=: DSubmodule (SData scope) _ -> decomposeSum tableau c (scopeToList scope)
+      _                                -> empty
+    _        -> empty
+  T.Comp{}:_     -> empty -- resolve signature, then treat as effect patterns
+  []             -> eachClauseHead null tableau
 
 decomposeSum :: (HasCallStack, Has Choose sig m, Has Empty sig m, Has (Reader ElabContext) sig m, Has (Reader StaticContext) sig m, Has (State (Subst Type)) sig m, Has (Throw Err) sig m) => Tableau -> Ctx -> [Name :=: Def] -> m ()
 decomposeSum tableau ctx = \case
