@@ -275,8 +275,6 @@ coverClauses tableau ctx = do
         [x]  -> decomposeProduct tableau x
         -- FIXME: construct binary tree of eliminations
         x:xs -> decomposeProduct tableau x <|> decomposeSum tableau xs
-      decomposeProduct _tableau = \case
-        _ -> empty
   case ctx of
     T.String:ctx   -> eachClauseHead isCatchAll tableau *> coverClauses (dropClauseHead tableau) ctx
     -- FIXME: type patterns to bind type variables?
@@ -289,6 +287,10 @@ coverClauses tableau ctx = do
       _        -> empty
     T.Comp{}:_     -> empty -- resolve signature, then treat as effect patterns
     []             -> eachClauseHead null tableau
+
+decomposeProduct :: Has Empty sig m => Tableau -> Name :=: Def -> m a
+decomposeProduct _tableau = \case
+  _ -> empty
 
 dropClauseHead :: Tableau -> Tableau
 dropClauseHead = clauses_.traversed.patterns_ %~ drop 1
