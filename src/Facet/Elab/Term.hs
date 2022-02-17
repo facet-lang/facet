@@ -291,7 +291,8 @@ coverClauses tableau = \case
 
 decomposeSum :: (HasCallStack, Has NonDet sig m, Has (Reader ElabContext) sig m, Has (Reader StaticContext) sig m, Has (State (Subst Type)) sig m, Has (Throw Err) sig m) => Tableau -> Ctx -> [Name :=: Def] -> m ()
 decomposeSum tableau ctx = \case
-  []   -> eachClauseHead isCatchAll tableau *> coverClauses (dropClauseHead tableau) ctx
+  []   -> everyClauseHead tableau
+    [ Branch (_PWildcard ||| _PVar) (const (coverClauses (dropClauseHead tableau) ctx)) ]
   [x]  -> decomposeProduct tableau x
   -- FIXME: construct binary tree of eliminations
   x:xs -> decomposeProduct tableau x <|> decomposeSum tableau ctx xs
@@ -310,9 +311,6 @@ everyClauseHead :: Has Empty sig m => Tableau -> [Branch (Pattern ()) m] -> m ()
 everyClauseHead tableau = go where
   go []              = empty
   go (Branch b k:bs) = forOf_ (clauses_.folded.patterns_.head_) tableau (maybe (go bs) k . preview b)
-
-isCatchAll :: Pattern a -> Bool
-isCatchAll = isJust . preview (_PWildcard ||| _PVar)
 
 (|||) :: Fold s a1 -> Fold s a2 -> Fold s ()
 p ||| q = getUnion (Union (p . to (const ())) <> Union (q . to (const ())))
