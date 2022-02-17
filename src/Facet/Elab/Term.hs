@@ -306,7 +306,7 @@ dropClauseHead = clauses_.traversed.patterns_ %~ drop 1
 eachClauseHead :: Has Empty sig m => (Pattern () -> Bool) -> Tableau -> m ()
 eachClauseHead pred = guard . allOf (clauses_.folded.patterns_.folded) pred
 
-everyClauseHead :: Has NonDet sig m => Tableau -> [Branch (Pattern ()) m] -> m ()
+everyClauseHead :: Has Empty sig m => Tableau -> [Branch (Pattern ()) m] -> m ()
 everyClauseHead tableau = go where
   go []              = empty
   go (Branch b k:bs) = forOf_ (clauses_.folded.patterns_.head_) tableau (maybe (go bs) k . preview b)
