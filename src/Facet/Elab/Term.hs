@@ -272,7 +272,7 @@ data Branch s m = forall x . Branch (Fold s x) (x -> m ())
 coverTableau :: (HasCallStack, Has (Reader ElabContext) sig m, Has (Reader StaticContext) sig m, Has (State (Subst Type)) sig m, Has (Throw Err) sig m) => Tableau -> Ctx -> m Bool
 coverTableau tableau context = runNonDet (liftA2 (&&)) (const (pure True)) (pure False) (coverClauses tableau context)
 
-coverClauses :: (HasCallStack, Has Choose sig m, Has Empty sig m, Has (Reader ElabContext) sig m, Has (Reader StaticContext) sig m, Has (State (Subst Type)) sig m, Has (Throw Err) sig m) => Tableau -> Ctx -> m ()
+coverClauses :: (HasCallStack, Has NonDet sig m, Has (Reader ElabContext) sig m, Has (Reader StaticContext) sig m, Has (State (Subst Type)) sig m, Has (Throw Err) sig m) => Tableau -> Ctx -> m ()
 coverClauses tableau = \case
   T.String:ctx   -> everyClauseHead tableau
     [ Branch (_PWildcard ||| _PVar) (const (coverClauses (dropClauseHead tableau) ctx)) ]
@@ -289,7 +289,7 @@ coverClauses tableau = \case
   T.Comp{}:_     -> empty -- resolve signature, then treat as effect patterns
   []             -> eachClauseHead null tableau
 
-decomposeSum :: (HasCallStack, Has Choose sig m, Has Empty sig m, Has (Reader ElabContext) sig m, Has (Reader StaticContext) sig m, Has (State (Subst Type)) sig m, Has (Throw Err) sig m) => Tableau -> Ctx -> [Name :=: Def] -> m ()
+decomposeSum :: (HasCallStack, Has NonDet sig m, Has (Reader ElabContext) sig m, Has (Reader StaticContext) sig m, Has (State (Subst Type)) sig m, Has (Throw Err) sig m) => Tableau -> Ctx -> [Name :=: Def] -> m ()
 decomposeSum tableau ctx = \case
   []   -> eachClauseHead isCatchAll tableau *> coverClauses (dropClauseHead tableau) ctx
   [x]  -> decomposeProduct tableau x
