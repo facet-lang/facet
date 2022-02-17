@@ -1,3 +1,4 @@
+{-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE ImplicitParams #-}
 {-# LANGUAGE OverloadedStrings #-}
 module Facet.Elab.Term
@@ -93,10 +94,11 @@ import           Facet.Type.Norm as T hiding (global)
 import           Facet.Unify
 import           Facet.Usage hiding (restrict)
 import           Fresnel.At as At
-import           Fresnel.Fold (Fold, Union(..), allOf, folded, preview)
+import           Fresnel.Fold (Fold, Union(..), allOf, folded, forOf_, preview)
 import           Fresnel.Getter (to)
 import           Fresnel.Iso (Iso', coerced)
 import           Fresnel.Ixed
+import           Fresnel.List (head_)
 import           Fresnel.Prism (Prism')
 import           Fresnel.Review (review)
 import           Fresnel.Setter (Setter', (%~))
@@ -265,15 +267,20 @@ clauses_ = coerced
 
 type Ctx = [Type]
 
+data Branch s m = forall x . Branch (Fold s x) (x -> m ())
+
 coverTableau :: (HasCallStack, Has (Reader ElabContext) sig m, Has (Reader StaticContext) sig m, Has (State (Subst Type)) sig m, Has (Throw Err) sig m) => Tableau -> Ctx -> m Bool
 coverTableau tableau context = runNonDet (liftA2 (&&)) (const (pure True)) (pure False) (coverClauses tableau context)
 
 coverClauses :: (HasCallStack, Has Choose sig m, Has Empty sig m, Has (Reader ElabContext) sig m, Has (Reader StaticContext) sig m, Has (State (Subst Type)) sig m, Has (Throw Err) sig m) => Tableau -> Ctx -> m ()
 coverClauses tableau = \case
-  T.String:ctx   -> eachClauseHead isCatchAll tableau *> coverClauses (dropClauseHead tableau) ctx
+  T.String:ctx   -> everyClauseHead tableau
+    [ Branch (_PWildcard ||| _PVar) (const (coverClauses (dropClauseHead tableau) ctx)) ]
   -- FIXME: type patterns to bind type variables?
-  T.ForAll{}:ctx -> eachClauseHead isCatchAll tableau *> coverClauses (dropClauseHead tableau) ctx
-  T.Arrow{}:ctx  -> eachClauseHead isCatchAll tableau *> coverClauses (dropClauseHead tableau) ctx
+  T.ForAll{}:ctx -> everyClauseHead tableau
+    [ Branch (_PWildcard ||| _PVar) (const (coverClauses (dropClauseHead tableau) ctx)) ]
+  T.Arrow{}:ctx  -> everyClauseHead tableau
+    [ Branch (_PWildcard ||| _PVar) (const (coverClauses (dropClauseHead tableau) ctx)) ]
   c@(T.Ne h _:_) -> case h of
     Global n -> resolveQ (toQ n) >>= \case
       _ :=: DSubmodule (SData scope) _ -> decomposeSum tableau c (scopeToList scope)
@@ -298,6 +305,11 @@ dropClauseHead = clauses_.traversed.patterns_ %~ drop 1
 
 eachClauseHead :: Has Empty sig m => (Pattern () -> Bool) -> Tableau -> m ()
 eachClauseHead pred = guard . allOf (clauses_.folded.patterns_.folded) pred
+
+everyClauseHead :: Has NonDet sig m => Tableau -> [Branch (Pattern ()) m] -> m ()
+everyClauseHead tableau = go where
+  go []              = empty
+  go (Branch b k:bs) = forOf_ (clauses_.folded.patterns_.head_) tableau (maybe (go bs) k . preview b)
 
 isCatchAll :: Pattern a -> Bool
 isCatchAll = isJust . preview (_PWildcard ||| _PVar)
