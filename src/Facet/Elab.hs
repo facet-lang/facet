@@ -20,6 +20,7 @@ module Facet.Elab
 , ErrReason(..)
 , UnifyErrReason(..)
 , _Mismatch
+, _Occurs
 , err
 , makeErr
 , couldNotUnify
@@ -222,6 +223,11 @@ _Mismatch :: Prism' UnifyErrReason ()
 _Mismatch = prism' (const Mismatch) (\case
   Mismatch -> Just ()
   _        -> Nothing)
+
+_Occurs :: Prism' UnifyErrReason (Meta, Classifier)
+_Occurs = prism' (uncurry Occurs) (\case
+  Occurs v c -> Just (v, c)
+  _          -> Nothing)
 
 applySubst :: Context -> Subst Type -> ErrReason -> ErrReason
 applySubst ctx subst r = case r of
