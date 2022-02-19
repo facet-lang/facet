@@ -58,7 +58,7 @@ import           Data.Bifunctor (first)
 import           Data.Either (partitionEithers)
 import           Data.Foldable
 import           Data.Functor
-import           Data.Maybe (catMaybes, fromMaybe, isJust, listToMaybe)
+import           Data.Maybe (catMaybes, fromMaybe, listToMaybe)
 import           Data.Monoid (Ap(..), First(..))
 import qualified Data.Set as Set
 import           Data.Text (Text)
