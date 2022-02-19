@@ -1,6 +1,6 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE UndecidableInstances #-}
-module Facet.Carrier.Error.Lens
+module Facet.Carrier.Error.Optic
 ( -- * Error carrier
   runError
 , ErrorC(..)

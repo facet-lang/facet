@@ -60,14 +60,14 @@ common common
 library
   import: common
   exposed-modules:
-    Facet.Carrier.Error.Lens
+    Facet.Carrier.Error.Optic
     Facet.Carrier.Output.IO
     Facet.Carrier.Parser.Church
     Facet.Carrier.Profile.Flat
     Facet.Carrier.Profile.Identity
     Facet.Carrier.Profile.Tree
     Facet.Carrier.Readline.Haskeline
-    Facet.Carrier.State.Lens
+    Facet.Carrier.State.Optic
     Facet.Carrier.Throw.Inject
     Facet.Carrier.Time.System
     Facet.Carrier.Write.General

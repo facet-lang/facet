@@ -1,6 +1,6 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE UndecidableInstances #-}
-module Facet.Carrier.State.Lens
+module Facet.Carrier.State.Optic
 ( -- * State carrier
   runState
 , StateC(..)
