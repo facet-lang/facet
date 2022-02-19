@@ -18,6 +18,7 @@ module Facet.Elab
 , pushSpan
 , Err(..)
 , ErrReason(..)
+, _FreeVariable
 , UnifyErrReason(..)
 , _Mismatch
 , _Occurs
@@ -214,6 +215,11 @@ data ErrReason
   | Hole Name Classifier
   | Invariant String
   | MissingInterface (Interface Type)
+
+_FreeVariable :: Prism' ErrReason QName
+_FreeVariable = prism' FreeVariable (\case
+  FreeVariable n -> Just n
+  _              -> Nothing)
 
 data UnifyErrReason
   = Mismatch
