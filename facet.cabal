@@ -60,6 +60,7 @@ common common
 library
   import: common
   exposed-modules:
+    Facet.Carrier.CallStack.Stack
     Facet.Carrier.Error.Optic
     Facet.Carrier.Output.IO
     Facet.Carrier.Parser.Church
