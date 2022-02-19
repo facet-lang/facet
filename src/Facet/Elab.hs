@@ -19,6 +19,7 @@ module Facet.Elab
 , Err(..)
 , ErrReason(..)
 , _FreeVariable
+, _AmbiguousName
 , UnifyErrReason(..)
 , _Mismatch
 , _Occurs
@@ -220,6 +221,11 @@ _FreeVariable :: Prism' ErrReason QName
 _FreeVariable = prism' FreeVariable (\case
   FreeVariable n -> Just n
   _              -> Nothing)
+
+_AmbiguousName :: Prism' ErrReason (QName, [RName])
+_AmbiguousName = prism' (uncurry AmbiguousName) (\case
+  AmbiguousName n ns -> Just (n, ns)
+  _                  -> Nothing)
 
 data UnifyErrReason
   = Mismatch
