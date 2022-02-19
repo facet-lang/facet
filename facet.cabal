@@ -76,6 +76,7 @@ library
     Facet.Context
     Facet.Diff
     Facet.Driver
+    Facet.Effect.CallStack
     Facet.Effect.Parser
     Facet.Effect.Profile
     Facet.Effect.Readline
