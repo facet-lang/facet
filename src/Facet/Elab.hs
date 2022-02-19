@@ -19,6 +19,7 @@ module Facet.Elab
 , Err(..)
 , ErrReason(..)
 , UnifyErrReason(..)
+, _Mismatch
 , err
 , makeErr
 , couldNotUnify
@@ -87,7 +88,7 @@ import           Facet.Usage as Usage
 import           Facet.Vars as Vars
 import           Fresnel.Fold ((^?))
 import           Fresnel.Lens (Lens', lens)
-import           Fresnel.Prism (Prism')
+import           Fresnel.Prism (Prism', prism')
 import           GHC.Stack
 import           Prelude hiding (span, zipWith)
 
@@ -216,6 +217,11 @@ data ErrReason
 data UnifyErrReason
   = Mismatch
   | Occurs Meta Classifier
+
+_Mismatch :: Prism' UnifyErrReason ()
+_Mismatch = prism' (const Mismatch) (\case
+  Mismatch -> Just ()
+  _        -> Nothing)
 
 applySubst :: Context -> Subst Type -> ErrReason -> ErrReason
 applySubst ctx subst r = case r of
