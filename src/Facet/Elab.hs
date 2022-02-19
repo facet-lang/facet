@@ -1,4 +1,6 @@
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE UndecidableInstances #-}
 -- | This module defines the /elaboration/ of terms in 'S.Expr' into values in 'Type'.
 --
 -- Elaboration is the only way 'Type's are constructed from untrusted terms, and so typechecking is performed at this point. If elaboration succeeds and a 'Type' is returned, that 'Type' does not require further verification; hence, 'Type's elide source span information.
@@ -266,6 +268,15 @@ ambiguousName n qs = withFrozenCallStack $ err $ AmbiguousName n qs
 
 missingInterface :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err) sig m) => Interface Type -> m a
 missingInterface i = withFrozenCallStack $ err $ MissingInterface i
+
+
+newtype ErrC m a = ErrC { runErr :: m a }
+  deriving (Applicative, Functor, Monad)
+
+instance Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err) sig m => Algebra (Throw ErrReason :+: sig) (ErrC m) where
+  alg hdl sig ctx = case sig of
+    L (Throw e) -> err e
+    R other     -> ErrC (alg (runErr . hdl) other ctx)
 
 
 -- Warnings
