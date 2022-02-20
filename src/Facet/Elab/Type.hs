@@ -46,7 +46,7 @@ ivar n = resolveQ n >>= \case
     _                                  -> freeVariable n
 
 
-_String :: Elab m (TX.Type :==> Kind)
+_String :: Applicative m => m (TX.Type :==> Kind)
 _String = pure $ TX.String :==> KType
 
 
