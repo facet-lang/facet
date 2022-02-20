@@ -16,28 +16,31 @@ module Facet.Source
 import           Control.Exception (assert)
 import qualified Data.List.NonEmpty as NE
 import           Data.Monoid (Endo(..))
+import qualified Facet.Source.Reference as R
 import qualified Facet.Span as Span
 import           Fresnel.Lens (Lens', lens)
 import           Prelude hiding (lines, span)
 import qualified Prettyprinter as P
 
 data Source = Source
-  { path     :: Maybe FilePath
-  , span     :: Span.Span
-  , contents :: String -- FIXME: Text
-  , lines    :: NE.NonEmpty Line
+  { reference :: R.Reference
+  , contents  :: String -- FIXME: Text
+  , lines     :: NE.NonEmpty Line
   }
   deriving (Eq, Ord, Show)
 
+reference_ :: Lens' Source R.Reference
+reference_ = lens reference  $ \ e reference -> e{ reference }
+
 path_ :: Lens' Source (Maybe FilePath)
-path_ = lens path $ \ e path -> e{ path }
+path_ = reference_. R.path_
 {-# INLINE path_ #-}
 
 -- | A lens over the 'Span.Span' from a 'Source'.
 --
 -- Note that it is the caller’s responsibility to ensure that this span and the 'lines' are in agreement as to line numbers.
 span_ :: Lens' Source Span.Span
-span_ = lens span $ \ e span -> e{ span }
+span_ = reference_. R.span_
 {-# INLINE span_ #-}
 
 -- | A lens over a 'Source'’s contents.
@@ -74,7 +77,7 @@ instance P.Pretty LineEnding where
 
 
 sourceFromString :: Maybe FilePath -> Int -> String -> Source
-sourceFromString path line contents = Source path span contents lines
+sourceFromString path line contents = Source (R.Reference path span) contents lines
   where
   span = Span.Span (Span.Pos line 0) (let Line i s e = NE.last lines in Span.Pos i (length s + case e of
     EOF  -> 0
@@ -107,7 +110,7 @@ src ! pos = NE.head $ src !.. Span.Span pos pos
 infixl 9 !
 
 (!..) :: Source -> Span.Span -> NE.NonEmpty Line
-Source _ _ _ lines !.. span
+Source _ _ lines !.. span
   = assert (endLine >= startLine)
   $ NE.fromList
   $ takeWhile (\ (Line i _ _) -> i <= endLine)
@@ -121,7 +124,7 @@ infixl 9 !..
 
 
 slice :: Source -> Span.Span -> Source
-slice (Source path _ _ lines) span' = Source path span' contents' lines'
+slice (Source (R.Reference path _) _ lines) span' = Source (R.Reference path span') contents' lines'
   where
   contents' = appEndo (foldMap (\ (Line _ s e) -> Endo (s <>) <> case e of
     EOF  -> mempty

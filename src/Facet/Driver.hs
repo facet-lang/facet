@@ -47,6 +47,7 @@ import           Facet.Pretty
 import           Facet.Print (Options, Print)
 import           Facet.Snoc
 import           Facet.Source
+import           Facet.Source.Reference
 import           Facet.Style
 import qualified Facet.Surface.Module as Import (Import(..))
 import           Facet.Syntax as S
@@ -109,7 +110,7 @@ reloadModules = do
     case loaded of
       Just loaded -> (Just <$> do
         outputDocLn $ annotate Progress (brackets (ratio (i :: Int) nModules)) <+> nest 2 (group (fillSep [ pretty "Loading", prettyMName name ]))
-        storeModule name (path src) =<< loadModule graph loaded)
+        storeModule name (path (reference src)) =<< loadModule graph loaded)
         `catchError` \ err -> Nothing <$ outputDocLn (prettyNotice err)
       Nothing -> do
         outputDocLn $ annotate Progress (brackets (ratio i nModules)) <+> nest 2 (group (fillSep [ pretty "Skipping", prettyMName name ]))

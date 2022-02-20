@@ -15,6 +15,7 @@ import           Facet.Graph
 import           Facet.Lens
 import           Facet.Print (Print, quietOptions)
 import           Facet.Source as Source
+import           Facet.Source.Reference as Source
 import           Facet.Style
 import           Fresnel.At
 import           Fresnel.Getter ((^.))
@@ -28,7 +29,7 @@ runFile searchPaths path = runStack $ do
   ExitSuccess <$ for_ modules (\ h@(ModuleHeader name src _) -> do
     graph <- use modules_
     let loaded = traverse (\ name -> graph^.at name >>= snd) h
-    for_ loaded (storeModule name (Source.path src) <=< loadModule graph))
+    for_ loaded (storeModule name (Source.path (Source.reference src)) <=< loadModule graph))
   where
   runStack
     = runOutput
