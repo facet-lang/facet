@@ -1,2 +1,10 @@
 module Facet.Source.Reference
-() where
+( Reference(..)
+) where
+
+import qualified Facet.Span as Span
+
+data Reference = Reference
+  { path :: Maybe FilePath
+  , span :: Span.Span
+  }
