@@ -2,7 +2,8 @@
 {-# LANGUAGE UndecidableInstances #-}
 module Facet.Carrier.CallStack.Stack
 ( -- * CallStack carrier
-  CallStackC(..)
+  runCallStack
+, CallStackC(..)
   -- * CallStack effect
 , module Facet.Effect.CallStack
 ) where
@@ -10,6 +11,9 @@ module Facet.Carrier.CallStack.Stack
 import Control.Algebra
 import Control.Carrier.Reader
 import Facet.Effect.CallStack
+
+runCallStack :: CallStackC m a -> m a
+runCallStack = runReader [] . runCallStackC
 
 newtype CallStackC m a = CallStackC { runCallStackC :: ReaderC Stack m a }
   deriving (Applicative, Functor, Monad)
