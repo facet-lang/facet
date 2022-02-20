@@ -12,6 +12,7 @@ data Reference = Reference
   { path :: Maybe FilePath
   , span :: Span.Span
   }
+  deriving (Eq, Ord, Show)
 
 path_ :: Lens' Reference (Maybe FilePath)
 path_ = lens path $ \ e path -> e{ path }
