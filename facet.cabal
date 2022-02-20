@@ -124,6 +124,7 @@ library
     Facet.Snoc
     Facet.Snoc.NonEmpty
     Facet.Source
+    Facet.Source.Reference
     Facet.Span
     Facet.Style
     Facet.Subst
