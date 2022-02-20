@@ -7,13 +7,11 @@ module Facet.Carrier.CallStack.Stack
 , module Facet.Effect.CallStack
 ) where
 
-import           Control.Algebra
-import           Control.Carrier.Reader
-import qualified Data.Text as Text
-import           Facet.Effect.CallStack
-import qualified Facet.Span as Span
+import Control.Algebra
+import Control.Carrier.Reader
+import Facet.Effect.CallStack
 
-newtype CallStackC m a = CallStackC { runCallStackC :: ReaderC [(Text.Text, Span.Span)] m a }
+newtype CallStackC m a = CallStackC { runCallStackC :: ReaderC Stack m a }
   deriving (Applicative, Functor, Monad)
 
 instance Algebra sig m => Algebra (CallStack :+: sig) (CallStackC m) where
