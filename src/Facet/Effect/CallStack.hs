@@ -2,6 +2,7 @@
 module Facet.Effect.CallStack
 ( call
 , pushCallStack
+, Stack
 , callStack
 , CallStack(..)
 ) where
@@ -19,9 +20,11 @@ call m = case Stack.getCallStack Stack.callStack of
 pushCallStack :: Has CallStack sig m => Text -> Span.Span -> m a -> m a
 pushCallStack l s m = send (Push l s m)
 
-callStack :: Has CallStack sig m => m [(Text, Span.Span)]
+type Stack = [(Text, Span.Span)]
+
+callStack :: Has CallStack sig m => m Stack
 callStack = send CallStack
 
 data CallStack m a where
   Push :: Text -> Span.Span -> m a -> CallStack m a
-  CallStack :: CallStack m [(Text, Span.Span)]
+  CallStack :: CallStack m Stack
