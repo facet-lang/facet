@@ -365,7 +365,7 @@ bindPattern = withSpanB $ \case
 -- | Elaborate a type abstracted over another type’s parameters.
 --
 -- This is used to elaborate data constructors & effect operations, which receive the type/interface parameters as implicit parameters ahead of their own explicit ones.
-abstractType :: Algebra sig m => Elab m TX.Type -> Kind -> Elab m TX.Type
+abstractType :: Has (Reader ElabContext) sig m => m TX.Type -> Kind -> m TX.Type
 abstractType body = \case
   KArrow (Just n) a b -> TX.ForAll n a <$> (n :==> a ||- abstractType body b)
   _                   -> body
