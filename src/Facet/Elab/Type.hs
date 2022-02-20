@@ -11,6 +11,8 @@ module Facet.Elab.Type
 
 import           Control.Algebra
 import           Control.Applicative (liftA2)
+import           Control.Effect.Reader
+import           Control.Effect.State
 import           Control.Effect.Throw
 import           Control.Monad (unless)
 import           Data.Foldable (foldl')
@@ -24,6 +26,7 @@ import           Facet.Module
 import           Facet.Name
 import           Facet.Semiring (Few(..), one, zero)
 import           Facet.Snoc
+import           Facet.Subst
 import qualified Facet.Surface.Type.Expr as S
 import           Facet.Syntax as S hiding (context_)
 import qualified Facet.Type.Expr as TX
@@ -105,7 +108,7 @@ assertTypeConstructor = assertMatch _KArrow "_ -> _"
 
 -- Judgements
 
-switch :: (HasCallStack, Has (Throw Err) sig m) => Elab m (a :==> Kind) -> Kind <==: Elab m a
+switch :: (HasCallStack, Has (Reader ElabContext) sig m, Has (Reader StaticContext) sig m, Has (State (Subst Type)) sig m, Has (Throw Err) sig m) => m (a :==> Kind) -> Kind <==: m a
 switch m = Check $ \ _K -> do
   a :==> _KA <- m
   a <$ unless (_KA == _K) (couldNotUnify (Exp (CK _K)) (Act (CK _KA)))
