@@ -3,9 +3,3 @@ tests: True
 
 package facet
   ghc-options: -Werror
-
-source-repository-package
-  type: git
-  location: https://github.com/robrix/fresnel.git
-  tag: 573c4a0c7542e9e95a77b833fad7e37d2a31fc4e
-  subdir: fresnel
