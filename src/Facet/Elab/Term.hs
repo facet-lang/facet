@@ -94,7 +94,7 @@ import           Facet.Type.Norm as T hiding (global)
 import           Facet.Unify
 import           Facet.Usage hiding (restrict)
 import           Fresnel.At as At
-import           Fresnel.Fold (Fold, Union(..), allOf, folded, forOf_, preview)
+import           Fresnel.Fold (Fold, Union(..), allOf, folded, forOf_, has, preview)
 import           Fresnel.Getter (to)
 import           Fresnel.Iso (Iso', coerced)
 import           Fresnel.Ixed
@@ -291,15 +291,33 @@ coverClauses tableau = \case
 
 decomposeSum :: (HasCallStack, Has NonDet sig m, Has (Reader ElabContext) sig m, Has (Reader StaticContext) sig m, Has (State (Subst Type)) sig m, Has (Throw Err) sig m) => Tableau -> Ctx -> [Name :=: Def] -> m ()
 decomposeSum tableau ctx = \case
-  []   -> everyClauseHead tableau
-    [ Branch (_PWildcard ||| _PVar) (const (coverClauses (dropClauseHead tableau) ctx)) ]
-  [x]  -> decomposeProduct tableau x
-  -- FIXME: construct binary tree of eliminations
-  x:xs -> decomposeProduct tableau x <|> decomposeSum tableau ctx xs
+  [] -> empty
+  xs -> let partitions = tableauPartitions tableau ctx xs in getChoosing (foldMap (\ (tableau', ctx') -> Choosing (coverClauses tableau' ctx')) partitions)
 
-decomposeProduct :: Has Empty sig m => Tableau -> Name :=: Def -> m a
-decomposeProduct _tableau = \case
-  _ -> empty
+tableauPartitions :: Tableau -> Ctx -> [Name :=: Def] -> [(Tableau, Ctx)]
+-- FIXME: check for inapplicable patterns in tableau
+tableauPartitions _       _   []             = []
+tableauPartitions tableau ctx ((n :=: d):cs) =
+  let (tableau', tableau'') = partitionTableau tableau n in
+  case d of
+    DTerm _ ty -> (tableau', typeOf ty <> ctx):tableauPartitions tableau'' ctx cs
+    _          -> []
+
+partitionTableau :: Tableau -> Name -> (Tableau, Tableau)
+partitionTableau (Tableau clauses) name = (Tableau (filter matched clauses), Tableau (filter unmatched clauses))
+  where
+  matched (Clause (p:_)) = case p of
+    PWildcard          -> True
+    PVar _             -> True
+    PCon (_:.:name') _ -> name == name'
+    _                  -> False
+  matched _               = False
+  unmatched = has (patterns_.head_.(_PWildcard ||| _PVar))
+
+typeOf :: Type -> Ctx
+typeOf = \case
+  T.Arrow _ _ _A _B -> _A : typeOf _B
+  _T                -> [_T]
 
 dropClauseHead :: Tableau -> Tableau
 dropClauseHead = clauses_.traversed.patterns_ %~ drop 1
