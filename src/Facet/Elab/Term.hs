@@ -304,15 +304,12 @@ tableauPartitions tableau ctx ((n :=: d):cs) =
     _          -> []
 
 partitionTableau :: Tableau -> Name -> (Tableau, Tableau)
-partitionTableau (Tableau clauses) name = (Tableau (filter matched clauses), Tableau (filter unmatched clauses))
+partitionTableau (Tableau clauses) name =
+  ( Tableau (filter (has (patterns_.head_.(to        conMatches  ||| _PWildcard ||| _PVar))) clauses)
+  , Tableau (filter (has (patterns_.head_.(to (not . conMatches) ||| _PWildcard ||| _PVar))) clauses) )
   where
-  matched (Clause (p:_)) = case p of
-    PWildcard          -> True
-    PVar _             -> True
-    PCon (_:.:name') _ -> name == name'
-    _                  -> False
-  matched _               = False
-  unmatched = has (patterns_.head_.(_PWildcard ||| _PVar))
+  conMatches (PCon (_:.:name') _) = name == name'
+  conMatches _                    = False
 
 typeOf :: Type -> Ctx
 typeOf = \case
