@@ -1,2 +1,7 @@
 module Facet.Elab.Pattern
-() where
+( Clause(..)
+) where
+
+import Facet.Pattern
+
+newtype Clause = Clause [Pattern ()]
