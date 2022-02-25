@@ -1,4 +1,4 @@
-module Facet.Syntax.Class.Type
+module Facet.Type.Class
 ( -- * Types
   Type(..)
 , forAllA

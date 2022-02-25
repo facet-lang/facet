@@ -8,7 +8,7 @@ import           Facet.Kind
 import           Facet.Name
 import           Facet.Quote
 import           Facet.Syntax
-import qualified Facet.Syntax.Class.Type as C
+import qualified Facet.Type.Class as C
 import           Facet.Usage
 
 data Type
