@@ -11,11 +11,11 @@ import           Data.Text (Text)
 import           Data.Traversable (mapAccumL)
 import           Facet.Env
 import           Facet.Name
-import           Facet.Pattern
 import           Facet.Quote
 import           Facet.Semialign (zipWithM)
 import           Facet.Snoc
 import           Facet.Syntax
+import           Facet.Syntax.Pattern
 import qualified Facet.Term.Expr as X
 
 data Term

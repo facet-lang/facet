@@ -107,7 +107,6 @@ library
     Facet.Notice.Parser
     Facet.Parser
     Facet.Parser.Table
-    Facet.Pattern
     Facet.Polarized
     Facet.Pretty
     Facet.Print
@@ -136,6 +135,7 @@ library
     Facet.Syntax
     Facet.Syntax.Expr.Type
     Facet.Syntax.Norm.Type
+    Facet.Syntax.Pattern
     Facet.Term.Class
     Facet.Term.Expr
     Facet.Term.Norm

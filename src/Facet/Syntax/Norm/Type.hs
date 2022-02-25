@@ -29,12 +29,12 @@ import           Facet.Env hiding (empty)
 import           Facet.Interface
 import           Facet.Kind
 import           Facet.Name
-import           Facet.Pattern
 import           Facet.Quote
 import           Facet.Snoc
 import           Facet.Subst
 import           Facet.Syntax
 import qualified Facet.Syntax.Expr.Type as TX
+import           Facet.Syntax.Pattern
 import qualified Facet.Type.Class as C
 import           Facet.Usage hiding (singleton)
 import           Fresnel.Prism (Prism', prism')

@@ -76,7 +76,6 @@ import           Facet.Kind
 import           Facet.Lens hiding (use)
 import           Facet.Module
 import           Facet.Name hiding (L, R)
-import           Facet.Pattern
 import           Facet.Quote
 import           Facet.Semiring
 import           Facet.Snoc
@@ -87,6 +86,7 @@ import           Facet.Subst
 import           Facet.Syntax hiding (context_)
 import qualified Facet.Syntax.Expr.Type as TX
 import           Facet.Syntax.Norm.Type as TN
+import           Facet.Syntax.Pattern
 import           Facet.Term.Expr as E
 import           Facet.Usage as Usage
 import           Facet.Vars as Vars

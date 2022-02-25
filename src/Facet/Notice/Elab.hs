@@ -15,7 +15,6 @@ import           Facet.Functor.Synth
 import           Facet.Interface (interfaces)
 import           Facet.Name (LName(..))
 import           Facet.Notice as Notice hiding (level)
-import           Facet.Pattern
 import           Facet.Pretty
 import           Facet.Print as Print
 import           Facet.Semiring (Few(..), one, zero)
@@ -24,6 +23,7 @@ import           Facet.Style
 import           Facet.Subst (metas)
 import           Facet.Syntax hiding (ann)
 import           Facet.Syntax.Norm.Type (apply, free, metavar)
+import           Facet.Syntax.Pattern
 import           GHC.Stack
 import           Prelude hiding (print, unlines)
 import           Silkscreen

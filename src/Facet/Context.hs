@@ -18,10 +18,10 @@ import qualified Facet.Env as Env
 import           Facet.Functor.Synth
 import           Facet.Kind (Kind)
 import           Facet.Name
-import           Facet.Pattern
 import qualified Facet.Snoc as S
 import           Facet.Syntax
 import           Facet.Syntax.Norm.Type
+import           Facet.Syntax.Pattern
 import           Facet.Usage
 import           GHC.Stack
 import           Prelude hiding (lookup)
