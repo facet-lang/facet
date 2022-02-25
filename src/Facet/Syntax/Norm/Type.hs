@@ -34,8 +34,8 @@ import           Facet.Quote
 import           Facet.Snoc
 import           Facet.Subst
 import           Facet.Syntax
-import qualified Facet.Syntax.Expr.Type as TX
 import qualified Facet.Type.Class as C
+import qualified Facet.Type.Expr as TX
 import           Facet.Usage hiding (singleton)
 import           Fresnel.Prism (Prism', prism')
 import           GHC.Stack

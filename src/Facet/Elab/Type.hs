@@ -29,8 +29,8 @@ import           Facet.Snoc
 import           Facet.Subst
 import qualified Facet.Surface.Type.Expr as S
 import           Facet.Syntax as S hiding (context_)
-import qualified Facet.Syntax.Expr.Type as TX
 import           Facet.Syntax.Norm.Type
+import qualified Facet.Type.Expr as TX
 import           GHC.Stack
 
 tvar :: (HasCallStack, Has (Throw Err) sig m) => QName -> Elab m (TX.Type :==> Kind)
