@@ -1,4 +1,4 @@
-module Facet.Type.Norm
+module Facet.Syntax.Norm.Type
 ( -- * Types
   Type(..)
 , _String
@@ -55,8 +55,8 @@ instance C.Type Type where
   string = String
   forAll = ForAll
   arrow = Arrow
-  var = Facet.Type.Norm.var
-  ($$) = (Facet.Type.Norm.$$)
+  var = Facet.Syntax.Norm.Type.var
+  ($$) = (Facet.Syntax.Norm.Type.$$)
   (|-) = Comp
 
 instance Quote Type TX.Type where

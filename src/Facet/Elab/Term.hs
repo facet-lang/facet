@@ -88,9 +88,9 @@ import qualified Facet.Surface.Module as S
 import qualified Facet.Surface.Term.Expr as S
 import qualified Facet.Surface.Type.Expr as S
 import           Facet.Syntax as S hiding (context_)
+import           Facet.Syntax.Norm.Type as T hiding (global)
 import           Facet.Term.Expr as E
 import qualified Facet.Type.Expr as TX
-import           Facet.Type.Norm as T hiding (global)
 import           Facet.Unify
 import           Facet.Usage hiding (restrict)
 import           Fresnel.At as At

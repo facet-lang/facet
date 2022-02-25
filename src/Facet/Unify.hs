@@ -28,8 +28,8 @@ import           Facet.Semialign
 import           Facet.Snoc
 import           Facet.Subst
 import           Facet.Syntax
+import           Facet.Syntax.Norm.Type as TN
 import qualified Facet.Type.Expr as TX
-import           Facet.Type.Norm as TN
 import           Facet.Usage
 import           GHC.Stack
 

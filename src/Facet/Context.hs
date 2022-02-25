@@ -21,7 +21,7 @@ import           Facet.Name
 import           Facet.Pattern
 import qualified Facet.Snoc as S
 import           Facet.Syntax
-import           Facet.Type.Norm
+import           Facet.Syntax.Norm.Type
 import           Facet.Usage
 import           GHC.Stack
 import           Prelude hiding (lookup)
