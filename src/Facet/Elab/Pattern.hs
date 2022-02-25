@@ -8,12 +8,12 @@ module Facet.Elab.Pattern
 import Facet.Pattern
 import Fresnel.Iso
 
-newtype Clause = Clause [Pattern ()]
+newtype Clause a = Clause [Pattern a]
 
-patterns_ :: Iso' Clause [Pattern ()]
+patterns_ :: Iso' (Clause a) [Pattern a]
 patterns_ = coerced
 
-newtype Tableau = Tableau [Clause]
+newtype Tableau = Tableau [Clause ()]
 
-clauses_ :: Iso' Tableau [Clause]
+clauses_ :: Iso' Tableau [Clause ()]
 clauses_ = coerced
