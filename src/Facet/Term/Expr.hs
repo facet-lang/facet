@@ -5,8 +5,8 @@ module Facet.Term.Expr
 
 import Data.Text (Text)
 import Facet.Name
+import Facet.Pattern
 import Facet.Syntax
-import Facet.Syntax.Pattern
 
 -- Term expressions
 

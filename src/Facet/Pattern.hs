@@ -1,4 +1,4 @@
-module Facet.Syntax.Pattern
+module Facet.Pattern
 ( -- * Patterns
   Pattern(..)
 , _PWildcard

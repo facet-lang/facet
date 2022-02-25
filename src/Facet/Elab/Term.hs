@@ -77,6 +77,7 @@ import           Facet.Kind
 import           Facet.Lens as Lens (locally, view, views, (.=), (<~))
 import           Facet.Module as Module
 import           Facet.Name
+import           Facet.Pattern
 import           Facet.Semiring (Few(..), (><<))
 import qualified Facet.Sequent.Class as SQ
 import           Facet.Snoc
@@ -89,7 +90,6 @@ import qualified Facet.Surface.Type.Expr as S
 import           Facet.Syntax as S hiding (context_)
 import qualified Facet.Syntax.Expr.Type as TX
 import           Facet.Syntax.Norm.Type as T hiding (global)
-import           Facet.Syntax.Pattern
 import           Facet.Term.Expr as E
 import           Facet.Unify
 import           Facet.Usage hiding (restrict)

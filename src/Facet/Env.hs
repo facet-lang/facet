@@ -11,9 +11,9 @@ import Control.Applicative ((<|>))
 import Control.Monad (guard)
 import Data.Maybe (fromMaybe)
 import Facet.Name
+import Facet.Pattern
 import Facet.Snoc
 import Facet.Syntax
-import Facet.Syntax.Pattern
 import GHC.Stack
 import Prelude hiding (lookup)
 

@@ -39,11 +39,11 @@ import Facet.Env as Env
 import Facet.Graph
 import Facet.Module
 import Facet.Name hiding (Op)
+import Facet.Pattern
 import Facet.Quote
 import Facet.Semialign (zipWithM)
 import Facet.Snoc.NonEmpty as NE hiding ((|>))
 import Facet.Syntax
-import Facet.Syntax.Pattern
 import Facet.Term.Expr
 import GHC.Stack (HasCallStack)
 import Prelude hiding (zipWith)

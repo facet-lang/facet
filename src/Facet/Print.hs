@@ -34,6 +34,7 @@ import           Facet.Interface
 import           Facet.Kind
 import qualified Facet.Module as C
 import           Facet.Name as Name hiding (name)
+import           Facet.Pattern
 import           Facet.Pretty (lower, upper)
 import           Facet.Print.Options
 import           Facet.Quote
@@ -43,7 +44,6 @@ import           Facet.Style
 import           Facet.Syntax hiding (Ann(..))
 import qualified Facet.Syntax.Expr.Type as TX
 import qualified Facet.Syntax.Norm.Type as TN
-import           Facet.Syntax.Pattern
 import qualified Facet.Term.Expr as C
 import qualified Facet.Term.Norm as N
 import           Prelude hiding (print)
