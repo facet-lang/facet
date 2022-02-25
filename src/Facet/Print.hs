@@ -42,10 +42,10 @@ import           Facet.Semiring (one, zero)
 import           Facet.Snoc
 import           Facet.Style
 import           Facet.Syntax hiding (Ann(..))
+import qualified Facet.Syntax.Expr.Type as TX
 import qualified Facet.Syntax.Norm.Type as TN
 import qualified Facet.Term.Expr as C
 import qualified Facet.Term.Norm as N
-import qualified Facet.Type.Expr as TX
 import           Prelude hiding (print)
 import qualified Prettyprinter as PP
 import           Silkscreen as P

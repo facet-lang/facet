@@ -1,4 +1,4 @@
-module Facet.Type.Expr
+module Facet.Syntax.Expr.Type
 ( Type(..)
 ) where
 

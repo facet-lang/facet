@@ -85,9 +85,9 @@ import           Facet.Source (Source, slice)
 import           Facet.Span (Span(..))
 import           Facet.Subst
 import           Facet.Syntax hiding (context_)
+import qualified Facet.Syntax.Expr.Type as TX
 import           Facet.Syntax.Norm.Type as TN
 import           Facet.Term.Expr as E
-import qualified Facet.Type.Expr as TX
 import           Facet.Usage as Usage
 import           Facet.Vars as Vars
 import           Fresnel.Fold ((^?))

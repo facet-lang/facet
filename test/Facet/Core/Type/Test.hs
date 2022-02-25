@@ -10,7 +10,7 @@ import Facet.Name
 import Facet.Quote
 import Facet.Semiring
 import Facet.Syntax
-import Facet.Type.Expr
+import Facet.Syntax.Expr.Type
 import Facet.Syntax.Norm.Type (eval)
 import Hedgehog hiding (Var, eval)
 
