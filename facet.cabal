@@ -85,6 +85,7 @@ library
     Facet.Effect.Time.System
     Facet.Effect.Write
     Facet.Elab
+    Facet.Elab.Pattern
     Facet.Elab.Term
     Facet.Elab.Type
     Facet.Env
