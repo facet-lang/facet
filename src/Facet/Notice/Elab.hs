@@ -23,7 +23,7 @@ import           Facet.Snoc
 import           Facet.Style
 import           Facet.Subst (metas)
 import           Facet.Syntax hiding (ann)
-import           Facet.Syntax.Norm.Type (apply, free, metavar)
+import           Facet.Type.Norm (apply, free, metavar)
 import           GHC.Stack
 import           Prelude hiding (print, unlines)
 import           Silkscreen

@@ -40,8 +40,8 @@ import qualified Data.Map as Map
 import           Facet.Kind
 import           Facet.Name
 import           Facet.Syntax
-import           Facet.Syntax.Norm.Type
 import           Facet.Term.Expr
+import           Facet.Type.Norm
 import           Fresnel.Fold (preview)
 import           Fresnel.Getter (view)
 import           Fresnel.Iso (Iso, coerced, fmapping, iso)

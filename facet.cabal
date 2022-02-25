@@ -134,13 +134,13 @@ library
     Facet.Surface.Type.Class
     Facet.Surface.Type.Expr
     Facet.Syntax
-    Facet.Syntax.Norm.Type
     Facet.Term.Class
     Facet.Term.Expr
     Facet.Term.Norm
     Facet.Timing
     Facet.Type.Class
     Facet.Type.Expr
+    Facet.Type.Norm
     Facet.Unify
     Facet.Usage
     Facet.Vars
