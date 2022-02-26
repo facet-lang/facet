@@ -5,6 +5,8 @@ module Facet.Elab.Pattern
 , Tableau(..)
 , clauses_
 , Branch(..)
+  -- * Coverage judgement
+, Covers(..)
 ) where
 
 import Facet.Pattern
@@ -23,3 +25,8 @@ clauses_ = coerced
 
 
 data Branch s m a = forall x . Branch (Fold s x) (x -> m a)
+
+
+-- Coverage judgement
+
+newtype Covers m a = Covers { covers :: m a }
