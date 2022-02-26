@@ -5,6 +5,7 @@ module Facet.Elab.Pattern
 , Tableau(..)
 , clauses_
 , Branch(..)
+, (\/)
   -- * Coverage judgement
 , Covers(..)
 ) where
@@ -25,6 +26,11 @@ clauses_ = coerced
 
 
 data Branch s m a = forall x . Branch (Fold s x) (x -> m a)
+
+(\/) :: Fold s a -> Fold s a -> Fold s a
+f1 \/ f2 = getUnion (Union f1 <> Union f2)
+
+infixr 2 \/
 
 
 -- Coverage judgement
