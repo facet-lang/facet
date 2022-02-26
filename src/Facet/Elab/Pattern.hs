@@ -40,6 +40,7 @@ infixr 2 \/
 -- Coverage judgement
 
 newtype Covers m a = Covers { covers :: StateC [Type] m a }
+  deriving (Applicative, Functor, Monad)
 
 
 coverOne :: Has Empty sig m => Covers m ()
