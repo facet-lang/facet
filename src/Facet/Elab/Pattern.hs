@@ -11,6 +11,7 @@ module Facet.Elab.Pattern
 ) where
 
 import Facet.Pattern
+import Facet.Type.Norm (Type)
 import Fresnel.Fold
 import Fresnel.Iso
 
@@ -35,4 +36,4 @@ infixr 2 \/
 
 -- Coverage judgement
 
-newtype Covers m a = Covers { covers :: m a }
+newtype Covers m a = Covers { covers :: [Type] -> m a }
