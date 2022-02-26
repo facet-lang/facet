@@ -8,8 +8,11 @@ module Facet.Elab.Pattern
 , (\/)
   -- * Coverage judgement
 , Covers(..)
+, coverOne
 ) where
 
+import Control.Carrier.State.Church
+import Control.Effect.Empty
 import Facet.Pattern
 import Facet.Type.Norm (Type)
 import Fresnel.Fold
@@ -36,4 +39,10 @@ infixr 2 \/
 
 -- Coverage judgement
 
-newtype Covers m a = Covers { covers :: [Type] -> m a }
+newtype Covers m a = Covers { covers :: StateC [Type] m a }
+
+
+coverOne :: Has Empty sig m => Covers m ()
+coverOne = Covers $ get @[Type] >>= \case
+  []    -> empty
+  _:ctx -> put ctx
