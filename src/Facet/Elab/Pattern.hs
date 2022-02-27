@@ -11,6 +11,7 @@ module Facet.Elab.Pattern
 , coverOne
 ) where
 
+import Control.Algebra
 import Control.Carrier.State.Church
 import Control.Effect.Empty
 import Facet.Pattern
@@ -41,11 +42,11 @@ infixr 2 \/
 -- Coverage judgement
 
 newtype Covers m a = Covers { covers :: StateC [Type] m a }
-  deriving (Applicative, Functor, Monad)
+  deriving (Algebra (State [Type] :+: sig), Applicative, Functor, Monad)
 
 
 coverOne :: Has Empty sig m => Covers m ()
-coverOne = Covers $ use context_ >>= \case
+coverOne = use context_ >>= \case
   []    -> empty
   _:ctx -> context_ .= ctx
 
