@@ -27,7 +27,7 @@ patterns_ = coerced
 
 newtype Tableau a = Tableau [Clause a]
 
-clauses_ :: Iso' (Tableau a) [Clause a]
+clauses_ :: Iso (Tableau a) (Tableau b) [Clause a] [Clause b]
 clauses_ = coerced
 
 
