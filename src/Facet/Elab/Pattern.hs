@@ -15,6 +15,7 @@ import Control.Carrier.State.Church
 import Control.Effect.Empty
 import Facet.Pattern
 import Facet.Type.Norm (Type)
+import Fresnel.Effect
 import Fresnel.Fold
 import Fresnel.Iso
 
@@ -44,6 +45,9 @@ newtype Covers m a = Covers { covers :: StateC [Type] m a }
 
 
 coverOne :: Has Empty sig m => Covers m ()
-coverOne = Covers $ get @[Type] >>= \case
+coverOne = Covers $ use context_ >>= \case
   []    -> empty
-  _:ctx -> put ctx
+  _:ctx -> context_ .= ctx
+
+context_ :: Iso' [Type] [Type]
+context_ = iso id id
