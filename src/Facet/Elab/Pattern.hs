@@ -14,6 +14,7 @@ module Facet.Elab.Pattern
 import Control.Algebra
 import Control.Carrier.State.Church
 import Control.Effect.Empty
+import Facet.Name
 import Facet.Pattern
 import Facet.Type.Norm (Type)
 import Fresnel.Effect
@@ -21,15 +22,18 @@ import Fresnel.Fold
 import Fresnel.Iso
 import Fresnel.Lens
 
-newtype Clause a = Clause [Pattern a]
+newtype Clause = Clause [Pattern Name]
 
-patterns_ :: Iso (Clause a) (Clause b) [Pattern a] [Pattern b]
+patterns_ :: Iso' Clause [Pattern Name]
 patterns_ = coerced
 
-data Tableau a = Tableau [Type] [Clause a]
+data Tableau = Tableau [Type] [Clause]
 
-clauses_ :: Lens (Tableau a) (Tableau b) [Clause a] [Clause b]
+clauses_ :: Lens' Tableau [Clause]
 clauses_ = lens (\ (Tableau _ clauses) -> clauses) (\ (Tableau context _) clauses -> Tableau context clauses)
+
+context_ :: Lens' Tableau [Type]
+context_ = lens (\ (Tableau context _) -> context) (\ (Tableau _ clauses) context -> Tableau context clauses)
 
 
 data Branch s m a = forall x . Branch (Fold s x) (x -> m a)
@@ -42,14 +46,11 @@ infixr 2 \/
 
 -- Coverage judgement
 
-newtype Covers m a = Covers { covers :: StateC [Type] m a }
-  deriving (Algebra (State [Type] :+: sig), Applicative, Functor, Monad)
+newtype Covers m a = Covers { covers :: StateC Tableau m a }
+  deriving (Algebra (State Tableau :+: sig), Applicative, Functor, Monad)
 
 
 coverOne :: Has Empty sig m => Covers m ()
 coverOne = use context_ >>= \case
   []    -> empty
   _:ctx -> context_ .= ctx
-
-context_ :: Iso' [Type] [Type]
-context_ = iso id id
