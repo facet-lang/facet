@@ -19,16 +19,17 @@ import Facet.Type.Norm (Type)
 import Fresnel.Effect
 import Fresnel.Fold
 import Fresnel.Iso
+import Fresnel.Lens
 
 newtype Clause a = Clause [Pattern a]
 
 patterns_ :: Iso (Clause a) (Clause b) [Pattern a] [Pattern b]
 patterns_ = coerced
 
-newtype Tableau a = Tableau [Clause a]
+data Tableau a = Tableau [Type] [Clause a]
 
-clauses_ :: Iso (Tableau a) (Tableau b) [Clause a] [Clause b]
-clauses_ = coerced
+clauses_ :: Lens (Tableau a) (Tableau b) [Clause a] [Clause b]
+clauses_ = lens (\ (Tableau _ clauses) -> clauses) (\ (Tableau context _) clauses -> Tableau context clauses)
 
 
 data Branch s m a = forall x . Branch (Fold s x) (x -> m a)
