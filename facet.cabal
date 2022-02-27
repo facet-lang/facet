@@ -35,6 +35,9 @@ common common
     ghc-options:
       -Wno-missing-safe-haskell-mode
       -Wno-prepositive-qualified-module
+  if (impl(ghc >= 9.2))
+    ghc-options:
+      -Wno-missing-kind-signatures
   default-extensions:
     DeriveTraversable
     DerivingStrategies
@@ -150,7 +153,7 @@ library
     Paths_facet
   build-depends:
     , ansi-terminal
-    , base ^>= 4.14
+    , base >= 4.14 && < 5
     , charset
     , colour
     , containers
@@ -188,8 +191,11 @@ test-suite test
     , base
     , containers
     , facet
-    , hedgehog ^>= 1
+    , hedgehog >= 1 && < 1.2
     , parsers
+  if (impl(ghc >= 9.2))
+    ghc-options:
+      -Wno-missing-signatures
 
 
 executable facetc
