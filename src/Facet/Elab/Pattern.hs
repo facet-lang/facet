@@ -27,7 +27,10 @@ newtype Clause = Clause [Pattern Name]
 patterns_ :: Iso' Clause [Pattern Name]
 patterns_ = coerced
 
-data Tableau = Tableau [Type] [Clause]
+data Tableau = Tableau
+  { context :: [Type]
+  , clauses :: [Clause]
+  }
 
 clauses_ :: Lens' Tableau [Clause]
 clauses_ = lens (\ (Tableau _ clauses) -> clauses) (\ (Tableau context _) clauses -> Tableau context clauses)
