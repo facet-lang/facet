@@ -22,7 +22,7 @@ import Fresnel.Iso
 
 newtype Clause a = Clause [Pattern a]
 
-patterns_ :: Iso' (Clause a) [Pattern a]
+patterns_ :: Iso (Clause a) (Clause b) [Pattern a] [Pattern b]
 patterns_ = coerced
 
 newtype Tableau a = Tableau [Clause a]
