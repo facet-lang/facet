@@ -38,6 +38,7 @@ import           Facet.Graph
 import           Facet.Interface as I
 import           Facet.Lens
 import           Facet.Module
+import           Facet.Module as Module (Module(..))
 import           Facet.Name as Name
 import qualified Facet.Notice as Notice
 import           Facet.Notice.Elab
@@ -247,4 +248,4 @@ runElab m = do
   graph <- use (target_.modules_)
   localDefs <- use localDefs_
   opts <- get
-  runReader graph . runReader localDefs . runReader ((name :: Module -> MName) localDefs) . rethrowElabErrors opts . rethrowElabWarnings $ m
+  runReader graph . runReader localDefs . runReader (Module.name localDefs) . rethrowElabErrors opts . rethrowElabWarnings $ m

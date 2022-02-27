@@ -28,7 +28,7 @@ runFile searchPaths path = runStack $ do
   -- FIXME: look up and evaluate the main function in the module we were passed?
   ExitSuccess <$ for_ modules (\ h@(ModuleHeader name src _) -> do
     graph <- use modules_
-    let loaded = traverse (\ name -> graph^.at name >>= snd) h
+    let loaded = traverse (\ name -> graph ^. at name >>= snd) h
     for_ loaded (storeModule name (Source.path (Source.reference src)) <=< loadModule graph))
   where
   runStack

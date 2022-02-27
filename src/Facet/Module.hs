@@ -63,7 +63,7 @@ data Module = Module
   }
 
 name_ :: Lens' Module MName
-name_ = lens (\ Module{ name } -> name) (\ m name -> (m :: Module){ name })
+name_ = lens (\ Module{ name } -> name) (\ Module{ imports, operators, scope } name -> Module{ name, imports, operators, scope })
 
 imports_ :: Lens' Module [Import]
 imports_ = lens imports (\ m imports -> m{ imports })

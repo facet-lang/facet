@@ -106,7 +106,7 @@ reloadModules = do
   let nModules = length modules
   results <- for (zip [1..] modules) $ \ (i, h@(ModuleHeader name src _)) -> do
     graph <- use modules_
-    let loaded = traverse (\ name -> graph^.at name >>= snd) h
+    let loaded = traverse (\ name -> graph ^. at name >>= snd) h
     case loaded of
       Just loaded -> (Just <$> do
         outputDocLn $ annotate Progress (brackets (ratio (i :: Int) nModules)) <+> nest 2 (group (fillSep [ pretty "Loading", prettyMName name ]))

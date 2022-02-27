@@ -354,10 +354,10 @@ data ElabContext = ElabContext
   }
 
 context_ :: Lens' ElabContext Context
-context_ = lens (\ ElabContext{ context } -> context) (\ e context -> (e :: ElabContext){ context })
+context_ = lens (\ ElabContext{ context } -> context) (\ ElabContext{ sig, spans } context -> ElabContext{ context, sig, spans })
 
 sig_ :: Lens' ElabContext [Signature Type]
-sig_ = lens (\ ElabContext{ sig } -> sig) (\ e sig -> (e :: ElabContext){ sig })
+sig_ = lens (\ ElabContext{ sig } -> sig) (\ ElabContext{ context, spans } sig -> ElabContext{ context, sig, spans })
 
 spans_ :: Lens' ElabContext (Snoc Span)
 spans_ = lens spans (\ e spans -> e{ spans })
