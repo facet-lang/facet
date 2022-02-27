@@ -33,10 +33,10 @@ data Tableau = Tableau
   }
 
 clauses_ :: Lens' Tableau [Clause]
-clauses_ = lens (\ (Tableau _ clauses) -> clauses) (\ (Tableau context _) clauses -> Tableau context clauses)
+clauses_ = lens clauses (\ t clauses -> t{clauses})
 
 context_ :: Lens' Tableau [Type]
-context_ = lens (\ (Tableau context _) -> context) (\ (Tableau _ clauses) context -> Tableau context clauses)
+context_ = lens context (\ t context -> t{context})
 
 
 data Branch s m a = forall x . Branch (Fold s x) (x -> m a)
