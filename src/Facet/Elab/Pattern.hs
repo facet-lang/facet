@@ -30,6 +30,7 @@ import Fresnel.List (head_)
 data Pattern
   = Wildcard
   | Var Name
+  | Unit
   | Pair Pattern Pattern
 
 newtype Clause = Clause [Pattern]
