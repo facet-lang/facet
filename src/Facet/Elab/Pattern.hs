@@ -3,7 +3,7 @@ module Facet.Elab.Pattern
 ( Clause(..)
 , patterns_
 , Tableau(..)
-, clauses_
+, heads_
 , Branch(..)
 , (\/)
   -- * Coverage judgement
@@ -34,11 +34,11 @@ patterns_ = coerced
 
 data Tableau = Tableau
   { context :: [Type]
-  , clauses :: [Clause]
+  , heads   :: [Clause]
   }
 
-clauses_ :: Lens' Tableau [Clause]
-clauses_ = lens clauses (\ t clauses -> t{clauses})
+heads_ :: Lens' Tableau [Clause]
+heads_ = lens heads (\ t heads -> t{heads})
 
 context_ :: Lens' Tableau [Type]
 context_ = lens context (\ t context -> t{context})
@@ -65,12 +65,12 @@ coverOne = use context_ >>= \case
 
 coverStep :: Has NonDet sig m => Covers m ()
 coverStep = uses context_ (preview head_) >>= \case
-  Just T.String   -> use clauses_ >>= foldMapByOf (folded.patterns_.head_) (<|>) empty (\case
-    PWildcard -> context_ %= tail >> clauses_.traversed.patterns_ %= tail
-    PVar _    -> context_ %= tail >> clauses_.traversed.patterns_ %= tail
+  Just T.String   -> use heads_ >>= foldMapByOf (folded.patterns_.head_) (<|>) empty (\case
+    PWildcard -> context_ %= tail >> heads_.traversed.patterns_ %= tail
+    PVar _    -> context_ %= tail >> heads_.traversed.patterns_ %= tail
     _         -> empty)
-  Just T.ForAll{} -> use clauses_ >>= foldMapByOf (folded.patterns_.head_) (<|>) empty (\case
-    PWildcard -> context_ %= tail >> clauses_.traversed.patterns_ %= tail
-    PVar _    -> context_ %= tail >> clauses_.traversed.patterns_ %= tail
+  Just T.ForAll{} -> use heads_ >>= foldMapByOf (folded.patterns_.head_) (<|>) empty (\case
+    PWildcard -> context_ %= tail >> heads_.traversed.patterns_ %= tail
+    PVar _    -> context_ %= tail >> heads_.traversed.patterns_ %= tail
     _         -> empty)
   _            -> empty
