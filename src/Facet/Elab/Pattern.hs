@@ -65,12 +65,12 @@ coverOne = use context_ >>= \case
 
 coverStep :: Has NonDet sig m => Covers m ()
 coverStep = uses context_ (preview head_) >>= \case
-  Just T.String -> uses clauses_ (foldMapOf (folded.patterns_.head_) (Choosing . \case
+  Just T.String -> use clauses_ >>= foldMapByOf (folded.patterns_.head_) (<|>) empty (\case
     PWildcard -> context_ %= tail >> clauses_.traversed.patterns_ %= tail
     PVar _    -> context_ %= tail >> clauses_.traversed.patterns_ %= tail
-    _         -> empty)) >>= getChoosing
-  Just T.ForAll{} -> uses clauses_ (foldMapOf (folded.patterns_.head_) (Choosing . \case
+    _         -> empty)
+  Just T.ForAll{} -> use clauses_ >>= foldMapByOf (folded.patterns_.head_) (<|>) empty (\case
     PWildcard -> context_ %= tail >> clauses_.traversed.patterns_ %= tail
     PVar _    -> context_ %= tail >> clauses_.traversed.patterns_ %= tail
-    _         -> empty)) >>= getChoosing
+    _         -> empty)
   _            -> empty
