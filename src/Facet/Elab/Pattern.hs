@@ -75,9 +75,9 @@ coverStep = uses context_ (preview head_) >>= \case
     PWildcard -> modify advance
     PVar _    -> modify advance
     _         -> empty)
-  Just T.Arrow{} -> use heads_ >>= foldMapByOf (folded.patterns_.head_) (<|>) empty (\case
+  Just T.Arrow{}  -> use heads_ >>= foldMapByOf (folded.patterns_.head_) (<|>) empty (\case
     PWildcard -> modify advance
     PVar _    -> modify advance
     _         -> empty)
-  Just T.Comp{}  -> empty
+  Just T.Comp{}   -> empty
   _            -> empty
