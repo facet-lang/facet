@@ -32,6 +32,8 @@ data Pattern
   = Wildcard
   | Var Name
   | Unit
+  | InL Pattern
+  | InR Pattern
   | Pair Pattern Pattern
 
 newtype Clause = Clause [Pattern]
