@@ -69,4 +69,8 @@ coverStep = uses context_ (preview head_) >>= \case
     PWildcard -> context_ %= tail >> clauses_.traversed.patterns_ %= tail
     PVar _    -> context_ %= tail >> clauses_.traversed.patterns_ %= tail
     _         -> empty)) >>= getChoosing
+  Just T.ForAll{} -> uses clauses_ (foldMapOf (folded.patterns_.head_) (Choosing . \case
+    PWildcard -> context_ %= tail >> clauses_.traversed.patterns_ %= tail
+    PVar _    -> context_ %= tail >> clauses_.traversed.patterns_ %= tail
+    _         -> empty)) >>= getChoosing
   _            -> empty
