@@ -127,7 +127,7 @@ resolveWith
 resolveWith lookup n = asks (\ StaticContext{ module', graph } -> lookupWith lookup graph module' n) >>= \case
   []  -> freeVariable n
   [v] -> pure v
-  ds  -> ambiguousName n (map (\ (q :=: _) -> q) ds)
+  ds  -> ambiguousName n (map nm ds)
 
 resolveC :: (HasCallStack, Has (Reader ElabContext) sig m, Has (Reader StaticContext) sig m, Has (State (Subst Type)) sig m, Has (Throw Err) sig m) => QName -> m (RName :=: Maybe Term ::: Type)
 resolveC = resolveWith lookupC
