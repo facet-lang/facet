@@ -79,4 +79,5 @@ coverStep = uses context_ (preview head_) >>= \case
     PWildcard -> modify advance
     PVar _    -> modify advance
     _         -> empty)
+  Just T.Comp{}  -> empty
   _            -> empty
