@@ -25,7 +25,6 @@ import Fresnel.Fold
 import Fresnel.Iso
 import Fresnel.Lens
 import Fresnel.List (head_)
-import Fresnel.Traversal (traversed)
 
 newtype Clause = Clause [Pattern Name]
 
@@ -42,6 +41,9 @@ heads_ = lens heads (\ t heads -> t{heads})
 
 context_ :: Lens' Tableau [Type]
 context_ = lens context (\ t context -> t{context})
+
+advance :: Tableau -> Tableau
+advance Tableau{ context, heads } = Tableau (tail context) (tail heads)
 
 
 data Branch s m a = forall x . Branch (Fold s x) (x -> m a)
@@ -66,11 +68,11 @@ coverOne = use context_ >>= \case
 coverStep :: Has NonDet sig m => Covers m ()
 coverStep = uses context_ (preview head_) >>= \case
   Just T.String   -> use heads_ >>= foldMapByOf (folded.patterns_.head_) (<|>) empty (\case
-    PWildcard -> context_ %= tail >> heads_.traversed.patterns_ %= tail
-    PVar _    -> context_ %= tail >> heads_.traversed.patterns_ %= tail
+    PWildcard -> modify advance
+    PVar _    -> modify advance
     _         -> empty)
   Just T.ForAll{} -> use heads_ >>= foldMapByOf (folded.patterns_.head_) (<|>) empty (\case
-    PWildcard -> context_ %= tail >> heads_.traversed.patterns_ %= tail
-    PVar _    -> context_ %= tail >> heads_.traversed.patterns_ %= tail
+    PWildcard -> modify advance
+    PVar _    -> modify advance
     _         -> empty)
   _            -> empty
