@@ -26,6 +26,7 @@ import Fresnel.Fold
 import Fresnel.Iso
 import Fresnel.Lens
 import Fresnel.List (head_)
+import Fresnel.Traversal (traversed)
 
 data Pattern
   = Wildcard
@@ -103,5 +104,11 @@ coverStep = uses context_ (preview head_) >>= \case
     Var _    -> modify advance
     Unit     -> modify advance
     _        -> empty)
+  Just (t1 :* t2) -> use heads_ >>= foldMapByOf (folded.patterns_.head_) (<|>) empty (\case
+    Wildcard   -> context_ %= (\ ctx -> t1:t2:ctx) >> heads_.traversed.patterns_ %= (\ clause -> Wildcard:Wildcard:clause)
+    -- FIXME: this should bind fresh names
+    Var n      -> context_ %= (\ ctx -> t1:t2:ctx) >> heads_.traversed.patterns_ %= (\ clause -> Var n:Var n:clause)
+    Pair p1 p2 -> context_ %= (\ ctx -> t1:t2:ctx) >> heads_.traversed.patterns_ %= (\ clause -> p1:p2:clause)
+    _          -> empty)
   Just Comp{}   -> empty
   _            -> empty
