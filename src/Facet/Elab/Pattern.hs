@@ -99,6 +99,10 @@ coverStep = uses context_ (preview head_) >>= \case
     Wildcard -> modify advance
     Var _    -> modify advance
     _        -> empty)
+  Just Zero     -> use heads_ >>= foldMapByOf (folded.patterns_.head_) (<|>) empty (\case
+    Wildcard -> modify advance
+    Var _    -> modify advance
+    _        -> empty)
   Just One{}    -> use heads_ >>= foldMapByOf (folded.patterns_.head_) (<|>) empty (\case
     Wildcard -> modify advance
     Var _    -> modify advance
