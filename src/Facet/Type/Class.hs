@@ -4,6 +4,7 @@ module Facet.Type.Class
 , forAllA
 ) where
 
+import Data.Foldable (foldl')
 import Facet.Functor.Compose
 import Facet.Interface (Signature)
 import Facet.Kind (Kind)
@@ -20,6 +21,9 @@ class Type r where
   var :: Var (Either Meta (LName Level)) -> r
   ($$) :: r -> r -> r
   infixl 9 $$
+  ($$$) :: Foldable t => Var (Either Meta (LName Level)) -> t r -> r
+  h $$$ sp = foldl' ($$) (var h) sp
+  infixl 9 $$$
   (|-) :: Signature r -> r -> r
   infixr 9 |-
 
