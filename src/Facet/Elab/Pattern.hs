@@ -2,6 +2,7 @@
 module Facet.Elab.Pattern
 ( Clause(..)
 , patterns_
+, Type(..)
 , Tableau(..)
 , heads_
 , Branch(..)
@@ -17,9 +18,9 @@ import Control.Carrier.State.Church
 import Control.Effect.Choose
 import Control.Effect.Empty
 import Control.Effect.NonDet (NonDet)
+import Facet.Interface
 import Facet.Name
 import Facet.Pattern
-import Facet.Type.Norm as T (Type(..))
 import Fresnel.Effect
 import Fresnel.Fold
 import Fresnel.Iso
@@ -30,6 +31,16 @@ newtype Clause = Clause [Pattern Name]
 
 patterns_ :: Iso' Clause [Pattern Name]
 patterns_ = coerced
+
+
+data Type
+  = String
+  | ForAll
+  | Arrow
+  | Sum [Type]
+  | Prd [Type]
+  | Comp (Signature Type)
+
 
 data Tableau = Tableau
   { context :: [Type]
@@ -67,17 +78,17 @@ coverOne = use context_ >>= \case
 
 coverStep :: Has NonDet sig m => Covers m ()
 coverStep = uses context_ (preview head_) >>= \case
-  Just T.String   -> use heads_ >>= foldMapByOf (folded.patterns_.head_) (<|>) empty (\case
+  Just String   -> use heads_ >>= foldMapByOf (folded.patterns_.head_) (<|>) empty (\case
     PWildcard -> modify advance
     PVar _    -> modify advance
     _         -> empty)
-  Just T.ForAll{} -> use heads_ >>= foldMapByOf (folded.patterns_.head_) (<|>) empty (\case
+  Just ForAll{} -> use heads_ >>= foldMapByOf (folded.patterns_.head_) (<|>) empty (\case
     PWildcard -> modify advance
     PVar _    -> modify advance
     _         -> empty)
-  Just T.Arrow{}  -> use heads_ >>= foldMapByOf (folded.patterns_.head_) (<|>) empty (\case
+  Just Arrow{}  -> use heads_ >>= foldMapByOf (folded.patterns_.head_) (<|>) empty (\case
     PWildcard -> modify advance
     PVar _    -> modify advance
     _         -> empty)
-  Just T.Comp{}   -> empty
+  Just Comp{}   -> empty
   _            -> empty
