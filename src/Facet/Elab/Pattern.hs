@@ -9,18 +9,22 @@ module Facet.Elab.Pattern
   -- * Coverage judgement
 , Covers(..)
 , coverOne
+, coverStep
 ) where
 
 import Control.Algebra
 import Control.Carrier.State.Church
+import Control.Effect.Choose
 import Control.Effect.Empty
+import Control.Effect.NonDet (NonDet)
 import Facet.Name
 import Facet.Pattern
-import Facet.Type.Norm (Type)
+import Facet.Type.Norm as T (Type(..))
 import Fresnel.Effect
 import Fresnel.Fold
 import Fresnel.Iso
 import Fresnel.Lens
+import Fresnel.List (head_)
 
 newtype Clause = Clause [Pattern Name]
 
@@ -57,3 +61,11 @@ coverOne :: Has Empty sig m => Covers m ()
 coverOne = use context_ >>= \case
   []    -> empty
   _:ctx -> context_ .= ctx
+
+coverStep :: Has NonDet sig m => Covers m ()
+coverStep = uses context_ (preview head_) >>= \case
+  Just T.String -> uses clauses_ (foldMapOf (folded.patterns_.head_) (Choosing . \case
+    PWildcard -> context_ %= tail
+    PVar _    -> context_ %= tail
+    _         -> empty)) >>= getChoosing
+  _            -> empty
