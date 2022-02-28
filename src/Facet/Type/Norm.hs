@@ -57,6 +57,7 @@ instance C.Type Type where
   arrow = Arrow
   var = Facet.Type.Norm.var
   ($$) = (Facet.Type.Norm.$$)
+  h $$$ sp = Ne h (foldl' (:>) Nil sp)
   (|-) = Comp
 
 instance Quote Type TX.Type where
