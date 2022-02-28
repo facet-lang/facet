@@ -1,6 +1,7 @@
 {-# LANGUAGE ExistentialQuantification #-}
 module Facet.Elab.Pattern
-( Clause(..)
+( Pattern(..)
+, Clause(..)
 , patterns_
 , Type(..)
 , Tableau(..)
@@ -20,16 +21,20 @@ import Control.Effect.Empty
 import Control.Effect.NonDet (NonDet)
 import Facet.Interface
 import Facet.Name
-import Facet.Pattern
 import Fresnel.Effect
 import Fresnel.Fold
 import Fresnel.Iso
 import Fresnel.Lens
 import Fresnel.List (head_)
 
-newtype Clause = Clause [Pattern Name]
+data Pattern
+  = Wildcard
+  | Var Name
+  | Pair Pattern Pattern
 
-patterns_ :: Iso' Clause [Pattern Name]
+newtype Clause = Clause [Pattern]
+
+patterns_ :: Iso' Clause [Pattern]
 patterns_ = coerced
 
 
@@ -81,20 +86,20 @@ coverOne = use context_ >>= \case
 coverStep :: Has NonDet sig m => Covers m ()
 coverStep = uses context_ (preview head_) >>= \case
   Just String   -> use heads_ >>= foldMapByOf (folded.patterns_.head_) (<|>) empty (\case
-    PWildcard -> modify advance
-    PVar _    -> modify advance
-    _         -> empty)
+    Wildcard -> modify advance
+    Var _    -> modify advance
+    _        -> empty)
   Just ForAll{} -> use heads_ >>= foldMapByOf (folded.patterns_.head_) (<|>) empty (\case
-    PWildcard -> modify advance
-    PVar _    -> modify advance
-    _         -> empty)
+    Wildcard -> modify advance
+    Var _    -> modify advance
+    _        -> empty)
   Just Arrow{}  -> use heads_ >>= foldMapByOf (folded.patterns_.head_) (<|>) empty (\case
-    PWildcard -> modify advance
-    PVar _    -> modify advance
-    _         -> empty)
+    Wildcard -> modify advance
+    Var _    -> modify advance
+    _        -> empty)
   Just One{}    -> use heads_ >>= foldMapByOf (folded.patterns_.head_) (<|>) empty (\case
-    PWildcard -> modify advance
-    PVar _    -> modify advance
-    _         -> empty)
+    Wildcard -> modify advance
+    Var _    -> modify advance
+    _        -> empty)
   Just Comp{}   -> empty
   _            -> empty
