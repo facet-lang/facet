@@ -25,6 +25,7 @@ import Fresnel.Fold
 import Fresnel.Iso
 import Fresnel.Lens
 import Fresnel.List (head_)
+import Fresnel.Traversal (traversed)
 
 newtype Clause = Clause [Pattern Name]
 
@@ -65,7 +66,7 @@ coverOne = use context_ >>= \case
 coverStep :: Has NonDet sig m => Covers m ()
 coverStep = uses context_ (preview head_) >>= \case
   Just T.String -> uses clauses_ (foldMapOf (folded.patterns_.head_) (Choosing . \case
-    PWildcard -> context_ %= tail
-    PVar _    -> context_ %= tail
+    PWildcard -> context_ %= tail >> clauses_.traversed.patterns_ %= tail
+    PVar _    -> context_ %= tail >> clauses_.traversed.patterns_ %= tail
     _         -> empty)) >>= getChoosing
   _            -> empty
