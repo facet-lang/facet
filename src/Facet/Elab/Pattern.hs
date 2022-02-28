@@ -37,8 +37,10 @@ data Type
   = String
   | ForAll
   | Arrow
-  | Sum [Type]
-  | Prd [Type]
+  | Zero
+  | One
+  | Type :+ Type
+  | Type :* Type
   | Comp (Signature Type)
 
 
@@ -90,7 +92,7 @@ coverStep = uses context_ (preview head_) >>= \case
     PWildcard -> modify advance
     PVar _    -> modify advance
     _         -> empty)
-  Just (Prd []) -> use heads_ >>= foldMapByOf (folded.patterns_.head_) (<|>) empty (\case
+  Just One{}    -> use heads_ >>= foldMapByOf (folded.patterns_.head_) (<|>) empty (\case
     PWildcard -> modify advance
     PVar _    -> modify advance
     _         -> empty)
