@@ -89,27 +89,27 @@ coverOne = use context_ >>= \case
 
 coverStep :: Has NonDet sig m => Covers m ()
 coverStep = uses context_ (preview head_) >>= \case
-  Just String   -> use heads_ >>= foldMapByOf (folded.patterns_.head_) (<|>) empty (\case
-    Wildcard -> modify advance
-    Var _    -> modify advance
-    _        -> empty)
-  Just ForAll{} -> use heads_ >>= foldMapByOf (folded.patterns_.head_) (<|>) empty (\case
-    Wildcard -> modify advance
-    Var _    -> modify advance
-    _        -> empty)
-  Just Arrow{}  -> use heads_ >>= foldMapByOf (folded.patterns_.head_) (<|>) empty (\case
-    Wildcard -> modify advance
-    Var _    -> modify advance
-    _        -> empty)
-  Just Zero     -> use heads_ >>= foldMapByOf (folded.patterns_.head_) (<|>) empty (\case
-    Wildcard -> modify advance
-    Var _    -> modify advance
-    _        -> empty)
-  Just One      -> use heads_ >>= foldMapByOf (folded.patterns_.head_) (<|>) empty (\case
-    Wildcard -> modify advance
-    Var _    -> modify advance
-    Unit     -> modify advance
-    _        -> empty)
+  Just String   -> use heads_ >>= traverseOf_ (folded.patterns_.head_) (\case
+    Wildcard -> pure ()
+    Var _    -> pure ()
+    _        -> empty) >> modify advance
+  Just ForAll{} -> use heads_ >>= traverseOf_ (folded.patterns_.head_) (\case
+    Wildcard -> pure ()
+    Var _    -> pure ()
+    _        -> empty) >> modify advance
+  Just Arrow{}  -> use heads_ >>= traverseOf_ (folded.patterns_.head_) (\case
+    Wildcard -> pure ()
+    Var _    -> pure ()
+    _        -> empty) >> modify advance
+  Just Zero     -> use heads_ >>= traverseOf_ (folded.patterns_.head_) (\case
+    Wildcard -> pure ()
+    Var _    -> pure ()
+    _        -> empty) >> modify advance
+  Just One      -> use heads_ >>= traverseOf_ (folded.patterns_.head_) (\case
+    Wildcard -> pure ()
+    Var _    -> pure ()
+    Unit     -> pure ()
+    _        -> empty) >> modify advance
   Just (t1 :* t2) -> use heads_ >>= foldMapByOf (folded.patterns_.head_) (<|>) empty (\case
     Wildcard   -> context_ %= (\ ctx -> t1:t2:ctx) >> heads_.traversed.patterns_ %= (\ clause -> Wildcard:Wildcard:clause)
     -- FIXME: this should bind fresh names
