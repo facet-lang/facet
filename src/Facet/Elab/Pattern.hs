@@ -21,7 +21,7 @@ import Control.Effect.Empty
 import Control.Effect.NonDet (NonDet)
 import Facet.Interface
 import Facet.Name
-import Fresnel.Effect
+import Fresnel.Effect hiding (view)
 import Fresnel.Fold
 import Fresnel.Iso
 import Fresnel.Lens
@@ -64,9 +64,6 @@ heads_ = lens heads (\ t heads -> t{heads})
 context_ :: Lens' Tableau [Type]
 context_ = lens context (\ t context -> t{context})
 
-advance :: Tableau -> Tableau
-advance Tableau{ context, heads } = Tableau (tail context) (tail heads)
-
 
 data Branch s m a = forall x . Branch (Fold s x) (x -> m a)
 
@@ -88,33 +85,33 @@ coverOne = use context_ >>= \case
   _:ctx -> context_ .= ctx
 
 coverStep :: Has NonDet sig m => Covers m ()
-coverStep = uses context_ (preview head_) >>= \case
-  Just String   -> use heads_ >>= traverseOf_ (folded.patterns_.head_) (\case
+coverStep = use context_ >>= \case
+  String:ctx   -> use heads_ >>= traverseOf_ (folded.patterns_.head_) (\case
     Wildcard -> pure ()
     Var _    -> pure ()
-    _        -> empty) >> modify advance
-  Just ForAll{} -> use heads_ >>= traverseOf_ (folded.patterns_.head_) (\case
+    _        -> empty) >> context_ .= ctx >> heads_.traversed.patterns_ %= tail
+  ForAll{}:ctx -> use heads_ >>= traverseOf_ (folded.patterns_.head_) (\case
     Wildcard -> pure ()
     Var _    -> pure ()
-    _        -> empty) >> modify advance
-  Just Arrow{}  -> use heads_ >>= traverseOf_ (folded.patterns_.head_) (\case
+    _        -> empty) >> context_ .= ctx >> heads_.traversed.patterns_ %= tail
+  Arrow{}:ctx  -> use heads_ >>= traverseOf_ (folded.patterns_.head_) (\case
     Wildcard -> pure ()
     Var _    -> pure ()
-    _        -> empty) >> modify advance
-  Just Zero     -> use heads_ >>= traverseOf_ (folded.patterns_.head_) (\case
+    _        -> empty) >> context_ .= ctx >> heads_.traversed.patterns_ %= tail
+  Zero:ctx     -> use heads_ >>= traverseOf_ (folded.patterns_.head_) (\case
     Wildcard -> pure ()
     Var _    -> pure ()
-    _        -> empty) >> modify advance
-  Just One      -> use heads_ >>= traverseOf_ (folded.patterns_.head_) (\case
+    _        -> empty) >> context_ .= ctx >> heads_.traversed.patterns_ %= tail
+  One:ctx      -> use heads_ >>= traverseOf_ (folded.patterns_.head_) (\case
     Wildcard -> pure ()
     Var _    -> pure ()
     Unit     -> pure ()
-    _        -> empty) >> modify advance
-  Just (t1 :* t2) -> use heads_ >>= foldMapByOf (folded.patterns_.head_) (<|>) empty (\case
-    Wildcard   -> context_ %= (\ ctx -> t1:t2:ctx) >> heads_.traversed.patterns_ %= (\ clause -> Wildcard:Wildcard:clause)
+    _        -> empty) >> context_ .= ctx >> heads_.traversed.patterns_ %= tail
+  (t1 :* t2):ctx -> use heads_ >>= foldMapByOf (folded.patterns_.head_) (<|>) empty (\case
+    Wildcard   -> context_ .= t1:t2:ctx >> heads_.traversed.patterns_ %= (\ clause -> Wildcard:Wildcard:clause)
     -- FIXME: this should bind fresh names
-    Var n      -> context_ %= (\ ctx -> t1:t2:ctx) >> heads_.traversed.patterns_ %= (\ clause -> Var n:Var n:clause)
-    Pair p1 p2 -> context_ %= (\ ctx -> t1:t2:ctx) >> heads_.traversed.patterns_ %= (\ clause -> p1:p2:clause)
+    Var n      -> context_ .= t1:t2:ctx >> heads_.traversed.patterns_ %= (\ clause -> Var n:Var n:clause)
+    Pair p1 p2 -> context_ .= t1:t2:ctx >> heads_.traversed.patterns_ %= (\ clause -> p1:p2:clause)
     _          -> empty)
-  Just Comp{}   -> empty
+  Comp{}:_     -> empty
   _            -> empty
