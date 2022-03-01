@@ -10,10 +10,13 @@ module Facet.Elab.Pattern
 , (\/)
   -- * Coverage judgement
 , Covers(..)
+, covers
 , coverStep
 ) where
 
 import Control.Algebra
+import Control.Applicative (liftA2)
+import Control.Carrier.NonDet.Church (runNonDet)
 import Control.Carrier.State.Church
 import Control.Effect.Choose
 import Control.Effect.Empty
@@ -74,9 +77,15 @@ infixr 2 \/
 
 -- Coverage judgement
 
-newtype Covers m a = Covers { covers :: StateC Tableau m a }
+newtype Covers m a = Covers { runCovers :: StateC Tableau m a }
   deriving (Algebra (State Tableau :+: sig), Applicative, Functor, Monad)
 
+
+covers :: Tableau -> Bool
+covers t = run (runNonDet (liftA2 (&&)) (const (pure True)) (pure True) (execState t (runCovers go))) where
+  go = use context_ >>= \case
+    [] -> pure ()
+    _  -> coverStep >> go
 
 coverStep :: Has NonDet sig m => Covers m ()
 coverStep = use context_ >>= \case
