@@ -123,4 +123,4 @@ coverStep = use context_ >>= \case
     Pair p1 p2 -> context_ .= t1:t2:ctx >> heads_.traversed.patterns_ %= (\ clause -> p1:p2:clause)
     _          -> empty)
   Comp{}:_     -> empty
-  []           -> pure ()
+  []           -> pure () -- FIXME: fail if clauses aren't all empty
