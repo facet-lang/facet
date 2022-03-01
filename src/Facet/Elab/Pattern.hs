@@ -107,6 +107,15 @@ coverStep = use context_ >>= \case
     Var _    -> pure ()
     Unit     -> pure ()
     _        -> empty) >> context_ .= ctx >> heads_.traversed.patterns_ %= tail
+  (t1 :+ t2):ctx -> uses heads_ (foldMapOf (folded.patterns_) (\case
+      Wildcard:ps -> Just ([Clause (Wildcard:ps)], [Clause (Wildcard:ps)])
+      Var n:ps    -> Just ([Clause (Var n:ps)],    [Clause (Var n:ps)])
+      InL p:ps    -> Just ([Clause (p:ps)],        [Clause []])
+      InR q:qs    -> Just ([Clause []],            [Clause (q:qs)])
+      _           -> Nothing))
+    >>= \case
+      Just (cs1, cs2) -> put (Tableau (t1:ctx) cs1) <|> put (Tableau (t2:ctx) cs2)
+      Nothing         -> empty
   (t1 :* t2):ctx -> use heads_ >>= foldMapByOf (folded.patterns_.head_) (<|>) empty (\case
     Wildcard   -> context_ .= t1:t2:ctx >> heads_.traversed.patterns_ %= (\ clause -> Wildcard:Wildcard:clause)
     -- FIXME: this should bind fresh names
