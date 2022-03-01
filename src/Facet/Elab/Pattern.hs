@@ -10,7 +10,6 @@ module Facet.Elab.Pattern
 , (\/)
   -- * Coverage judgement
 , Covers(..)
-, coverOne
 , coverStep
 ) where
 
@@ -78,11 +77,6 @@ infixr 2 \/
 newtype Covers m a = Covers { covers :: StateC Tableau m a }
   deriving (Algebra (State Tableau :+: sig), Applicative, Functor, Monad)
 
-
-coverOne :: Has Empty sig m => Covers m ()
-coverOne = use context_ >>= \case
-  []    -> empty
-  _:ctx -> context_ .= ctx
 
 coverStep :: Has NonDet sig m => Covers m ()
 coverStep = use context_ >>= \case
