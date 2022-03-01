@@ -82,7 +82,7 @@ newtype Covers m a = Covers { runCovers :: StateC Tableau m a }
 
 
 covers :: Tableau -> Bool
-covers t = run (runNonDet (liftA2 (&&)) (const (pure True)) (pure True) (execState t (runCovers go))) where
+covers t = run (runNonDet (liftA2 (&&)) (const (pure True)) (pure False) (execState t (runCovers go))) where
   go = use context_ >>= \case
     [] -> pure ()
     _  -> coverStep >> go
