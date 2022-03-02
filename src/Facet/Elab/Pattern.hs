@@ -16,6 +16,7 @@ module Facet.Elab.Pattern
 
 import Control.Algebra
 import Control.Applicative (liftA2)
+import Control.Carrier.Fail.Either
 import Control.Carrier.NonDet.Church (runNonDet)
 import Control.Carrier.State.Church
 import Control.Effect.Choose
@@ -82,7 +83,7 @@ newtype Covers m a = Covers { runCovers :: StateC Tableau m a }
 
 
 covers :: Tableau -> Bool
-covers t = run (runNonDet (liftA2 (&&)) (const (pure True)) (pure False) (execState t (runCovers go))) where
+covers t = run (runNonDet (liftA2 (&&)) (const (pure True)) (pure False) (runFail (execState t (runCovers go)))) where
   go = use context_ >>= \case
     [] -> pure ()
     _  -> coverStep >> go
