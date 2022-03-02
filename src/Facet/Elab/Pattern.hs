@@ -78,7 +78,7 @@ infixr 2 \/
 -- Coverage judgement
 
 newtype Covers m a = Covers { runCovers :: StateC Tableau m a }
-  deriving (Algebra (State Tableau :+: sig), Applicative, Functor, Monad)
+  deriving (Algebra (State Tableau :+: sig), Applicative, Functor, Monad, MonadFail)
 
 
 covers :: Tableau -> Bool
