@@ -20,6 +20,7 @@ import Control.Carrier.Choose.Church (runChoose)
 import Control.Carrier.Fail.Either
 import Control.Carrier.State.Church
 import Control.Effect.Choose
+import Control.Monad (ap)
 import Facet.Interface
 import Facet.Name
 import Fresnel.Effect hiding (view)
@@ -37,6 +38,19 @@ data Pattern a
   | InR (Pattern a)
   | Pair (Pattern a) (Pattern a)
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
+
+instance Applicative Pattern where
+  pure = Var
+  (<*>) = ap
+
+instance Monad Pattern where
+  m >>= f = case m of
+    Wildcard -> Wildcard
+    Var a    -> f a
+    Unit     -> Unit
+    InL p    -> InL (p >>= f)
+    InR q    -> InR (q >>= f)
+    Pair p q -> Pair (p >>= f) (q >>= f)
 
 
 newtype Clause = Clause [Pattern Name]
