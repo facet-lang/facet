@@ -19,6 +19,7 @@ import Control.Applicative (liftA2)
 import Control.Carrier.Choose.Church (runChoose)
 import Control.Carrier.Fail.Either
 import Control.Carrier.State.Church
+import Control.Carrier.Writer.Church (execWriter)
 import Control.Effect.Choose
 import Control.Monad (ap)
 import Facet.Interface
@@ -125,15 +126,14 @@ coverStep = use context_ >>= \case
     Var _    -> pure ()
     Unit     -> pure ()
     p        -> fail ("unexpected pattern: " <> show p)) >> context_ .= ctx >> heads_.traversed.patterns_ %= tail
-  (t1 :+ t2):ctx -> uses heads_ (foldMapOf (folded.patterns_) (\case
-      Wildcard:ps -> ([], [Clause (Wildcard:ps)], [Clause (Wildcard:ps)])
-      Var n:ps    -> ([], [Clause (Var n:ps)],    [Clause (Var n:ps)])
-      InL p:ps    -> ([], [Clause (p:ps)],        [Clause []])
-      InR q:qs    -> ([], [Clause []],            [Clause (q:qs)])
-      p           -> ([p], [], [])))
-    >>= \case
-      ([], cs1, cs2) -> put (Tableau (t1:ctx) cs1) <|> put (Tableau (t2:ctx) cs2)
-      (ps, _, _)     -> fail ("unexpected patterns: " <> show ps)
+  (t1 :+ t2):ctx -> use heads_ >>= execWriter . traverseOf_ (folded.patterns_) (\case
+      Wildcard:ps -> pure ([Clause (Wildcard:ps)], [Clause (Wildcard:ps)])
+      Var n:ps    -> pure ([Clause (Var n:ps)],    [Clause (Var n:ps)])
+      InL p:ps    -> pure ([Clause (p:ps)],        [Clause []])
+      InR q:qs    -> pure ([Clause []],            [Clause (q:qs)])
+      p:_         -> fail ("unexpected pattern: " <> show p)
+      _           -> fail "no patterns to match sum")
+    >>= \ (cs1, cs2) -> put (Tableau (t1:ctx) cs1) <|> put (Tableau (t2:ctx) cs2)
   (t1 :* t2):ctx -> use heads_ >>= traverseOf_ (folded.patterns_.head_) (\case
     Wildcard   -> context_ .= t1:t2:ctx >> heads_.traversed.patterns_ %= (\ clause -> Wildcard:Wildcard:clause)
     -- FIXME: this should bind fresh names
