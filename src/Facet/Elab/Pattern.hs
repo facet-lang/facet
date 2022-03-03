@@ -29,18 +29,18 @@ import Fresnel.Lens
 import Fresnel.List (head_)
 import Fresnel.Traversal (traversed)
 
-data Pattern
+data Pattern a
   = Wildcard
-  | Var Name
+  | Var a
   | Unit
-  | InL Pattern
-  | InR Pattern
-  | Pair Pattern Pattern
+  | InL (Pattern a)
+  | InR (Pattern a)
+  | Pair (Pattern a) (Pattern a)
   deriving (Eq, Ord, Show)
 
-newtype Clause = Clause [Pattern]
+newtype Clause = Clause [Pattern Name]
 
-patterns_ :: Iso' Clause [Pattern]
+patterns_ :: Iso' Clause [Pattern Name]
 patterns_ = coerced
 
 
