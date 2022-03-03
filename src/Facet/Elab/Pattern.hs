@@ -107,38 +107,38 @@ coverStep = use context_ >>= \case
   String:ctx   -> use heads_ >>= traverseOf_ (folded.patterns_.head_) (\case
     Wildcard -> pure ()
     Var _    -> pure ()
-    _        -> fail "unexpected pattern") >> context_ .= ctx >> heads_.traversed.patterns_ %= tail
+    p        -> fail ("unexpected pattern: " <> show p)) >> context_ .= ctx >> heads_.traversed.patterns_ %= tail
   ForAll{}:ctx -> use heads_ >>= traverseOf_ (folded.patterns_.head_) (\case
     Wildcard -> pure ()
     Var _    -> pure ()
-    _        -> fail "unexpected pattern") >> context_ .= ctx >> heads_.traversed.patterns_ %= tail
+    p        -> fail ("unexpected pattern: " <> show p)) >> context_ .= ctx >> heads_.traversed.patterns_ %= tail
   Arrow{}:ctx  -> use heads_ >>= traverseOf_ (folded.patterns_.head_) (\case
     Wildcard -> pure ()
     Var _    -> pure ()
-    _        -> fail "unexpected pattern") >> context_ .= ctx >> heads_.traversed.patterns_ %= tail
+    p        -> fail ("unexpected pattern: " <> show p)) >> context_ .= ctx >> heads_.traversed.patterns_ %= tail
   Zero:ctx     -> use heads_ >>= traverseOf_ (folded.patterns_.head_) (\case
     Wildcard -> pure ()
     Var _    -> pure ()
-    _        -> fail "unexpected pattern") >> context_ .= ctx >> heads_.traversed.patterns_ %= tail
+    p        -> fail ("unexpected pattern: " <> show p)) >> context_ .= ctx >> heads_.traversed.patterns_ %= tail
   One:ctx      -> use heads_ >>= traverseOf_ (folded.patterns_.head_) (\case
     Wildcard -> pure ()
     Var _    -> pure ()
     Unit     -> pure ()
-    _        -> fail "unexpected pattern") >> context_ .= ctx >> heads_.traversed.patterns_ %= tail
+    p        -> fail ("unexpected pattern: " <> show p)) >> context_ .= ctx >> heads_.traversed.patterns_ %= tail
   (t1 :+ t2):ctx -> uses heads_ (foldMapOf (folded.patterns_) (\case
-      Wildcard:ps -> Just ([Clause (Wildcard:ps)], [Clause (Wildcard:ps)])
-      Var n:ps    -> Just ([Clause (Var n:ps)],    [Clause (Var n:ps)])
-      InL p:ps    -> Just ([Clause (p:ps)],        [Clause []])
-      InR q:qs    -> Just ([Clause []],            [Clause (q:qs)])
-      _           -> Nothing))
+      Wildcard:ps -> ([], [Clause (Wildcard:ps)], [Clause (Wildcard:ps)])
+      Var n:ps    -> ([], [Clause (Var n:ps)],    [Clause (Var n:ps)])
+      InL p:ps    -> ([], [Clause (p:ps)],        [Clause []])
+      InR q:qs    -> ([], [Clause []],            [Clause (q:qs)])
+      p           -> ([p], [], [])))
     >>= \case
-      Just (cs1, cs2) -> put (Tableau (t1:ctx) cs1) <|> put (Tableau (t2:ctx) cs2)
-      Nothing         -> fail "unexpected pattern"
-  (t1 :* t2):ctx -> use heads_ >>= foldMapByOf (folded.patterns_.head_) (<|>) (fail "unexpected pattern") (\case
+      ([], cs1, cs2) -> put (Tableau (t1:ctx) cs1) <|> put (Tableau (t2:ctx) cs2)
+      (ps, _, _)     -> fail ("unexpected patterns: " <> show ps)
+  (t1 :* t2):ctx -> use heads_ >>= traverseOf_ (folded.patterns_.head_) (\case
     Wildcard   -> context_ .= t1:t2:ctx >> heads_.traversed.patterns_ %= (\ clause -> Wildcard:Wildcard:clause)
     -- FIXME: this should bind fresh names
     Var n      -> context_ .= t1:t2:ctx >> heads_.traversed.patterns_ %= (\ clause -> Var n:Var n:clause)
     Pair p1 p2 -> context_ .= t1:t2:ctx >> heads_.traversed.patterns_ %= (\ clause -> p1:p2:clause)
-    _          -> fail "unexpected pattern")
-  Comp{}:_     -> fail "unexpected pattern"
+    p          -> fail ("unexpected pattern: " <> show p))
+  Comp{}:_     -> use heads_ >>= traverseOf_ (folded.patterns_.head_) (\ p -> fail ("unexpected pattern: " <> show p))
   []           -> pure () -- FIXME: fail if clauses aren't all empty
