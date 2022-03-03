@@ -36,7 +36,7 @@ data Pattern a
   | InL (Pattern a)
   | InR (Pattern a)
   | Pair (Pattern a) (Pattern a)
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
 newtype Clause = Clause [Pattern Name]
 
