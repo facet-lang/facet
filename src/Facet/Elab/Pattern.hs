@@ -36,6 +36,7 @@ data Pattern
   | InL Pattern
   | InR Pattern
   | Pair Pattern Pattern
+  deriving (Eq, Ord, Show)
 
 newtype Clause = Clause [Pattern]
 
