@@ -38,6 +38,7 @@ data Pattern a
   | Pair (Pattern a) (Pattern a)
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
+
 newtype Clause = Clause [Pattern Name]
 
 patterns_ :: Iso' Clause [Pattern Name]
