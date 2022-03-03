@@ -16,12 +16,10 @@ module Facet.Elab.Pattern
 
 import Control.Algebra
 import Control.Applicative (liftA2)
+import Control.Carrier.Choose.Church (runChoose)
 import Control.Carrier.Fail.Either
-import Control.Carrier.NonDet.Church (runNonDet)
 import Control.Carrier.State.Church
 import Control.Effect.Choose
-import Control.Effect.Empty
-import Control.Effect.NonDet (NonDet)
 import Facet.Interface
 import Facet.Name
 import Fresnel.Effect hiding (view)
@@ -83,12 +81,12 @@ newtype Covers m a = Covers { runCovers :: StateC Tableau m a }
 
 
 covers :: Tableau -> Either String Bool
-covers t = run (runFail (runNonDet (liftA2 (&&)) (const (pure True)) (pure False) (execState t (runCovers go)))) where
+covers t = run (runFail (runChoose (liftA2 (&&)) (const (pure True)) (execState t (runCovers go)))) where
   go = use context_ >>= \case
     [] -> pure ()
     _  -> coverStep >> go
 
-coverStep :: (Has NonDet sig m, MonadFail m) => Covers m ()
+coverStep :: (Has Choose sig m, MonadFail m) => Covers m ()
 coverStep = use context_ >>= \case
   String:ctx   -> use heads_ >>= traverseOf_ (folded.patterns_.head_) (\case
     Wildcard -> pure ()
