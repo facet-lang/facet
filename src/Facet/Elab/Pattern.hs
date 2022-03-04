@@ -71,11 +71,13 @@ data Type
   | Type :* Type
   | Comp (Signature Type)
   | Datatype RName [Constructor]
+  deriving (Eq, Ord, Show)
 
 data Constructor = Constructor
   { name   :: RName
   , fields :: [Type]
   }
+  deriving (Eq, Ord, Show)
 
 data Tableau = Tableau
   { context :: [Type]
