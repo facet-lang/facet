@@ -1,6 +1,6 @@
 {-# LANGUAGE ExistentialQuantification #-}
 module Facet.Elab.Pattern
-( Pattern(..)
+( Atom(..)
 , Clause(..)
 , patterns_
 , Type(..)
@@ -31,20 +31,20 @@ import Fresnel.Lens
 import Fresnel.List (head_)
 import Fresnel.Traversal (traversed)
 
-data Pattern a
+data Atom a
   = Wildcard
   | Var a
   | Unit
-  | InL (Pattern a)
-  | InR (Pattern a)
-  | Pair (Pattern a) (Pattern a)
+  | InL (Atom a)
+  | InR (Atom a)
+  | Pair (Atom a) (Atom a)
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
-instance Applicative Pattern where
+instance Applicative Atom where
   pure = Var
   (<*>) = ap
 
-instance Monad Pattern where
+instance Monad Atom where
   m >>= f = case m of
     Wildcard -> Wildcard
     Var a    -> f a
@@ -54,9 +54,9 @@ instance Monad Pattern where
     Pair p q -> Pair (p >>= f) (q >>= f)
 
 
-newtype Clause = Clause [Pattern Name]
+newtype Clause = Clause [Atom Name]
 
-patterns_ :: Iso' Clause [Pattern Name]
+patterns_ :: Iso' Clause [Atom Name]
 patterns_ = coerced
 
 
