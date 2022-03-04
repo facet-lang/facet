@@ -4,6 +4,7 @@ module Facet.Elab.Pattern
 , Clause(..)
 , patterns_
 , Type(..)
+, Constructor(..)
 , Tableau(..)
 , heads_
 , Branch(..)
@@ -69,7 +70,12 @@ data Type
   | Type :+ Type
   | Type :* Type
   | Comp (Signature Type)
+  | Datatype RName [Constructor]
 
+data Constructor = Constructor
+  { name   :: RName
+  , fields :: [Type]
+  }
 
 data Tableau = Tableau
   { context :: [Type]
@@ -141,4 +147,5 @@ coverStep = use context_ >>= \case
     Pair p1 p2 -> context_ .= t1:t2:ctx >> heads_.traversed.patterns_ %= (\ clause -> p1:p2:clause)
     p          -> fail ("unexpected pattern: " <> show p))
   Comp{}:_     -> use heads_ >>= traverseOf_ (folded.patterns_.head_) (\ p -> fail ("unexpected pattern: " <> show p))
+  Datatype{}:_ -> use heads_ >>= traverseOf_ (folded.patterns_.head_) (\ p -> fail ("unexpected pattern: " <> show p))
   []           -> pure () -- FIXME: fail if clauses aren't all empty
