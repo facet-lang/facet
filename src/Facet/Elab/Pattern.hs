@@ -36,6 +36,7 @@ data Pattern a
   = Wildcard
   | Var a
   | Unit
+  | Cons RName [Pattern a]
   | InL (Pattern a)
   | InR (Pattern a)
   | Pair (Pattern a) (Pattern a)
@@ -50,6 +51,7 @@ instance Monad Pattern where
     Wildcard -> Wildcard
     Var a    -> f a
     Unit     -> Unit
+    Cons n p -> Cons n (map (>>= f) p)
     InL p    -> InL (p >>= f)
     InR q    -> InR (q >>= f)
     Pair p q -> Pair (p >>= f) (q >>= f)
