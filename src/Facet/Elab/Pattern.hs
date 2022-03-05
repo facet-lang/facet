@@ -150,10 +150,10 @@ coverStep = use context_ >>= \case
     Wildcard -> pure ()
     Var _    -> pure ()
     p        -> fail ("unexpected pattern: " <> show p)) >> context_ .= ctx >> heads_.traversed.patterns_ %= tail
-  Datatype _ [Constructor _ []]:ctx -> use heads_ >>= traverseOf_ (folded.patterns_.head_) (\case
-    Wildcard -> pure ()
-    Var _    -> pure ()
-    Unit     -> pure ()
-    p        -> fail ("unexpected pattern: " <> show p)) >> context_ .= ctx >> heads_.traversed.patterns_ %= tail
+  Datatype _ [Constructor m []]:ctx -> use heads_ >>= traverseOf_ (folded.patterns_.head_) (\case
+    Wildcard           -> pure ()
+    Var _              -> pure ()
+    Cons n [] | m == n -> pure ()
+    p                  -> fail ("unexpected pattern: " <> show p)) >> context_ .= ctx >> heads_.traversed.patterns_ %= tail
   Datatype{}:_ -> use heads_ >>= traverseOf_ (folded.patterns_.head_) (\ p -> fail ("unexpected pattern: " <> show p))
   []           -> pure () -- FIXME: fail if clauses aren't all empty
