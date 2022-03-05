@@ -35,7 +35,6 @@ import Fresnel.Traversal (traversed)
 data Pattern a
   = Wildcard
   | Var a
-  | Unit
   | Cons RName [Pattern a]
   | InL (Pattern a)
   | InR (Pattern a)
@@ -50,7 +49,6 @@ instance Monad Pattern where
   m >>= f = case m of
     Wildcard -> Wildcard
     Var a    -> f a
-    Unit     -> Unit
     Cons n p -> Cons n (map (>>= f) p)
     InL p    -> InL (p >>= f)
     InR q    -> InR (q >>= f)
@@ -127,10 +125,10 @@ coverStep = use context_ >>= \case
     Var _    -> pure ()
     p        -> fail ("unexpected pattern: " <> show p)) >> context_ .= ctx >> heads_.traversed.patterns_ %= tail
   One:ctx      -> use heads_ >>= traverseOf_ (folded.patterns_.head_) (\case
-    Wildcard -> pure ()
-    Var _    -> pure ()
-    Unit     -> pure ()
-    p        -> fail ("unexpected pattern: " <> show p)) >> context_ .= ctx >> heads_.traversed.patterns_ %= tail
+    Wildcard  -> pure ()
+    Var _     -> pure ()
+    Cons _ [] -> pure ()
+    p         -> fail ("unexpected pattern: " <> show p)) >> context_ .= ctx >> heads_.traversed.patterns_ %= tail
   (t1 :+ t2):ctx -> use heads_ >>= execWriter . traverseOf_ (folded.patterns_) (\case
       Wildcard:ps -> pure ([Clause (Wildcard:ps)], [Clause (Wildcard:ps)])
       Var n:ps    -> pure ([Clause (Var n:ps)],    [Clause (Var n:ps)])
