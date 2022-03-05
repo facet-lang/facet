@@ -13,6 +13,7 @@ module Facet.Sequent.Class
 , funLA
 , sumLA
 , prdLA
+, stringLA
 , (.||.)
 -- , Ctx(..)
 -- , Binding(..)
@@ -96,6 +97,12 @@ prdLA
   -> (forall j . Applicative j => (i ~> j) -> j [t] -> m (j d))
   -> m (i c)
 prdLA i = binder (prdL i)
+
+stringLA
+  :: (Sequent t c d, Applicative i, Applicative m)
+  => (forall j . Applicative j => (i ~> j) -> j t -> m (j d))
+  -> m (i c)
+stringLA = binder stringL
 
 
 (.||.) :: (Applicative m, Applicative i, Sequent t c d) => m (i t) -> m (i c) -> m (i d)
