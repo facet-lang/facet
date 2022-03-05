@@ -42,6 +42,7 @@ class Sequent term coterm command | coterm -> term command, term -> coterm comma
   funL :: term -> coterm -> coterm
   sumL :: [term -> command] -> coterm
   prdL :: Int -> ([term] -> command) -> coterm
+  stringL :: (term -> command) -> coterm
 
   -- Commands
   (.|.) :: term -> coterm -> command
