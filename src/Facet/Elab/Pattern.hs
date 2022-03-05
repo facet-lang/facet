@@ -65,7 +65,6 @@ data Type
   = String
   | ForAll
   | Arrow
-  | Zero
   | One
   | Type :+ Type
   | Type :* Type
@@ -122,10 +121,6 @@ coverStep = use context_ >>= \case
     Var _    -> pure ()
     p        -> fail ("unexpected pattern: " <> show p)) >> context_ .= ctx >> heads_.traversed.patterns_ %= tail
   Arrow{}:ctx  -> use heads_ >>= traverseOf_ (folded.patterns_.head_) (\case
-    Wildcard -> pure ()
-    Var _    -> pure ()
-    p        -> fail ("unexpected pattern: " <> show p)) >> context_ .= ctx >> heads_.traversed.patterns_ %= tail
-  Zero:ctx     -> use heads_ >>= traverseOf_ (folded.patterns_.head_) (\case
     Wildcard -> pure ()
     Var _    -> pure ()
     p        -> fail ("unexpected pattern: " <> show p)) >> context_ .= ctx >> heads_.traversed.patterns_ %= tail
