@@ -116,23 +116,23 @@ covers t = run (runFail (runChoose (liftA2 (&&)) (const (pure True)) (execState 
 
 coverStep :: (Has Choose sig m, MonadFail m) => Covers m ()
 coverStep = use context_ >>= \case
-  String:ctx   -> match (\case
+  String:ctx   -> match ctx (\case
     Wildcard -> pure ()
     Var _    -> pure ()
-    p        -> fail ("unexpected pattern: " <> show p)) >> context_ .= ctx >> heads_.traversed.patterns_ %= tail
-  ForAll{}:ctx -> match (\case
+    p        -> fail ("unexpected pattern: " <> show p)) >> heads_.traversed.patterns_ %= tail
+  ForAll{}:ctx -> match ctx (\case
     Wildcard -> pure ()
     Var _    -> pure ()
-    p        -> fail ("unexpected pattern: " <> show p)) >> context_ .= ctx >> heads_.traversed.patterns_ %= tail
-  Arrow{}:ctx  -> match (\case
+    p        -> fail ("unexpected pattern: " <> show p)) >> heads_.traversed.patterns_ %= tail
+  Arrow{}:ctx  -> match ctx (\case
     Wildcard -> pure ()
     Var _    -> pure ()
-    p        -> fail ("unexpected pattern: " <> show p)) >> context_ .= ctx >> heads_.traversed.patterns_ %= tail
-  One:ctx      -> match (\case
+    p        -> fail ("unexpected pattern: " <> show p)) >> heads_.traversed.patterns_ %= tail
+  One:ctx      -> match ctx (\case
     Wildcard  -> pure ()
     Var _     -> pure ()
     Cons _ [] -> pure ()
-    p         -> fail ("unexpected pattern: " <> show p)) >> context_ .= ctx >> heads_.traversed.patterns_ %= tail
+    p         -> fail ("unexpected pattern: " <> show p)) >> heads_.traversed.patterns_ %= tail
   (t1 :+ t2):ctx -> use heads_ >>= foldMapOf (folded.patterns_) (\case
       Wildcard:ps -> pure ([Clause (Wildcard:ps) ()], [Clause (Wildcard:ps) ()])
       Var n:ps    -> pure ([Clause (Var n:ps) ()],    [Clause (Var n:ps) ()])
@@ -141,24 +141,24 @@ coverStep = use context_ >>= \case
       p:_         -> fail ("unexpected pattern: " <> show p)
       _           -> fail "no patterns to match sum")
     >>= \ (cs1, cs2) -> put (Tableau (t1:ctx) cs1) <|> put (Tableau (t2:ctx) cs2)
-  (t1 :* t2):ctx -> match (\case
+  (t1 :* t2):ctx -> match (t1:t2:ctx) (\case
     Wildcard   -> heads_.traversed.patterns_ %= (\ clauses -> Wildcard:Wildcard:tail clauses)
     -- FIXME: substitute variables out for wildcards so we don't have to bind fresh variable names
     Var n      -> heads_.traversed.patterns_ %= (\ clauses -> Var n:Var n:tail clauses)
     Pair p1 p2 -> heads_.traversed.patterns_ %= (\ clauses -> p1:p2:tail clauses)
-    p          -> fail ("unexpected pattern: " <> show p)) >> context_ .= t1:t2:ctx
-  Comp{}:_     -> match (\ p -> fail ("unexpected pattern: " <> show p))
-  Datatype _ []:ctx -> match (\case
+    p          -> fail ("unexpected pattern: " <> show p))
+  Comp{}:ctx   -> match ctx (\ p -> fail ("unexpected pattern: " <> show p))
+  Datatype _ []:ctx -> match ctx (\case
     Wildcard -> pure ()
     Var _    -> pure ()
-    p        -> fail ("unexpected pattern: " <> show p)) >> context_ .= ctx >> heads_.traversed.patterns_ %= tail
-  Datatype _ [Constructor m []]:ctx -> match (\case
+    p        -> fail ("unexpected pattern: " <> show p)) >> heads_.traversed.patterns_ %= tail
+  Datatype _ [Constructor m []]:ctx -> match ctx (\case
     Wildcard           -> pure ()
     Var _              -> pure ()
     Cons n [] | m == n -> pure ()
-    p                  -> fail ("unexpected pattern: " <> show p)) >> context_ .= ctx >> heads_.traversed.patterns_ %= tail
-  Datatype{}:_ -> match (\ p -> fail ("unexpected pattern: " <> show p))
+    p                  -> fail ("unexpected pattern: " <> show p)) >> heads_.traversed.patterns_ %= tail
+  Datatype{}:ctx -> match ctx (\ p -> fail ("unexpected pattern: " <> show p))
   []           -> pure () -- FIXME: fail if clauses aren't all empty
 
-match :: Algebra sig m => (Pattern Name -> Covers m ()) -> Covers m ()
-match f = use heads_ >>= traverseOf_ (folded.patterns_.head_) f
+match :: Algebra sig m => [Type] -> (Pattern Name -> Covers m ()) -> Covers m ()
+match ctx f = use heads_ >>= traverseOf_ (folded.patterns_.head_) f >> context_ .= ctx
