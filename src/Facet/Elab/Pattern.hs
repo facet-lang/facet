@@ -143,7 +143,7 @@ coverStep = use context_ >>= \case
     >>= \ (cs1, cs2) -> put (Tableau (t1:ctx) cs1) <|> put (Tableau (t2:ctx) cs2)
   (t1 :* t2):ctx -> match (\case
     Wildcard   -> context_ .= t1:t2:ctx >> heads_.traversed.patterns_ %= (\ clause -> Wildcard:Wildcard:clause)
-    -- FIXME: this should bind fresh names
+    -- FIXME: substitute variables out for wildcards so we don't have to bind fresh variable names
     Var n      -> context_ .= t1:t2:ctx >> heads_.traversed.patterns_ %= (\ clause -> Var n:Var n:clause)
     Pair p1 p2 -> context_ .= t1:t2:ctx >> heads_.traversed.patterns_ %= (\ clause -> p1:p2:clause)
     p          -> fail ("unexpected pattern: " <> show p))
