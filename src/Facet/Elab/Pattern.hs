@@ -119,20 +119,20 @@ coverStep = use context_ >>= \case
   String:ctx   -> match ctx (\case
     Wildcard -> pure tail
     Var _    -> pure tail
-    p        -> fail ("unexpected pattern: " <> show p)) >> heads_.traversed.patterns_ %= tail
+    p        -> fail ("unexpected pattern: " <> show p))
   ForAll{}:ctx -> match ctx (\case
     Wildcard -> pure tail
     Var _    -> pure tail
-    p        -> fail ("unexpected pattern: " <> show p)) >> heads_.traversed.patterns_ %= tail
+    p        -> fail ("unexpected pattern: " <> show p))
   Arrow{}:ctx  -> match ctx (\case
     Wildcard -> pure tail
     Var _    -> pure tail
-    p        -> fail ("unexpected pattern: " <> show p)) >> heads_.traversed.patterns_ %= tail
+    p        -> fail ("unexpected pattern: " <> show p))
   One:ctx      -> match ctx (\case
     Wildcard  -> pure tail
     Var _     -> pure tail
     Cons _ [] -> pure tail
-    p         -> fail ("unexpected pattern: " <> show p)) >> heads_.traversed.patterns_ %= tail
+    p         -> fail ("unexpected pattern: " <> show p))
   (t1 :+ t2):ctx -> use heads_ >>= foldMapOf (folded.patterns_) (\case
       Wildcard:ps -> pure ([Clause (Wildcard:ps) ()], [Clause (Wildcard:ps) ()])
       Var n:ps    -> pure ([Clause (Var n:ps) ()],    [Clause (Var n:ps) ()])
@@ -151,12 +151,12 @@ coverStep = use context_ >>= \case
   Datatype _ []:ctx -> match ctx (\case
     Wildcard -> pure tail
     Var _    -> pure tail
-    p        -> fail ("unexpected pattern: " <> show p)) >> heads_.traversed.patterns_ %= tail
+    p        -> fail ("unexpected pattern: " <> show p))
   Datatype _ [Constructor m []]:ctx -> match ctx (\case
     Wildcard           -> pure tail
     Var _              -> pure tail
     Cons n [] | m == n -> pure tail
-    p                  -> fail ("unexpected pattern: " <> show p)) >> heads_.traversed.patterns_ %= tail
+    p                  -> fail ("unexpected pattern: " <> show p))
   Datatype{}:ctx -> match ctx (\ p -> fail ("unexpected pattern: " <> show p))
   []           -> pure () -- FIXME: fail if clauses aren't all empty
 
