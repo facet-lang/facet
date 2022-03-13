@@ -27,7 +27,6 @@ import Facet.Interface
 import Facet.Name
 import Fresnel.Effect hiding (view)
 import Fresnel.Fold
-import Fresnel.Iso
 import Fresnel.Lens
 import Fresnel.List (head_)
 import Fresnel.Traversal (traversed)
@@ -55,10 +54,10 @@ instance Monad Pattern where
     Pair p q -> Pair (p >>= f) (q >>= f)
 
 
-newtype Clause = Clause [Pattern Name]
+data Clause a = Clause { patterns :: [Pattern Name], body :: a }
 
-patterns_ :: Iso' Clause [Pattern Name]
-patterns_ = coerced
+patterns_ :: Lens' (Clause a) [Pattern Name]
+patterns_ = lens patterns (\ c patterns -> c{patterns})
 
 
 data Type
@@ -80,10 +79,10 @@ data Constructor = Constructor
 
 data Tableau = Tableau
   { context :: [Type]
-  , heads   :: [Clause]
+  , heads   :: [Clause ()]
   }
 
-heads_ :: Lens' Tableau [Clause]
+heads_ :: Lens' Tableau [Clause ()]
 heads_ = lens heads (\ t heads -> t{heads})
 
 context_ :: Lens' Tableau [Type]
