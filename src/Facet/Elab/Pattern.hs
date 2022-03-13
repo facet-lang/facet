@@ -66,6 +66,9 @@ data Type
   | Comp (Signature Type)
   deriving (Eq, Ord, Show)
 
+infixl 6 :+
+infixl 7 :*
+
 data Tableau = Tableau
   { context :: [Type]
   , heads   :: [Clause ()]
