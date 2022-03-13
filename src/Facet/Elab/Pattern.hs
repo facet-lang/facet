@@ -118,7 +118,7 @@ coverStep = use context_ >>= \case
     Var _     -> pure tail
     Cons _ [] -> pure tail
     p         -> fail ("unexpected pattern: " <> show p))
-  (t1 :+ t2):ctx -> use heads_ >>= foldMapOf (folded.patterns_) (\case
+  t1 :+ t2:ctx -> use heads_ >>= foldMapOf (folded.patterns_) (\case
       Wildcard:ps -> pure ([Clause (Wildcard:ps) ()], [Clause (Wildcard:ps) ()])
       Var n:ps    -> pure ([Clause (Var n:ps) ()],    [Clause (Var n:ps) ()])
       InL p:ps    -> pure ([Clause (p:ps) ()],        [Clause [] ()])
@@ -126,7 +126,7 @@ coverStep = use context_ >>= \case
       p:_         -> fail ("unexpected pattern: " <> show p)
       _           -> fail "no patterns to match sum")
     >>= \ (cs1, cs2) -> put (Tableau (t1:ctx) cs1) <|> put (Tableau (t2:ctx) cs2)
-  (t1 :* t2):ctx -> match (t1:t2:ctx) (\case
+  t1 :* t2:ctx -> match (t1:t2:ctx) (\case
     Wildcard   -> pure (\ clauses -> Wildcard:Wildcard:tail clauses)
     -- FIXME: substitute variables out for wildcards so we don't have to bind fresh variable names
     Var n      -> pure (\ clauses -> Var n:Var n:tail clauses)
