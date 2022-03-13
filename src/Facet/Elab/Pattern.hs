@@ -105,6 +105,9 @@ newtype Covers m a = Covers { runCovers :: StateC Tableau m a }
 instance Semigroup a => Semigroup (Covers m a) where
   a <> b = liftA2 (<>) a b
 
+instance Monoid a => Monoid (Covers m a) where
+  mempty = pure mempty
+
 
 covers :: Tableau -> Either String Bool
 covers t = run (runFail (runChoose (liftA2 (&&)) (const (pure True)) (execState t (runCovers go)))) where
