@@ -102,6 +102,9 @@ infixr 2 \/
 newtype Covers m a = Covers { runCovers :: StateC Tableau m a }
   deriving (Algebra (State Tableau :+: sig), Applicative, Functor, Monad, MonadFail)
 
+instance Semigroup a => Semigroup (Covers m a) where
+  a <> b = liftA2 (<>) a b
+
 
 covers :: Tableau -> Either String Bool
 covers t = run (runFail (runChoose (liftA2 (&&)) (const (pure True)) (execState t (runCovers go)))) where
