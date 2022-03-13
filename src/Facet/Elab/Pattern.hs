@@ -68,15 +68,15 @@ data Type
 infixl 6 :+
 infixl 7 :*
 
-data Tableau = Tableau
+data Tableau a = Tableau
   { context :: [Type]
-  , heads   :: [Clause ()]
+  , heads   :: [Clause a]
   }
 
-heads_ :: Lens' Tableau [Clause ()]
+heads_ :: Lens (Tableau a) (Tableau b) [Clause a] [Clause b]
 heads_ = lens heads (\ t heads -> t{heads})
 
-context_ :: Lens' Tableau [Type]
+context_ :: Lens' (Tableau a) [Type]
 context_ = lens context (\ t context -> t{context})
 
 
@@ -90,8 +90,8 @@ infixr 2 \/
 
 -- Coverage judgement
 
-newtype Covers m a = Covers { runCovers :: StateC Tableau m a }
-  deriving (Algebra (State Tableau :+: sig), Applicative, Functor, Monad, MonadFail)
+newtype Covers m a = Covers { runCovers :: StateC (Tableau ()) m a }
+  deriving (Algebra (State (Tableau ()) :+: sig), Applicative, Functor, Monad, MonadFail)
 
 instance Semigroup a => Semigroup (Covers m a) where
   a <> b = liftA2 (<>) a b
@@ -100,14 +100,14 @@ instance Monoid a => Monoid (Covers m a) where
   mempty = pure mempty
 
 
-covers :: Tableau -> Either String Bool
+covers :: Tableau () -> Either String Bool
 covers t = run (runFail (runChoose (liftA2 (&&)) (const (pure True)) (execState t (runCovers go)))) where
-  go = use context_ >>= \case
+  go = use (context_ @()) >>= \case
     [] -> pure ()
     _  -> coverStep >> go
 
 coverStep :: (Has Choose sig m, MonadFail m) => Covers m ()
-coverStep = use context_ >>= \case
+coverStep = use (context_ @()) >>= \case
   Opaque:ctx   -> match ctx (\case
     Wildcard:ps -> pure ps
     Var _:ps    -> pure ps
@@ -117,7 +117,7 @@ coverStep = use context_ >>= \case
     Var _:ps     -> pure ps
     Cons _ []:ps -> pure ps
     p            -> fail ("unexpected pattern: " <> show p))
-  t1 :+ t2:ctx -> use heads_ >>= foldMapOf (folded.patterns_) (\case
+  t1 :+ t2:ctx -> use (heads_ @()) >>= foldMapOf (folded.patterns_) (\case
       Wildcard:ps -> pure ([Clause (Wildcard:ps) ()], [Clause (Wildcard:ps) ()])
       Var n:ps    -> pure ([Clause (Var n:ps) ()],    [Clause (Var n:ps) ()])
       InL p:ps    -> pure ([Clause (p:ps) ()],        [Clause [] ()])
@@ -135,4 +135,4 @@ coverStep = use context_ >>= \case
   []           -> pure () -- FIXME: fail if clauses aren't all empty
 
 match :: Algebra sig m => [Type] -> ([Pattern Name] -> Covers m [Pattern Name]) -> Covers m ()
-match ctx f = heads_ <~ (use heads_ >>= traverseOf (traversed.patterns_) f) >> context_ .= ctx
+match ctx f = (heads_ @()) <~ (use heads_ >>= traverseOf (traversed.patterns_) f) >> (context_ @()) .= ctx
