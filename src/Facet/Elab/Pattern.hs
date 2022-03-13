@@ -4,7 +4,6 @@ module Facet.Elab.Pattern
 , Clause(..)
 , patterns_
 , Type(..)
-, Constructor(..)
 , Tableau(..)
 , heads_
 , Branch(..)
@@ -65,13 +64,6 @@ data Type
   | Type :+ Type
   | Type :* Type
   | Comp (Signature Type)
-  | Datatype RName [Constructor]
-  deriving (Eq, Ord, Show)
-
-data Constructor = Constructor
-  { name   :: RName
-  , fields :: [Type]
-  }
   deriving (Eq, Ord, Show)
 
 data Tableau = Tableau
@@ -138,16 +130,6 @@ coverStep = use context_ >>= \case
     Pair p1 p2 -> pure (\ clauses -> p1:p2:tail clauses)
     p          -> fail ("unexpected pattern: " <> show p))
   Comp{}:ctx   -> match ctx (\ p -> fail ("unexpected pattern: " <> show p))
-  Datatype _ []:ctx -> match ctx (\case
-    Wildcard -> pure tail
-    Var _    -> pure tail
-    p        -> fail ("unexpected pattern: " <> show p))
-  Datatype _ [Constructor m []]:ctx -> match ctx (\case
-    Wildcard           -> pure tail
-    Var _              -> pure tail
-    Cons n [] | m == n -> pure tail
-    p                  -> fail ("unexpected pattern: " <> show p))
-  Datatype{}:ctx -> match ctx (\ p -> fail ("unexpected pattern: " <> show p))
   []           -> pure () -- FIXME: fail if clauses aren't all empty
 
 match :: Algebra sig m => [Type] -> (Pattern Name -> Covers m ([Pattern Name] -> [Pattern Name])) -> Covers m ()
