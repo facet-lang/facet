@@ -111,19 +111,19 @@ covers t = run (runFail (runChoose (liftA2 (&&)) (const (pure True)) (execState 
 
 coverStep :: (Has Choose sig m, MonadFail m) => Covers m ()
 coverStep = use context_ >>= \case
-  String:ctx   -> use heads_ >>= traverseOf_ (folded.patterns_.head_) (\case
+  String:ctx   -> match (\case
     Wildcard -> pure ()
     Var _    -> pure ()
     p        -> fail ("unexpected pattern: " <> show p)) >> context_ .= ctx >> heads_.traversed.patterns_ %= tail
-  ForAll{}:ctx -> use heads_ >>= traverseOf_ (folded.patterns_.head_) (\case
+  ForAll{}:ctx -> match (\case
     Wildcard -> pure ()
     Var _    -> pure ()
     p        -> fail ("unexpected pattern: " <> show p)) >> context_ .= ctx >> heads_.traversed.patterns_ %= tail
-  Arrow{}:ctx  -> use heads_ >>= traverseOf_ (folded.patterns_.head_) (\case
+  Arrow{}:ctx  -> match (\case
     Wildcard -> pure ()
     Var _    -> pure ()
     p        -> fail ("unexpected pattern: " <> show p)) >> context_ .= ctx >> heads_.traversed.patterns_ %= tail
-  One:ctx      -> use heads_ >>= traverseOf_ (folded.patterns_.head_) (\case
+  One:ctx      -> match (\case
     Wildcard  -> pure ()
     Var _     -> pure ()
     Cons _ [] -> pure ()
@@ -136,21 +136,24 @@ coverStep = use context_ >>= \case
       p:_         -> fail ("unexpected pattern: " <> show p)
       _           -> fail "no patterns to match sum")
     >>= \ (cs1, cs2) -> put (Tableau (t1:ctx) cs1) <|> put (Tableau (t2:ctx) cs2)
-  (t1 :* t2):ctx -> use heads_ >>= traverseOf_ (folded.patterns_.head_) (\case
+  (t1 :* t2):ctx -> match (\case
     Wildcard   -> context_ .= t1:t2:ctx >> heads_.traversed.patterns_ %= (\ clause -> Wildcard:Wildcard:clause)
     -- FIXME: this should bind fresh names
     Var n      -> context_ .= t1:t2:ctx >> heads_.traversed.patterns_ %= (\ clause -> Var n:Var n:clause)
     Pair p1 p2 -> context_ .= t1:t2:ctx >> heads_.traversed.patterns_ %= (\ clause -> p1:p2:clause)
     p          -> fail ("unexpected pattern: " <> show p))
-  Comp{}:_     -> use heads_ >>= traverseOf_ (folded.patterns_.head_) (\ p -> fail ("unexpected pattern: " <> show p))
-  Datatype _ []:ctx -> use heads_ >>= traverseOf_ (folded.patterns_.head_) (\case
+  Comp{}:_     -> match (\ p -> fail ("unexpected pattern: " <> show p))
+  Datatype _ []:ctx -> match (\case
     Wildcard -> pure ()
     Var _    -> pure ()
     p        -> fail ("unexpected pattern: " <> show p)) >> context_ .= ctx >> heads_.traversed.patterns_ %= tail
-  Datatype _ [Constructor m []]:ctx -> use heads_ >>= traverseOf_ (folded.patterns_.head_) (\case
+  Datatype _ [Constructor m []]:ctx -> match (\case
     Wildcard           -> pure ()
     Var _              -> pure ()
     Cons n [] | m == n -> pure ()
     p                  -> fail ("unexpected pattern: " <> show p)) >> context_ .= ctx >> heads_.traversed.patterns_ %= tail
-  Datatype{}:_ -> use heads_ >>= traverseOf_ (folded.patterns_.head_) (\ p -> fail ("unexpected pattern: " <> show p))
+  Datatype{}:_ -> match (\ p -> fail ("unexpected pattern: " <> show p))
   []           -> pure () -- FIXME: fail if clauses aren't all empty
+
+match :: Algebra sig m => (Pattern Name -> Covers m ()) -> Covers m ()
+match f = use heads_ >>= traverseOf_ (folded.patterns_.head_) f
