@@ -60,9 +60,7 @@ patterns_ = lens patterns (\ c patterns -> c{patterns})
 
 
 data Type
-  = String
-  | ForAll
-  | Arrow
+  = Opaque
   | One
   | Type :+ Type
   | Type :* Type
@@ -116,15 +114,7 @@ covers t = run (runFail (runChoose (liftA2 (&&)) (const (pure True)) (execState 
 
 coverStep :: (Has Choose sig m, MonadFail m) => Covers m ()
 coverStep = use context_ >>= \case
-  String:ctx   -> match ctx (\case
-    Wildcard -> pure tail
-    Var _    -> pure tail
-    p        -> fail ("unexpected pattern: " <> show p))
-  ForAll{}:ctx -> match ctx (\case
-    Wildcard -> pure tail
-    Var _    -> pure tail
-    p        -> fail ("unexpected pattern: " <> show p))
-  Arrow{}:ctx  -> match ctx (\case
+  Opaque:ctx   -> match ctx (\case
     Wildcard -> pure tail
     Var _    -> pure tail
     p        -> fail ("unexpected pattern: " <> show p))
