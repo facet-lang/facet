@@ -142,10 +142,10 @@ coverStep = use context_ >>= \case
       _           -> fail "no patterns to match sum")
     >>= \ (cs1, cs2) -> put (Tableau (t1:ctx) cs1) <|> put (Tableau (t2:ctx) cs2)
   (t1 :* t2):ctx -> match (\case
-    Wildcard   -> context_ .= t1:t2:ctx >> heads_.traversed.patterns_ %= (\ clause -> Wildcard:Wildcard:clause)
+    Wildcard   -> context_ .= t1:t2:ctx >> heads_.traversed.patterns_ %= (\ clauses -> Wildcard:Wildcard:clauses)
     -- FIXME: substitute variables out for wildcards so we don't have to bind fresh variable names
-    Var n      -> context_ .= t1:t2:ctx >> heads_.traversed.patterns_ %= (\ clause -> Var n:Var n:clause)
-    Pair p1 p2 -> context_ .= t1:t2:ctx >> heads_.traversed.patterns_ %= (\ clause -> p1:p2:clause)
+    Var n      -> context_ .= t1:t2:ctx >> heads_.traversed.patterns_ %= (\ clauses -> Var n:Var n:clauses)
+    Pair p1 p2 -> context_ .= t1:t2:ctx >> heads_.traversed.patterns_ %= (\ clauses -> p1:p2:clauses)
     p          -> fail ("unexpected pattern: " <> show p))
   Comp{}:_     -> match (\ p -> fail ("unexpected pattern: " <> show p))
   Datatype _ []:ctx -> match (\case
