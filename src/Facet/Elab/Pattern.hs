@@ -21,7 +21,7 @@ import Control.Carrier.Choose.Church (runChoose)
 import Control.Carrier.Fail.Either
 import Control.Carrier.State.Church
 import Control.Effect.Choose
-import Control.Monad (ap)
+import Control.Monad (ap, (<=<))
 import Facet.Interface
 import Facet.Name
 import Fresnel.Effect hiding (view)
@@ -117,21 +117,21 @@ covers t = run (runFail (runChoose (liftA2 (&&)) (const (pure True)) (execState 
 coverStep :: (Has Choose sig m, MonadFail m) => Covers m ()
 coverStep = use context_ >>= \case
   String:ctx   -> match ctx (\case
-    Wildcard -> pure ()
-    Var _    -> pure ()
+    Wildcard -> pure tail
+    Var _    -> pure tail
     p        -> fail ("unexpected pattern: " <> show p)) >> heads_.traversed.patterns_ %= tail
   ForAll{}:ctx -> match ctx (\case
-    Wildcard -> pure ()
-    Var _    -> pure ()
+    Wildcard -> pure tail
+    Var _    -> pure tail
     p        -> fail ("unexpected pattern: " <> show p)) >> heads_.traversed.patterns_ %= tail
   Arrow{}:ctx  -> match ctx (\case
-    Wildcard -> pure ()
-    Var _    -> pure ()
+    Wildcard -> pure tail
+    Var _    -> pure tail
     p        -> fail ("unexpected pattern: " <> show p)) >> heads_.traversed.patterns_ %= tail
   One:ctx      -> match ctx (\case
-    Wildcard  -> pure ()
-    Var _     -> pure ()
-    Cons _ [] -> pure ()
+    Wildcard  -> pure tail
+    Var _     -> pure tail
+    Cons _ [] -> pure tail
     p         -> fail ("unexpected pattern: " <> show p)) >> heads_.traversed.patterns_ %= tail
   (t1 :+ t2):ctx -> use heads_ >>= foldMapOf (folded.patterns_) (\case
       Wildcard:ps -> pure ([Clause (Wildcard:ps) ()], [Clause (Wildcard:ps) ()])
@@ -142,23 +142,23 @@ coverStep = use context_ >>= \case
       _           -> fail "no patterns to match sum")
     >>= \ (cs1, cs2) -> put (Tableau (t1:ctx) cs1) <|> put (Tableau (t2:ctx) cs2)
   (t1 :* t2):ctx -> match (t1:t2:ctx) (\case
-    Wildcard   -> heads_.traversed.patterns_ %= (\ clauses -> Wildcard:Wildcard:tail clauses)
+    Wildcard   -> pure (\ clauses -> Wildcard:Wildcard:tail clauses)
     -- FIXME: substitute variables out for wildcards so we don't have to bind fresh variable names
-    Var n      -> heads_.traversed.patterns_ %= (\ clauses -> Var n:Var n:tail clauses)
-    Pair p1 p2 -> heads_.traversed.patterns_ %= (\ clauses -> p1:p2:tail clauses)
+    Var n      -> pure (\ clauses -> Var n:Var n:tail clauses)
+    Pair p1 p2 -> pure (\ clauses -> p1:p2:tail clauses)
     p          -> fail ("unexpected pattern: " <> show p))
   Comp{}:ctx   -> match ctx (\ p -> fail ("unexpected pattern: " <> show p))
   Datatype _ []:ctx -> match ctx (\case
-    Wildcard -> pure ()
-    Var _    -> pure ()
+    Wildcard -> pure tail
+    Var _    -> pure tail
     p        -> fail ("unexpected pattern: " <> show p)) >> heads_.traversed.patterns_ %= tail
   Datatype _ [Constructor m []]:ctx -> match ctx (\case
-    Wildcard           -> pure ()
-    Var _              -> pure ()
-    Cons n [] | m == n -> pure ()
+    Wildcard           -> pure tail
+    Var _              -> pure tail
+    Cons n [] | m == n -> pure tail
     p                  -> fail ("unexpected pattern: " <> show p)) >> heads_.traversed.patterns_ %= tail
   Datatype{}:ctx -> match ctx (\ p -> fail ("unexpected pattern: " <> show p))
   []           -> pure () -- FIXME: fail if clauses aren't all empty
 
-match :: Algebra sig m => [Type] -> (Pattern Name -> Covers m ()) -> Covers m ()
-match ctx f = use heads_ >>= traverseOf_ (folded.patterns_.head_) f >> context_ .= ctx
+match :: Algebra sig m => [Type] -> (Pattern Name -> Covers m ([Pattern Name] -> [Pattern Name])) -> Covers m ()
+match ctx f = use heads_ >>= traverseOf_ (folded.patterns_.head_) ((\ g -> heads_.traversed.patterns_ %= g) <=< f) >> context_ .= ctx
