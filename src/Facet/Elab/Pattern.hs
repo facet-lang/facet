@@ -43,8 +43,8 @@ instance Applicative Pattern where
 instance Monad Pattern where
   m >>= f = case m of
     Wildcard -> Wildcard
-    Unit     -> Unit
     Var a    -> f a
+    Unit     -> Unit
     InL p    -> InL (p >>= f)
     InR q    -> InR (q >>= f)
     Pair p q -> Pair (p >>= f) (q >>= f)
