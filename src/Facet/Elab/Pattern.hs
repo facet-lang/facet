@@ -10,19 +10,13 @@ module Facet.Elab.Pattern
 , Branch(..)
 , (\/)
   -- * Coverage judgement
-, Covers(..)
 , covers
 , coverStep
 ) where
 
-import Control.Algebra
-import Control.Applicative (liftA2)
-import Control.Carrier.Choose.Church (ChooseC, runChoose)
-import Control.Carrier.Fail.Either
-import Control.Effect.Choose
-import Control.Monad (ap)
-import Control.Monad.Trans.Class
+import Control.Monad (ap, join)
 import Data.Function
+import Data.Monoid
 import Facet.Name
 import Fresnel.Fold
 import Fresnel.Lens
@@ -122,54 +116,37 @@ infixr 2 \/
 
 -- Coverage judgement
 
-runCovers :: (FailC m r -> FailC m r -> FailC m r) -> (a -> FailC m r) -> Covers m a -> m (Either String r)
-runCovers fork leaf (Covers m) = runFail (runChoose fork leaf m)
+covers :: Tableau () -> Either String [Tableau ()]
+covers tableau = case context tableau of
+  [] -> Right [tableau]
+  _  -> coverStep tableau >>= fmap join . traverse covers
 
-newtype Covers m a = Covers (ChooseC (FailC m) a)
-  deriving (Algebra (Choose :+: Fail :+: sig), Applicative, Functor, Monad)
-
-instance Algebra sig m => MonadFail (Covers m) where
-  fail = Covers . lift . fail
-
-instance (Applicative m, Semigroup a) => Semigroup (Covers m a) where
-  (<>) = liftA2 (<>)
-
-instance (Applicative m, Monoid a) => Monoid (Covers m a) where
-  mempty = pure mempty
-
-
-covers :: Tableau () -> Either String Bool
-covers t = run (runCovers (liftA2 (&&)) (const (pure True)) (go t)) where
-  go tableau = case context tableau of
-    [] -> pure ()
-    _  -> coverStep tableau >>= go
-
-coverStep :: Algebra sig m => Tableau () -> Covers m (Tableau ())
+coverStep :: Tableau () -> Either String [Tableau ()]
 coverStep tableau = case context tableau of
-  Opaque:ctx   -> match (tableau & context_ .~ ctx) (\case
-    Wildcard:ps -> pure ps
-    Var _:ps    -> pure ps
-    p           -> fail ("unexpected pattern: " <> show p))
-  One:ctx      -> match (tableau & context_ .~ ctx) (\case
-    Wildcard:ps -> pure ps
-    Var _:ps    -> pure ps
-    Unit:ps     -> pure ps
-    p           -> fail ("unexpected pattern: " <> show p))
-  t1 :+ t2:ctx -> foldMapOf (folded.patterns_) (\case
-    Wildcard:ps -> pure ([Clause (Wildcard:ps) ()], [Clause (Wildcard:ps) ()])
-    Var n:ps    -> pure ([Clause (Var n:ps) ()],    [Clause (Var n:ps) ()])
-    InL p:ps    -> pure ([Clause (p:ps) ()],        [Clause [] ()])
-    InR q:qs    -> pure ([Clause [] ()],            [Clause (q:qs) ()])
-    p:_         -> fail ("unexpected pattern: " <> show p)
-    _           -> fail "no patterns to match sum") (heads tableau)
-    >>= \ (cs1, cs2) -> pure (Tableau (t1:ctx) cs1) <|> pure (Tableau (t2:ctx) cs2)
-  t1 :* t2:ctx -> match (tableau & context_ .~ t1:t2:ctx) (\case
-    Wildcard:ps   -> pure (Wildcard:Wildcard:ps)
+  Opaque:ctx   -> pure <$> match (tableau & context_ .~ ctx) (\case
+    Wildcard:ps -> Right ps
+    Var _:ps    -> Right ps
+    p           -> Left ("unexpected pattern: " <> show p))
+  One:ctx      -> pure <$> match (tableau & context_ .~ ctx) (\case
+    Wildcard:ps -> Right ps
+    Var _:ps    -> Right ps
+    Unit:ps     -> Right ps
+    p           -> Left ("unexpected pattern: " <> show p))
+  t1 :+ t2:ctx -> getAp (foldMapOf (folded.patterns_) (Ap . \case
+    Wildcard:ps -> Right ([Clause (Wildcard:ps) ()], [Clause (Wildcard:ps) ()])
+    Var n:ps    -> Right ([Clause (Var n:ps) ()],    [Clause (Var n:ps) ()])
+    InL p:ps    -> Right ([Clause (p:ps) ()],        [Clause [] ()])
+    InR q:qs    -> Right ([Clause [] ()],            [Clause (q:qs) ()])
+    p:_         -> Left ("unexpected pattern: " <> show p)
+    _           -> Left "no patterns to match sum") (heads tableau))
+    >>= \ (cs1, cs2) -> Right [Tableau (t1:ctx) cs1, Tableau (t2:ctx) cs2]
+  t1 :* t2:ctx -> pure <$> match (tableau & context_ .~ t1:t2:ctx) (\case
+    Wildcard:ps   -> Right (Wildcard:Wildcard:ps)
     -- FIXME: substitute variables out for wildcards so we don't have to bind fresh variable names
-    Var n:ps      -> pure (Var n:Var n:ps)
-    Pair p1 p2:ps -> pure (p1:p2:ps)
-    p             -> fail ("unexpected pattern: " <> show p))
-  []           -> pure tableau -- FIXME: fail if clauses aren't all empty
+    Var n:ps      -> Right (Var n:Var n:ps)
+    Pair p1 p2:ps -> Right (p1:p2:ps)
+    p             -> Left ("unexpected pattern: " <> show p))
+  []           -> Right [tableau] -- FIXME: fail if clauses aren't all empty
 
-match :: Tableau () -> ([Pattern Name] -> Covers m [Pattern Name]) -> Covers m (Tableau ())
+match :: Tableau () -> ([Pattern Name] -> Either String [Pattern Name]) -> Either String (Tableau ())
 match tableau f = flip (set (heads_ @())) tableau <$> traverseOf (traversed.patterns_) f (heads tableau)
