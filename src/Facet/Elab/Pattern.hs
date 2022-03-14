@@ -156,12 +156,12 @@ coverStep tableau = case context tableau of
     Unit:ps     -> pure ps
     p           -> fail ("unexpected pattern: " <> show p))
   t1 :+ t2:ctx -> foldMapOf (folded.patterns_) (\case
-      Wildcard:ps -> pure ([Clause (Wildcard:ps) ()], [Clause (Wildcard:ps) ()])
-      Var n:ps    -> pure ([Clause (Var n:ps) ()],    [Clause (Var n:ps) ()])
-      InL p:ps    -> pure ([Clause (p:ps) ()],        [Clause [] ()])
-      InR q:qs    -> pure ([Clause [] ()],            [Clause (q:qs) ()])
-      p:_         -> fail ("unexpected pattern: " <> show p)
-      _           -> fail "no patterns to match sum") (heads tableau)
+    Wildcard:ps -> pure ([Clause (Wildcard:ps) ()], [Clause (Wildcard:ps) ()])
+    Var n:ps    -> pure ([Clause (Var n:ps) ()],    [Clause (Var n:ps) ()])
+    InL p:ps    -> pure ([Clause (p:ps) ()],        [Clause [] ()])
+    InR q:qs    -> pure ([Clause [] ()],            [Clause (q:qs) ()])
+    p:_         -> fail ("unexpected pattern: " <> show p)
+    _           -> fail "no patterns to match sum") (heads tableau)
     >>= \ (cs1, cs2) -> pure (Tableau (t1:ctx) cs1) <|> pure (Tableau (t2:ctx) cs2)
   t1 :* t2:ctx -> match (tableau & context_ .~ t1:t2:ctx) (\case
     Wildcard:ps   -> pure (Wildcard:Wildcard:ps)
