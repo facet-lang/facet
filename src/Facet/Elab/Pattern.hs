@@ -24,6 +24,7 @@ import Data.Function
 import Facet.Name
 import Fresnel.Fold
 import Fresnel.Lens
+import Fresnel.Prism (Prism', prism')
 import Fresnel.Setter
 import Fresnel.Traversal (traverseOf, traversed)
 
@@ -48,6 +49,37 @@ instance Monad Pattern where
     InL p    -> InL (p >>= f)
     InR q    -> InR (q >>= f)
     Pair p q -> Pair (p >>= f) (q >>= f)
+
+
+_Wildcard :: Prism' (Pattern a) ()
+_Wildcard = prism' (const Wildcard) (\case
+  Wildcard -> Just ()
+  _        -> Nothing)
+
+_Var :: Prism' (Pattern a) a
+_Var = prism' Var (\case
+  Var a -> Just a
+  _     -> Nothing)
+
+_Unit :: Prism' (Pattern a) ()
+_Unit = prism' (const Unit) (\case
+  Unit -> Just ()
+  _    -> Nothing)
+
+_Inl :: Prism' (Pattern a) (Pattern a)
+_Inl = prism' InL (\case
+  InL p -> Just p
+  _     -> Nothing)
+
+_Inr :: Prism' (Pattern a) (Pattern a)
+_Inr = prism' InR (\case
+  InR p -> Just p
+  _     -> Nothing)
+
+_Pair :: Prism' (Pattern a) (Pattern a, Pattern a)
+_Pair = prism' (uncurry Pair) (\case
+  Pair p q -> Just (p, q)
+  _        -> Nothing)
 
 
 data Clause a = Clause { patterns :: [Pattern Name], body :: a }
