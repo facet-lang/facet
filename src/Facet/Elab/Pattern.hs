@@ -21,7 +21,6 @@ import Control.Carrier.Fail.Either
 import Control.Carrier.State.Church
 import Control.Effect.Choose
 import Control.Monad (ap)
-import Facet.Interface
 import Facet.Name
 import Fresnel.Effect hiding (view)
 import Fresnel.Fold
@@ -63,7 +62,6 @@ data Type
   | One
   | Type :+ Type
   | Type :* Type
-  | Comp (Signature Type)
   deriving (Eq, Ord, Show)
 
 infixl 6 :+
@@ -132,7 +130,6 @@ coverStep = use (context_ @()) >>= \case
     Var n:ps      -> pure (Var n:Var n:ps)
     Pair p1 p2:ps -> pure (p1:p2:ps)
     p             -> fail ("unexpected pattern: " <> show p))
-  Comp{}:ctx   -> match ctx (\ p -> fail ("unexpected pattern: " <> show p))
   []           -> pure () -- FIXME: fail if clauses aren't all empty
 
 match :: Algebra sig m => [Type] -> ([Pattern Name] -> Covers m [Pattern Name]) -> Covers m ()
