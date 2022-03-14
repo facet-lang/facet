@@ -25,6 +25,7 @@ import Facet.Interface
 import Facet.Name
 import Fresnel.Effect hiding (view)
 import Fresnel.Fold
+import Fresnel.Getter
 import Fresnel.Lens
 import Fresnel.Traversal (traverseOf, traversed)
 
@@ -135,4 +136,16 @@ coverStep = use (context_ @()) >>= \case
   []           -> pure () -- FIXME: fail if clauses aren't all empty
 
 match :: Algebra sig m => [Type] -> ([Pattern Name] -> Covers m [Pattern Name]) -> Covers m ()
-match ctx f = (heads_ @()) <~ (use heads_ >>= traverseOf (traversed.patterns_) f) >> (context_ @()) .= ctx
+match ctx f = heads_ @() <~> traverseOf (traversed.patterns_) f >> context_ @() .= ctx
+
+-- | Compose a getter onto the input of a Kleisli arrow and run it on the 'State'.
+(~>) :: Has (State s) sig m => Getter s a -> (a -> m b) -> m b
+o ~> k = use o >>= k
+
+infixr 2 ~>
+
+-- | Compose a lens onto either side of a Kleisli arrow and run it on the 'State'.
+(<~>) :: Has (State s) sig m => Lens' s a -> (a -> m a) -> m ()
+o <~> k = o <~ o ~> k
+
+infixr 2 <~>
