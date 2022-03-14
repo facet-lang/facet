@@ -18,14 +18,13 @@ import Control.Algebra
 import Control.Applicative (liftA2)
 import Control.Carrier.Choose.Church (runChoose)
 import Control.Carrier.Fail.Either
-import Control.Carrier.State.Church
 import Control.Effect.Choose
 import Control.Monad (ap)
+import Data.Function
 import Facet.Name
-import Fresnel.Effect hiding (view)
 import Fresnel.Fold
-import Fresnel.Getter
 import Fresnel.Lens
+import Fresnel.Setter
 import Fresnel.Traversal (traverseOf, traversed)
 
 data Pattern a
@@ -89,60 +88,48 @@ infixr 2 \/
 
 -- Coverage judgement
 
-newtype Covers m a = Covers { runCovers :: StateC (Tableau ()) m a }
-  deriving (Algebra (State (Tableau ()) :+: sig), Applicative, Functor, Monad, MonadFail)
+newtype Covers m a = Covers { runCovers :: m a }
+  deriving (Algebra sig, Applicative, Functor, Monad, MonadFail)
 
-instance Semigroup a => Semigroup (Covers m a) where
+instance (Applicative m, Semigroup a) => Semigroup (Covers m a) where
   a <> b = liftA2 (<>) a b
 
-instance Monoid a => Monoid (Covers m a) where
+instance (Applicative m, Monoid a) => Monoid (Covers m a) where
   mempty = pure mempty
 
 
 covers :: Tableau () -> Either String Bool
-covers t = run (runFail (runChoose (liftA2 (&&)) (const (pure True)) (execState t (runCovers go)))) where
-  go = use (context_ @()) >>= \case
+covers t = run (runFail (runChoose (liftA2 (&&)) (const (pure True)) (runCovers (go t)))) where
+  go tableau = case context tableau of
     [] -> pure ()
-    _  -> coverStep >> go
+    _  -> coverStep tableau >>= go
 
-coverStep :: (Has Choose sig m, MonadFail m) => Covers m ()
-coverStep = use (context_ @()) >>= \case
-  Opaque:ctx   -> match ctx (\case
+coverStep :: (Has Choose sig m, MonadFail m) => Tableau () -> Covers m (Tableau ())
+coverStep tableau = case context tableau of
+  Opaque:ctx   -> match (tableau & context_ .~ ctx) (\case
     Wildcard:ps -> pure ps
     Var _:ps    -> pure ps
     p           -> fail ("unexpected pattern: " <> show p))
-  One:ctx      -> match ctx (\case
+  One:ctx      -> match (tableau & context_ .~ ctx) (\case
     Wildcard:ps -> pure ps
     Var _:ps    -> pure ps
     Unit:ps     -> pure ps
     p           -> fail ("unexpected pattern: " <> show p))
-  t1 :+ t2:ctx -> use (heads_ @()) >>= foldMapOf (folded.patterns_) (\case
+  t1 :+ t2:ctx -> foldMapOf (folded.patterns_) (\case
       Wildcard:ps -> pure ([Clause (Wildcard:ps) ()], [Clause (Wildcard:ps) ()])
       Var n:ps    -> pure ([Clause (Var n:ps) ()],    [Clause (Var n:ps) ()])
       InL p:ps    -> pure ([Clause (p:ps) ()],        [Clause [] ()])
       InR q:qs    -> pure ([Clause [] ()],            [Clause (q:qs) ()])
       p:_         -> fail ("unexpected pattern: " <> show p)
-      _           -> fail "no patterns to match sum")
-    >>= \ (cs1, cs2) -> put (Tableau (t1:ctx) cs1) <|> put (Tableau (t2:ctx) cs2)
-  t1 :* t2:ctx -> match (t1:t2:ctx) (\case
+      _           -> fail "no patterns to match sum") (heads tableau)
+    >>= \ (cs1, cs2) -> pure (Tableau (t1:ctx) cs1) <|> pure (Tableau (t2:ctx) cs2)
+  t1 :* t2:ctx -> match (tableau & context_ .~ t1:t2:ctx) (\case
     Wildcard:ps   -> pure (Wildcard:Wildcard:ps)
     -- FIXME: substitute variables out for wildcards so we don't have to bind fresh variable names
     Var n:ps      -> pure (Var n:Var n:ps)
     Pair p1 p2:ps -> pure (p1:p2:ps)
     p             -> fail ("unexpected pattern: " <> show p))
-  []           -> pure () -- FIXME: fail if clauses aren't all empty
+  []           -> pure tableau -- FIXME: fail if clauses aren't all empty
 
-match :: Algebra sig m => [Type] -> ([Pattern Name] -> Covers m [Pattern Name]) -> Covers m ()
-match ctx f = heads_ @() <~> traverseOf (traversed.patterns_) f >> context_ @() .= ctx
-
--- | Compose a getter onto the input of a Kleisli arrow and run it on the 'State'.
-(~>) :: Has (State s) sig m => Getter s a -> (a -> m b) -> m b
-o ~> k = use o >>= k
-
-infixr 2 ~>
-
--- | Compose a lens onto either side of a Kleisli arrow and run it on the 'State'.
-(<~>) :: Has (State s) sig m => Lens' s a -> (a -> m a) -> m ()
-o <~> k = o <~ o ~> k
-
-infixr 2 <~>
+match :: Algebra sig m => Tableau () -> ([Pattern Name] -> Covers m [Pattern Name]) -> Covers m (Tableau ())
+match tableau f = flip (set (heads_ @())) tableau <$> traverseOf (traversed.patterns_) f (heads tableau)
