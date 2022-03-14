@@ -132,7 +132,7 @@ instance Algebra sig m => MonadFail (Covers m) where
   fail = Covers . lift . fail
 
 instance (Applicative m, Semigroup a) => Semigroup (Covers m a) where
-  a <> b = liftA2 (<>) a b
+  (<>) = liftA2 (<>)
 
 instance (Applicative m, Monoid a) => Monoid (Covers m a) where
   mempty = pure mempty
