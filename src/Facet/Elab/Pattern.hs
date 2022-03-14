@@ -1,4 +1,5 @@
 {-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE UndecidableInstances #-}
 module Facet.Elab.Pattern
 ( Pattern(..)
 , Clause(..)
@@ -16,10 +17,11 @@ module Facet.Elab.Pattern
 
 import Control.Algebra
 import Control.Applicative (liftA2)
-import Control.Carrier.Choose.Church (runChoose)
+import Control.Carrier.Choose.Church (ChooseC, runChoose)
 import Control.Carrier.Fail.Either
 import Control.Effect.Choose
 import Control.Monad (ap)
+import Control.Monad.Trans.Class
 import Data.Function
 import Facet.Name
 import Fresnel.Fold
@@ -120,8 +122,14 @@ infixr 2 \/
 
 -- Coverage judgement
 
-newtype Covers m a = Covers { runCovers :: m a }
-  deriving (Algebra sig, Applicative, Functor, Monad, MonadFail)
+runCovers :: (FailC m r -> FailC m r -> FailC m r) -> (a -> FailC m r) -> Covers m a -> m (Either String r)
+runCovers fork leaf (Covers m) = runFail (runChoose fork leaf m)
+
+newtype Covers m a = Covers (ChooseC (FailC m) a)
+  deriving (Algebra (Choose :+: Fail :+: sig), Applicative, Functor, Monad)
+
+instance Algebra sig m => MonadFail (Covers m) where
+  fail = Covers . lift . fail
 
 instance (Applicative m, Semigroup a) => Semigroup (Covers m a) where
   a <> b = liftA2 (<>) a b
@@ -131,12 +139,12 @@ instance (Applicative m, Monoid a) => Monoid (Covers m a) where
 
 
 covers :: Tableau () -> Either String Bool
-covers t = run (runFail (runChoose (liftA2 (&&)) (const (pure True)) (runCovers (go t)))) where
+covers t = run (runCovers (liftA2 (&&)) (const (pure True)) (go t)) where
   go tableau = case context tableau of
     [] -> pure ()
     _  -> coverStep tableau >>= go
 
-coverStep :: (Has Choose sig m, MonadFail m) => Tableau () -> Covers m (Tableau ())
+coverStep :: Algebra sig m => Tableau () -> Covers m (Tableau ())
 coverStep tableau = case context tableau of
   Opaque:ctx   -> match (tableau & context_ .~ ctx) (\case
     Wildcard:ps -> pure ps
@@ -163,5 +171,5 @@ coverStep tableau = case context tableau of
     p             -> fail ("unexpected pattern: " <> show p))
   []           -> pure tableau -- FIXME: fail if clauses aren't all empty
 
-match :: Algebra sig m => Tableau () -> ([Pattern Name] -> Covers m [Pattern Name]) -> Covers m (Tableau ())
+match :: Tableau () -> ([Pattern Name] -> Covers m [Pattern Name]) -> Covers m (Tableau ())
 match tableau f = flip (set (heads_ @())) tableau <$> traverseOf (traversed.patterns_) f (heads tableau)
