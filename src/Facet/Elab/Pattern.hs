@@ -16,8 +16,8 @@ module Facet.Elab.Pattern
 , coverStep
 ) where
 
-import Control.Applicative (Alternative(..), liftA2)
-import Control.Monad (ap, join)
+import Control.Applicative (Alternative(..))
+import Control.Monad (ap)
 import Data.Bifunctor
 import Data.Monoid
 import Facet.Name
@@ -120,27 +120,27 @@ infixr 2 \/
 
 -- Coverage judgement
 
-newtype Covers e a = Covers { runCovers :: Either e [a] }
+newtype Covers e a = Covers { runCovers :: forall r . (r -> r -> r) -> (a -> r) -> r -> (e -> r) -> r }
   deriving (Functor)
 
 instance Bifunctor Covers where
-  bimap f g (Covers e) = Covers (bimap f (fmap g) e)
+  bimap f g (Covers e) = Covers (\ fork leaf nil err -> e fork (leaf . g) nil (err . f))
 
 instance Applicative (Covers e) where
-  pure = Covers . pure . pure
+  pure a = Covers (\ _ leaf _ _ -> leaf a)
 
-  Covers f <*> Covers a = Covers (liftA2 (<*>) f a)
+  (<*>) = ap
 
 instance Alternative (Covers e) where
-  empty = Covers (Right [])
+  empty = Covers (\ _ _ nil _ -> nil)
 
-  Covers a <|> Covers b = Covers (liftA2 (<|>) a b)
+  Covers a <|> Covers b = Covers (\ (<|>) leaf nil err -> a (<|>) leaf nil err <|> b (<|>) leaf nil err)
 
 instance Monad (Covers e) where
-  Covers m >>= k = Covers (m >>= fmap join . traverse (runCovers . k))
+  Covers m >>= k = Covers (\ fork leaf nil err -> m fork (\ a -> runCovers (k a) fork leaf nil err) nil err)
 
 throw :: e -> Covers e a
-throw = Covers . Left
+throw e = Covers (\ _ _ _ err -> err e)
 
 except :: Either e a -> Covers e a
 except = either throw pure
