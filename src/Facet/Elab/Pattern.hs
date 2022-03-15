@@ -6,6 +6,7 @@ module Facet.Elab.Pattern
 , patterns_
 , Type(..)
 , Tableau(..)
+, context_
 , heads_
 , Branch(..)
 , (\/)
@@ -15,13 +16,11 @@ module Facet.Elab.Pattern
 ) where
 
 import Control.Monad (ap, join)
-import Data.Function
 import Data.Monoid
 import Facet.Name
 import Fresnel.Fold
 import Fresnel.Lens
 import Fresnel.Prism (Prism', prism')
-import Fresnel.Setter
 import Fresnel.Traversal (traverseOf, traversed)
 
 data Pattern a
@@ -122,12 +121,12 @@ covers tableau = case context tableau of
   _  -> coverStep tableau >>= fmap join . traverse covers
 
 coverStep :: Tableau () -> Either String [Tableau ()]
-coverStep tableau = case context tableau of
-  Opaque:ctx   -> pure <$> match (tableau & context_ .~ ctx) (\case
+coverStep tableau@(Tableau context heads) = case context of
+  Opaque:ctx   -> pure . Tableau ctx <$> match heads (\case
     Wildcard:ps -> Right ps
     Var _:ps    -> Right ps
     p           -> Left ("unexpected pattern: " <> show p))
-  One:ctx      -> pure <$> match (tableau & context_ .~ ctx) (\case
+  One:ctx      -> pure . Tableau ctx <$> match heads (\case
     Wildcard:ps -> Right ps
     Var _:ps    -> Right ps
     Unit:ps     -> Right ps
@@ -138,9 +137,9 @@ coverStep tableau = case context tableau of
     InL p:ps    -> Right ([Clause (p:ps) ()],        [Clause [] ()])
     InR q:qs    -> Right ([Clause [] ()],            [Clause (q:qs) ()])
     p:_         -> Left ("unexpected pattern: " <> show p)
-    _           -> Left "no patterns to match sum") (heads tableau))
+    _           -> Left "no patterns to match sum") heads)
     >>= \ (cs1, cs2) -> Right [Tableau (t1:ctx) cs1, Tableau (t2:ctx) cs2]
-  t1 :* t2:ctx -> pure <$> match (tableau & context_ .~ t1:t2:ctx) (\case
+  t1 :* t2:ctx -> pure . Tableau (t1:t2:ctx) <$> match heads (\case
     Wildcard:ps   -> Right (Wildcard:Wildcard:ps)
     -- FIXME: substitute variables out for wildcards so we don't have to bind fresh variable names
     Var n:ps      -> Right (Var n:Var n:ps)
@@ -148,5 +147,5 @@ coverStep tableau = case context tableau of
     p             -> Left ("unexpected pattern: " <> show p))
   []           -> Right [tableau] -- FIXME: fail if clauses aren't all empty
 
-match :: Tableau () -> ([Pattern Name] -> Either String [Pattern Name]) -> Either String (Tableau ())
-match tableau f = flip (set (heads_ @())) tableau <$> traverseOf (traversed.patterns_) f (heads tableau)
+match :: [Clause ()] -> ([Pattern Name] -> Either String [Pattern Name]) -> Either String [Clause ()]
+match heads f = traverseOf (traversed.patterns_) f heads
