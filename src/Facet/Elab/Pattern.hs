@@ -16,6 +16,7 @@ module Facet.Elab.Pattern
 , coverStep
 ) where
 
+import Control.Applicative (liftA2)
 import Control.Monad (ap, join)
 import Data.Bifunctor
 import Data.Monoid
@@ -121,6 +122,11 @@ infixr 2 \/
 
 newtype Covers e a = Covers { runCovers :: Either e [a] }
   deriving (Functor)
+
+instance Applicative (Covers e) where
+  pure = Covers . pure . pure
+
+  Covers f <*> Covers a = Covers (liftA2 (<*>) f a)
 
 
 covers :: Tableau () -> Either String [Tableau ()]
