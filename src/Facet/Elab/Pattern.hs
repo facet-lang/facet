@@ -16,11 +16,13 @@ module Facet.Elab.Pattern
 ) where
 
 import Control.Monad (ap, join)
+import Data.Bifunctor
 import Data.Monoid
 import Facet.Name
 import Fresnel.Fold
 import Fresnel.Lens
-import Fresnel.Prism (Prism', matching', prism')
+import Fresnel.List (head_)
+import Fresnel.Prism (Prism', matching, prism')
 import Fresnel.Setter
 import Fresnel.Traversal (forOf, traversed)
 
@@ -132,9 +134,7 @@ coverStep tableau@(Tableau context heads) = case context of
       Wildcard:ps -> Right ps
       Var _:ps    -> Right ps
       ps          -> Left (Opaque, ps))
-    One      -> pure . set context_ ctx <$> forOf (heads_.traversed.patterns_) tableau ((\case
-      p:ps -> maybe (Left (t, p:ps)) (const (Right ps)) (matching' _Unit p)
-      []   -> Left (t, [])) . instantiateHead Unit)
+    One      -> pure . set context_ ctx <$> forOf (heads_.traversed.patterns_) tableau ((\ ps -> bimap (t,) (const ps) (matching (head_._Unit) ps)) . instantiateHead Unit)
     t1 :+ t2 -> getAp (foldMapOf (folded.patterns_) (Ap . \case
       Wildcard:ps -> Right ([Clause (Wildcard:ps) ()], [Clause (Wildcard:ps) ()])
       Var n:ps    -> Right ([Clause (Var n:ps) ()],    [Clause (Var n:ps) ()])
