@@ -19,7 +19,6 @@ module Facet.Elab.Pattern
 import Control.Applicative (Alternative(..), asum, liftA2)
 import Control.Monad (ap)
 import Data.Bifunctor
-import Data.Monoid
 import Facet.Name
 import Fresnel.Fold
 import Fresnel.Lens
@@ -167,12 +166,12 @@ coverStep tableau@(Tableau context heads) = case context of
       Tableau ctx <$> forOf (traversed.patterns_) heads (\case
         p:ps | Right _ <- matching _Unit (instantiateHead canonical p) -> pure ps
         ps                                                             -> throw (t, ps))
-    t1 :+ t2 -> getAp (foldMapOf (folded.patterns_) (Ap . \case
+    t1 :+ t2 -> foldMapOf (folded.patterns_) (\case
       Wildcard:ps -> pure ([Clause (Wildcard:ps) ()], [Clause (Wildcard:ps) ()])
       Var n:ps    -> pure ([Clause (Var n:ps) ()],    [Clause (Var n:ps) ()])
       InL p:ps    -> pure ([Clause (p:ps) ()],        [Clause [] ()])
       InR q:qs    -> pure ([Clause [] ()],            [Clause (q:qs) ()])
-      ps          -> throw (t, ps)) heads)
+      ps          -> throw (t, ps)) heads
       >>= \ (cs1, cs2) -> pure (Tableau (t1:ctx) cs1) <|> pure (Tableau (t2:ctx) cs2)
     t1 :* t2 -> Tableau (t1:t2:ctx) <$> forOf (traversed.patterns_) heads (\case
       Wildcard:ps   -> pure (Wildcard:Wildcard:ps)
