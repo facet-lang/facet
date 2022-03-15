@@ -132,7 +132,7 @@ instance Applicative (Covers e) where
   Covers f <*> Covers a = Covers (liftA2 (<*>) f a)
 
 instance Monad (Covers e) where
-  Covers m >>= k = Covers (m >>= sequenceA . (>>= sequenceA . runCovers . k))
+  Covers m >>= k = Covers (m >>= fmap join . traverse (runCovers . k))
 
 
 covers :: Tableau () -> Either String [Tableau ()]
