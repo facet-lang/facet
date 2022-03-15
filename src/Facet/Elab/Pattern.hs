@@ -139,38 +139,43 @@ instance Alternative (Covers e) where
 instance Monad (Covers e) where
   Covers m >>= k = Covers (m >>= fmap join . traverse (runCovers . k))
 
+throw :: e -> Covers e a
+throw = Covers . Left
 
-covers :: Tableau () -> Either String [Tableau ()]
+except :: Either e a -> Covers e a
+except = either throw pure
+
+covers :: Tableau () -> Covers String (Tableau ())
 covers tableau = case context tableau of
-  [] -> Right [tableau]
-  _  -> first (uncurry formatError) (coverStep tableau) >>= fmap join . traverse covers
+  [] -> pure tableau
+  _  -> first (uncurry formatError) (coverStep tableau) >>= covers
   where
   formatError t = \case
     []  -> "expected " <> show t <> ", got nothing"
     p:_ -> "expected " <> show t <> ", got " <> show p
 
-coverStep :: Tableau () -> Either (Type, [Pattern Name]) [Tableau ()]
+coverStep :: Tableau () -> Covers (Type, [Pattern Name]) (Tableau ())
 coverStep tableau@(Tableau context heads) = case context of
   t:ctx -> case t of
-    Opaque   -> pure . Tableau ctx <$> forOf (traversed.patterns_) heads (\case
-      Wildcard:ps -> Right ps
-      Var _:ps    -> Right ps
-      ps          -> Left (Opaque, ps))
-    One      -> pure . set context_ ctx <$> forOf (heads_.traversed.patterns_) tableau ((\ ps -> bimap (t,) (const ps) (matching (head_._Unit) ps)) . instantiateHead Unit)
+    Opaque   -> Tableau ctx <$> forOf (traversed.patterns_) heads (\case
+      Wildcard:ps -> pure ps
+      Var _:ps    -> pure ps
+      ps          -> throw (Opaque, ps))
+    One      -> set context_ ctx <$> forOf (heads_.traversed.patterns_) tableau ((\ ps -> bimap (t,) (const ps) (except (matching (head_._Unit) ps))) . instantiateHead Unit)
     t1 :+ t2 -> getAp (foldMapOf (folded.patterns_) (Ap . \case
-      Wildcard:ps -> Right ([Clause (Wildcard:ps) ()], [Clause (Wildcard:ps) ()])
-      Var n:ps    -> Right ([Clause (Var n:ps) ()],    [Clause (Var n:ps) ()])
-      InL p:ps    -> Right ([Clause (p:ps) ()],        [Clause [] ()])
-      InR q:qs    -> Right ([Clause [] ()],            [Clause (q:qs) ()])
-      ps          -> Left (t1 :+ t2, ps)) heads)
-      >>= \ (cs1, cs2) -> Right [Tableau (t1:ctx) cs1, Tableau (t2:ctx) cs2]
-    t1 :* t2 -> pure . Tableau (t1:t2:ctx) <$> forOf (traversed.patterns_) heads (\case
-      Wildcard:ps   -> Right (Wildcard:Wildcard:ps)
+      Wildcard:ps -> pure ([Clause (Wildcard:ps) ()], [Clause (Wildcard:ps) ()])
+      Var n:ps    -> pure ([Clause (Var n:ps) ()],    [Clause (Var n:ps) ()])
+      InL p:ps    -> pure ([Clause (p:ps) ()],        [Clause [] ()])
+      InR q:qs    -> pure ([Clause [] ()],            [Clause (q:qs) ()])
+      ps          -> throw (t1 :+ t2, ps)) heads)
+      >>= \ (cs1, cs2) -> pure (Tableau (t1:ctx) cs1) <|> pure (Tableau (t2:ctx) cs2)
+    t1 :* t2 -> Tableau (t1:t2:ctx) <$> forOf (traversed.patterns_) heads (\case
+      Wildcard:ps   -> pure (Wildcard:Wildcard:ps)
       -- FIXME: substitute variables out for wildcards so we don't have to bind fresh variable names
-      Var n:ps      -> Right (Var n:Var n:ps)
-      Pair p1 p2:ps -> Right (p1:p2:ps)
-      ps            -> Left (t1 :* t2, ps))
-  []           -> Right [tableau] -- FIXME: fail if clauses aren't all empty
+      Var n:ps      -> pure (Var n:Var n:ps)
+      Pair p1 p2:ps -> pure (p1:p2:ps)
+      ps            -> throw (t1 :* t2, ps))
+  []           -> pure tableau -- FIXME: fail if clauses aren't all empty
 
 instantiateHead :: Pattern Name -> [Pattern Name] -> [Pattern Name]
 instantiateHead d (Wildcard:ps) = d:ps
