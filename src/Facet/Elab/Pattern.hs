@@ -11,6 +11,7 @@ module Facet.Elab.Pattern
 , Branch(..)
 , (\/)
   -- * Coverage judgement
+, Covers(..)
 , covers
 , coverStep
 ) where
@@ -117,6 +118,10 @@ infixr 2 \/
 
 
 -- Coverage judgement
+
+newtype Covers e a = Covers { runCovers :: Either e [a] }
+  deriving (Functor)
+
 
 covers :: Tableau () -> Either String [Tableau ()]
 covers tableau = case context tableau of
