@@ -21,7 +21,7 @@ import Facet.Name
 import Fresnel.Fold
 import Fresnel.Lens
 import Fresnel.Prism (Prism', prism')
-import Fresnel.Traversal (traverseOf, traversed)
+import Fresnel.Traversal (forOf, traversed)
 
 data Pattern a
   = Wildcard
@@ -148,4 +148,4 @@ coverStep tableau@(Tableau context heads) = case context of
   []           -> Right [tableau] -- FIXME: fail if clauses aren't all empty
 
 match :: [Clause a] -> ([Pattern Name] -> Either String [Pattern Name]) -> Either String [Clause a]
-match heads f = traverseOf (traversed.patterns_) f heads
+match = forOf (traversed.patterns_)
