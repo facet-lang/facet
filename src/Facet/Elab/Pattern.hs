@@ -147,5 +147,5 @@ coverStep tableau@(Tableau context heads) = case context of
     p             -> Left ("unexpected pattern: " <> show p))
   []           -> Right [tableau] -- FIXME: fail if clauses aren't all empty
 
-match :: [Clause ()] -> ([Pattern Name] -> Either String [Pattern Name]) -> Either String [Clause ()]
+match :: [Clause a] -> ([Pattern Name] -> Either String [Pattern Name]) -> Either String [Clause a]
 match heads f = traverseOf (traversed.patterns_) f heads
