@@ -16,11 +16,14 @@ module Facet.Elab.Pattern
 ) where
 
 import Control.Monad (ap, join)
+import Data.Function
 import Data.Monoid
 import Facet.Name
 import Fresnel.Fold
 import Fresnel.Lens
+import Fresnel.List (head_)
 import Fresnel.Prism (Prism', prism')
+import Fresnel.Setter
 import Fresnel.Traversal (forOf, traversed)
 
 data Pattern a
@@ -126,11 +129,9 @@ coverStep tableau@(Tableau context heads) = case context of
     Wildcard:ps -> Right ps
     Var _:ps    -> Right ps
     p           -> Left ("unexpected pattern: " <> show p))
-  One:ctx      -> pure . Tableau ctx <$> forOf (traversed.patterns_) heads (\case
-    Wildcard:ps -> Right ps
-    Var _:ps    -> Right ps
-    Unit:ps     -> Right ps
-    p           -> Left ("unexpected pattern: " <> show p))
+  One:ctx      -> pure . Tableau ctx <$> forOf (traversed.patterns_) [ x & patterns_.head_ %~ instantiateHead Unit | x <- heads ] (\case
+    Unit:ps -> Right ps
+    p       -> Left ("unexpected pattern: " <> show p))
   t1 :+ t2:ctx -> getAp (foldMapOf (folded.patterns_) (Ap . \case
     Wildcard:ps -> Right ([Clause (Wildcard:ps) ()], [Clause (Wildcard:ps) ()])
     Var n:ps    -> Right ([Clause (Var n:ps) ()],    [Clause (Var n:ps) ()])
@@ -146,3 +147,8 @@ coverStep tableau@(Tableau context heads) = case context of
     Pair p1 p2:ps -> Right (p1:p2:ps)
     p             -> Left ("unexpected pattern: " <> show p))
   []           -> Right [tableau] -- FIXME: fail if clauses aren't all empty
+
+instantiateHead :: Pattern Name -> Pattern Name -> Pattern Name
+instantiateHead d Wildcard = d
+instantiateHead d (Var _)  = d -- FIXME: let-bind any variables first
+instantiateHead _ p        = p
