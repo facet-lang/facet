@@ -122,11 +122,11 @@ covers tableau = case context tableau of
 
 coverStep :: Tableau () -> Either String [Tableau ()]
 coverStep tableau@(Tableau context heads) = case context of
-  Opaque:ctx   -> pure . Tableau ctx <$> match heads (\case
+  Opaque:ctx   -> pure . Tableau ctx <$> forOf (traversed.patterns_) heads (\case
     Wildcard:ps -> Right ps
     Var _:ps    -> Right ps
     p           -> Left ("unexpected pattern: " <> show p))
-  One:ctx      -> pure . Tableau ctx <$> match heads (\case
+  One:ctx      -> pure . Tableau ctx <$> forOf (traversed.patterns_) heads (\case
     Wildcard:ps -> Right ps
     Var _:ps    -> Right ps
     Unit:ps     -> Right ps
@@ -139,13 +139,10 @@ coverStep tableau@(Tableau context heads) = case context of
     p:_         -> Left ("unexpected pattern: " <> show p)
     _           -> Left "no patterns to match sum") heads)
     >>= \ (cs1, cs2) -> Right [Tableau (t1:ctx) cs1, Tableau (t2:ctx) cs2]
-  t1 :* t2:ctx -> pure . Tableau (t1:t2:ctx) <$> match heads (\case
+  t1 :* t2:ctx -> pure . Tableau (t1:t2:ctx) <$> forOf (traversed.patterns_) heads (\case
     Wildcard:ps   -> Right (Wildcard:Wildcard:ps)
     -- FIXME: substitute variables out for wildcards so we don't have to bind fresh variable names
     Var n:ps      -> Right (Var n:Var n:ps)
     Pair p1 p2:ps -> Right (p1:p2:ps)
     p             -> Left ("unexpected pattern: " <> show p))
   []           -> Right [tableau] -- FIXME: fail if clauses aren't all empty
-
-match :: [Clause a] -> ([Pattern Name] -> Either String [Pattern Name]) -> Either String [Clause a]
-match = forOf (traversed.patterns_)
