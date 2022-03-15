@@ -133,7 +133,7 @@ coverStep tableau@(Tableau context heads) = case context of
       Var _:ps    -> Right ps
       ps          -> Left (Opaque, ps))
     One      -> pure . set context_ ctx <$> forOf (heads_.traversed.patterns_) tableau ((\case
-      p:ps -> maybe (Left (t, ps)) (const (Right ps)) (matching' _Unit p)
+      p:ps -> maybe (Left (t, p:ps)) (const (Right ps)) (matching' _Unit p)
       []   -> Left (t, [])) . instantiateHead Unit)
     t1 :+ t2 -> getAp (foldMapOf (folded.patterns_) (Ap . \case
       Wildcard:ps -> Right ([Clause (Wildcard:ps) ()], [Clause (Wildcard:ps) ()])
