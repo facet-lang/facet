@@ -162,8 +162,8 @@ coverStep tableau@(Tableau context heads) = case context of
       Var _:ps    -> pure ps
       ps          -> throw (Opaque, ps))
     One      -> do
-      (ty, canonical) <- asum (map pure (wild t))
-      Tableau (ty <> ctx) <$> forOf (traversed.patterns_) heads (\case
+      (prefix, canonical) <- asum (map pure (wild t))
+      Tableau (prefix <> ctx) <$> forOf (traversed.patterns_) heads (\case
         p:ps | Right _ <- matching _Unit (instantiateHead canonical p) -> pure ps
         ps                                                             -> throw (t, ps))
     t1 :+ t2 -> foldMapOf (folded.patterns_) (\case
