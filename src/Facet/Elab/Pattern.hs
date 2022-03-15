@@ -135,7 +135,7 @@ instance Monad (Covers e) where
 covers :: Tableau () -> Either String [Tableau ()]
 covers tableau = case context tableau of
   [] -> Right [tableau]
-  _  -> either (Left . uncurry formatError) Right (coverStep tableau) >>= fmap join . traverse covers
+  _  -> first (uncurry formatError) (coverStep tableau) >>= fmap join . traverse covers
   where
   formatError t = \case
     []  -> "expected " <> show t <> ", got nothing"
