@@ -123,6 +123,9 @@ infixr 2 \/
 newtype Covers e a = Covers { runCovers :: Either e [a] }
   deriving (Functor)
 
+instance Bifunctor Covers where
+  bimap f g (Covers e) = Covers (bimap f (fmap g) e)
+
 instance Applicative (Covers e) where
   pure = Covers . pure . pure
 
