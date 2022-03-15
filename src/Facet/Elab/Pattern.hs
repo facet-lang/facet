@@ -166,7 +166,7 @@ coverStep tableau@(Tableau context heads) = case context of
       Var n:ps    -> pure ([Clause (Var n:ps) ()],    [Clause (Var n:ps) ()])
       InL p:ps    -> pure ([Clause (p:ps) ()],        [Clause [] ()])
       InR q:qs    -> pure ([Clause [] ()],            [Clause (q:qs) ()])
-      ps          -> throw (t1 :+ t2, ps)) heads)
+      ps          -> throw (t, ps)) heads)
       >>= \ (cs1, cs2) -> pure (Tableau (t1:ctx) cs1) <|> pure (Tableau (t2:ctx) cs2)
     t1 :* t2 -> Tableau (t1:t2:ctx) <$> forOf (traversed.patterns_) heads (\case
       Wildcard:ps   -> pure (Wildcard:Wildcard:ps)
