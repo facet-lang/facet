@@ -20,7 +20,7 @@ import Data.Monoid
 import Facet.Name
 import Fresnel.Fold
 import Fresnel.Lens
-import Fresnel.Prism (Prism', prism')
+import Fresnel.Prism (Prism', matching', prism')
 import Fresnel.Setter
 import Fresnel.Traversal (forOf, traversed)
 
@@ -133,8 +133,8 @@ coverStep tableau@(Tableau context heads) = case context of
       Var _:ps    -> Right ps
       ps          -> Left (Opaque, ps))
     One      -> pure . set context_ ctx <$> forOf (heads_.traversed.patterns_) tableau ((\case
-      Unit:ps -> Right ps
-      ps      -> Left (t, ps)) . instantiateHead Unit)
+      p:ps -> maybe (Left (t, ps)) (const (Right ps)) (matching' _Unit p)
+      []   -> Left (t, [])) . instantiateHead Unit)
     t1 :+ t2 -> getAp (foldMapOf (folded.patterns_) (Ap . \case
       Wildcard:ps -> Right ([Clause (Wildcard:ps) ()], [Clause (Wildcard:ps) ()])
       Var n:ps    -> Right ([Clause (Var n:ps) ()],    [Clause (Var n:ps) ()])
