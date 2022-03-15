@@ -16,12 +16,10 @@ module Facet.Elab.Pattern
 ) where
 
 import Control.Monad (ap, join)
-import Data.Function
 import Data.Monoid
 import Facet.Name
 import Fresnel.Fold
 import Fresnel.Lens
-import Fresnel.List (head_)
 import Fresnel.Prism (Prism', prism')
 import Fresnel.Setter
 import Fresnel.Traversal (forOf, traversed)
@@ -133,9 +131,9 @@ coverStep tableau@(Tableau context heads) = case context of
     Wildcard:ps -> Right ps
     Var _:ps    -> Right ps
     ps          -> Left (Opaque, ps))
-  One:ctx      -> pure . Tableau ctx <$> forOf (traversed.patterns_) [ x & patterns_.head_ %~ instantiateHead Unit | x <- heads ] (\case
+  One:ctx      -> pure . set context_ ctx <$> forOf (heads_.traversed.patterns_) tableau ((\case
     Unit:ps -> Right ps
-    ps      -> Left (One, ps))
+    ps      -> Left (One, ps)) . instantiateHead Unit)
   t1 :+ t2:ctx -> getAp (foldMapOf (folded.patterns_) (Ap . \case
     Wildcard:ps -> Right ([Clause (Wildcard:ps) ()], [Clause (Wildcard:ps) ()])
     Var n:ps    -> Right ([Clause (Var n:ps) ()],    [Clause (Var n:ps) ()])
@@ -151,7 +149,7 @@ coverStep tableau@(Tableau context heads) = case context of
     ps            -> Left (t1 :* t2, ps))
   []           -> Right [tableau] -- FIXME: fail if clauses aren't all empty
 
-instantiateHead :: Pattern Name -> Pattern Name -> Pattern Name
-instantiateHead d Wildcard = d
-instantiateHead d (Var _)  = d -- FIXME: let-bind any variables first
-instantiateHead _ p        = p
+instantiateHead :: Pattern Name -> [Pattern Name] -> [Pattern Name]
+instantiateHead d (Wildcard:ps) = d:ps
+instantiateHead d (Var _:ps)    = d:ps -- FIXME: let-bind any variables first
+instantiateHead _ p             = p
