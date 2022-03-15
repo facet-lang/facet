@@ -16,7 +16,7 @@ module Facet.Elab.Pattern
 , coverStep
 ) where
 
-import Control.Applicative (liftA2)
+import Control.Applicative (Alternative(..), liftA2)
 import Control.Monad (ap, join)
 import Data.Bifunctor
 import Data.Monoid
@@ -130,6 +130,11 @@ instance Applicative (Covers e) where
   pure = Covers . pure . pure
 
   Covers f <*> Covers a = Covers (liftA2 (<*>) f a)
+
+instance Alternative (Covers e) where
+  empty = Covers (Right [])
+
+  Covers a <|> Covers b = Covers (liftA2 (<|>) a b)
 
 instance Monad (Covers e) where
   Covers m >>= k = Covers (m >>= fmap join . traverse (runCovers . k))
