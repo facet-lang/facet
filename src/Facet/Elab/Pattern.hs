@@ -16,7 +16,7 @@ module Facet.Elab.Pattern
 , coverStep
 ) where
 
-import Control.Applicative (Alternative(..))
+import Control.Applicative (Alternative(..), asum)
 import Control.Monad (ap)
 import Data.Bifunctor
 import Data.Monoid
@@ -156,9 +156,11 @@ coverStep tableau@(Tableau context heads) = case context of
       Wildcard:ps -> pure ps
       Var _:ps    -> pure ps
       ps          -> throw (Opaque, ps))
-    One      -> Tableau ctx <$> forOf (traversed.patterns_) heads (\case
-      p:ps | Right _ <- matching _Unit (instantiateHead Unit p) -> pure ps
-      ps                                                        -> throw (t, ps))
+    One      -> do
+      canonical <- asum (map pure (wild t))
+      Tableau ctx <$> forOf (traversed.patterns_) heads (\case
+        p:ps | Right _ <- matching _Unit (instantiateHead canonical p) -> pure ps
+        ps                                                             -> throw (t, ps))
     t1 :+ t2 -> getAp (foldMapOf (folded.patterns_) (Ap . \case
       Wildcard:ps -> pure ([Clause (Wildcard:ps) ()], [Clause (Wildcard:ps) ()])
       Var n:ps    -> pure ([Clause (Var n:ps) ()],    [Clause (Var n:ps) ()])
@@ -178,3 +180,11 @@ instantiateHead :: Pattern Name -> Pattern Name -> Pattern Name
 instantiateHead d Wildcard = d
 instantiateHead d (Var _)  = d -- FIXME: let-bind any variables first
 instantiateHead _ p        = p
+
+
+wild :: Type -> [Pattern Name]
+wild = \case
+  Opaque -> [Wildcard]
+  One    -> [Unit]
+  _ :+ _ -> [InL Wildcard, InR Wildcard]
+  _ :* _ -> [Pair Wildcard Wildcard]
