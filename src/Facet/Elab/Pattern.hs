@@ -163,9 +163,9 @@ coverStep tableau@(Tableau context heads) = case context of
       ps          -> throw (Opaque, ps))
     One      -> do
       (ty, canonical) <- asum (map pure (wild t))
-      Tableau ctx <$> forOf (traversed.patterns_) heads (\case
+      Tableau (ty <> ctx) <$> forOf (traversed.patterns_) heads (\case
         p:ps | Right _ <- matching _Unit (instantiateHead canonical p) -> pure ps
-        ps                                                             -> throw (ty, ps))
+        ps                                                             -> throw (t, ps))
     t1 :+ t2 -> foldMapOf (folded.patterns_) (\case
       Wildcard:ps -> pure ([Clause (Wildcard:ps) ()], [Clause (Wildcard:ps) ()])
       Var n:ps    -> pure ([Clause (Var n:ps) ()],    [Clause (Var n:ps) ()])
@@ -187,9 +187,9 @@ instantiateHead d (Var _)  = d -- FIXME: let-bind any variables first
 instantiateHead _ p        = p
 
 
-wild :: Type -> [(Type, Pattern Name)]
+wild :: Type -> [([Type], Pattern Name)]
 wild = \case
-  Opaque -> [(Opaque, Wildcard)]
-  One    -> [(One, Unit)]
-  s :+ t -> [(s, InL Wildcard), (t, InR Wildcard)]
-  s :* t -> [(s :* t, Pair Wildcard Wildcard)]
+  Opaque -> [([], Wildcard)]
+  One    -> [([], Unit)]
+  s :+ t -> [([s], InL Wildcard), ([t], InR Wildcard)]
+  s :* t -> [([s, t], Pair Wildcard Wildcard)]
