@@ -98,11 +98,11 @@ data Tableau a = Tableau
   , heads   :: [Clause a]
   }
 
-heads_ :: Lens (Tableau a) (Tableau b) [Clause a] [Clause b]
-heads_ = lens heads (\ t heads -> t{heads})
-
 context_ :: Lens' (Tableau a) [Type]
 context_ = lens context (\ t context -> t{context})
+
+heads_ :: Lens (Tableau a) (Tableau b) [Clause a] [Clause b]
+heads_ = lens heads (\ t heads -> t{heads})
 
 
 data Branch s m a = forall x . Branch (Fold s x) (x -> m a)
