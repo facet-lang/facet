@@ -23,9 +23,7 @@ import Data.Monoid
 import Facet.Name
 import Fresnel.Fold
 import Fresnel.Lens
-import Fresnel.List (head_)
 import Fresnel.Prism (Prism', matching, prism')
-import Fresnel.Setter
 import Fresnel.Traversal (forOf, traversed)
 
 data Pattern a
@@ -142,9 +140,6 @@ instance Monad (Covers e) where
 throw :: e -> Covers e a
 throw e = Covers (\ _ _ _ err -> err e)
 
-except :: Either e a -> Covers e a
-except = either throw pure
-
 covers :: Tableau () -> Covers String (Tableau ())
 covers tableau = case context tableau of
   [] -> pure tableau
@@ -161,7 +156,9 @@ coverStep tableau@(Tableau context heads) = case context of
       Wildcard:ps -> pure ps
       Var _:ps    -> pure ps
       ps          -> throw (Opaque, ps))
-    One      -> set context_ ctx <$> forOf (heads_.traversed.patterns_) tableau ((\ ps -> bimap (t,) (const ps) (except (matching (head_._Unit) ps))) . instantiateHead Unit)
+    One      -> Tableau ctx <$> forOf (traversed.patterns_) heads (\case
+      p:ps | Right _ <- matching _Unit (instantiateHead Unit p) -> pure ps
+      ps                                                        -> throw (t, ps))
     t1 :+ t2 -> getAp (foldMapOf (folded.patterns_) (Ap . \case
       Wildcard:ps -> pure ([Clause (Wildcard:ps) ()], [Clause (Wildcard:ps) ()])
       Var n:ps    -> pure ([Clause (Var n:ps) ()],    [Clause (Var n:ps) ()])
@@ -177,7 +174,7 @@ coverStep tableau@(Tableau context heads) = case context of
       ps            -> throw (t1 :* t2, ps))
   []           -> pure tableau -- FIXME: fail if clauses aren't all empty
 
-instantiateHead :: Pattern Name -> [Pattern Name] -> [Pattern Name]
-instantiateHead d (Wildcard:ps) = d:ps
-instantiateHead d (Var _:ps)    = d:ps -- FIXME: let-bind any variables first
-instantiateHead _ p             = p
+instantiateHead :: Pattern Name -> Pattern Name -> Pattern Name
+instantiateHead d Wildcard = d
+instantiateHead d (Var _)  = d -- FIXME: let-bind any variables first
+instantiateHead _ p        = p
