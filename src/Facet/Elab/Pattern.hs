@@ -22,7 +22,7 @@ import Data.Bifunctor
 import Facet.Name
 import Fresnel.Fold
 import Fresnel.Lens
-import Fresnel.Prism (Prism', matching, prism')
+import Fresnel.Prism (Prism', matching, matching', prism')
 import Fresnel.Traversal (forOf, traversed)
 
 data Pattern a
@@ -161,7 +161,7 @@ coverStep tableau@(Tableau (t:ctx) heads) = case t of
     Wildcard:ps -> pure ps
     Var _:ps    -> pure ps
     ps          -> throw (Opaque, ps))
-  One      -> match _Unit tableau
+  One      -> match (([] <$) . matching' _Unit) tableau
   t1 :+ t2 -> foldMapOf (folded.patterns_) (\case
     Wildcard:ps -> pure ([Clause (Wildcard:ps) ()], [Clause (Wildcard:ps) ()])
     Var n:ps    -> pure ([Clause (Var n:ps) ()],    [Clause (Var n:ps) ()])
@@ -175,13 +175,13 @@ coverStep tableau@(Tableau (t:ctx) heads) = case t of
       p:ps | Right (p1, p2) <- matching _Pair (instantiateHead canonical p) -> pure (p1:p2:ps)
       ps                                                                    -> throw (t, ps))
 
-match :: Prism' (Pattern Name) a -> Tableau () -> Covers (Type, [Pattern Name]) (Tableau ())
+match :: (Pattern Name -> Maybe [Pattern Name]) -> Tableau () -> Covers (Type, [Pattern Name]) (Tableau ())
 match _ tableau@(Tableau [] _)  = pure tableau
-match o (Tableau (t:ctx) heads) = do
+match decompose (Tableau (t:ctx) heads) = do
   (prefix, canonical) <- wild t
   Tableau (prefix <> ctx) <$> forOf (traversed.patterns_) heads (\case
-    p:ps | Right _ <- matching o (instantiateHead canonical p) -> pure ps
-    ps                                                         -> throw (t, ps))
+    p:ps | Just p' <- decompose (instantiateHead canonical p) -> pure (p' <> ps)
+    ps                                                        -> throw (t, ps))
 
 
 instantiateHead :: Pattern Name -> Pattern Name -> Pattern Name
