@@ -22,7 +22,7 @@ import Data.Bifunctor
 import Facet.Name
 import Fresnel.Fold
 import Fresnel.Lens
-import Fresnel.Prism (Prism', matching, matching', prism')
+import Fresnel.Prism (Prism', matching', prism')
 import Fresnel.Traversal (forOf, traversed)
 
 data Pattern a
@@ -169,11 +169,7 @@ coverStep tableau@(Tableau (t:ctx) heads) = case t of
     InR q:qs    -> pure ([Clause [] ()],            [Clause (q:qs) ()])
     ps          -> throw (t, ps)) heads
     >>= \ (cs1, cs2) -> pure (Tableau (t1:ctx) cs1) <|> pure (Tableau (t2:ctx) cs2)
-  _ :* _ -> do
-    (prefix, canonical) <- wild t
-    Tableau (prefix <> ctx) <$> forOf (traversed.patterns_) heads (\case
-      p:ps | Right (p1, p2) <- matching _Pair (instantiateHead canonical p) -> pure (p1:p2:ps)
-      ps                                                                    -> throw (t, ps))
+  _ :* _ -> match (fmap (\ (a, b) -> [a, b]) . matching' _Pair) tableau
 
 match :: (Pattern Name -> Maybe [Pattern Name]) -> Tableau () -> Covers (Type, [Pattern Name]) (Tableau ())
 match _ tableau@(Tableau [] _)  = pure tableau
