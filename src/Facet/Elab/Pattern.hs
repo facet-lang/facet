@@ -155,7 +155,8 @@ covers tableau = case context tableau of
     p:_ -> "expected " <> show t <> ", got " <> show p
 
 coverStep :: Tableau () -> Covers (Type, [Pattern Name]) (Tableau ())
-coverStep tableau@(Tableau context heads) = case context of
+coverStep tableau@(Tableau [] _) = pure tableau -- FIXME: fail if clauses aren't all empty
+coverStep (Tableau context heads) = case context of
   t:ctx -> case t of
     Opaque   -> Tableau ctx <$> forOf (traversed.patterns_) heads (\case
       Wildcard:ps -> pure ps
@@ -178,7 +179,6 @@ coverStep tableau@(Tableau context heads) = case context of
       Tableau (prefix <> ctx) <$> forOf (traversed.patterns_) heads (\case
         p:ps | Right (p1, p2) <- matching _Pair (instantiateHead canonical p) -> pure (p1:p2:ps)
         ps                                                                    -> throw (t, ps))
-  []           -> pure tableau -- FIXME: fail if clauses aren't all empty
 
 instantiateHead :: Pattern Name -> Pattern Name -> Pattern Name
 instantiateHead d Wildcard = d
