@@ -157,10 +157,7 @@ covers tableau = case context tableau of
 coverStep :: Tableau () -> Covers (Type, [Pattern Name]) (Tableau ())
 coverStep tableau@(Tableau [] _) = pure tableau -- FIXME: fail if clauses aren't all empty
 coverStep tableau@(Tableau (t:ctx) heads) = case t of
-  Opaque   -> Tableau ctx <$> forOf (traversed.patterns_) heads (\case
-    Wildcard:ps -> pure ps
-    Var _:ps    -> pure ps
-    ps          -> throw (Opaque, ps))
+  Opaque   -> match (([] <$) . matching' _Wildcard) tableau
   One      -> match (([] <$) . matching' _Unit) tableau
   t1 :+ t2 -> foldMapOf (folded.patterns_) (\case
     Wildcard:ps -> pure ([Clause (Wildcard:ps) ()], [Clause (Wildcard:ps) ()])
