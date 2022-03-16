@@ -156,16 +156,12 @@ covers tableau = case context tableau of
 
 coverStep :: Tableau () -> Covers (Type, [Pattern Name]) (Tableau ())
 coverStep tableau@(Tableau [] _) = pure tableau -- FIXME: fail if clauses aren't all empty
-coverStep (Tableau (t:ctx) heads) = case t of
+coverStep tableau@(Tableau (t:ctx) heads) = case t of
   Opaque   -> Tableau ctx <$> forOf (traversed.patterns_) heads (\case
     Wildcard:ps -> pure ps
     Var _:ps    -> pure ps
     ps          -> throw (Opaque, ps))
-  One      -> do
-    (prefix, canonical) <- wild t
-    Tableau (prefix <> ctx) <$> forOf (traversed.patterns_) heads (\case
-      p:ps | Right _ <- matching _Unit (instantiateHead canonical p) -> pure ps
-      ps                                                             -> throw (t, ps))
+  One      -> match _Unit tableau
   t1 :+ t2 -> foldMapOf (folded.patterns_) (\case
     Wildcard:ps -> pure ([Clause (Wildcard:ps) ()], [Clause (Wildcard:ps) ()])
     Var n:ps    -> pure ([Clause (Var n:ps) ()],    [Clause (Var n:ps) ()])
@@ -178,6 +174,15 @@ coverStep (Tableau (t:ctx) heads) = case t of
     Tableau (prefix <> ctx) <$> forOf (traversed.patterns_) heads (\case
       p:ps | Right (p1, p2) <- matching _Pair (instantiateHead canonical p) -> pure (p1:p2:ps)
       ps                                                                    -> throw (t, ps))
+
+match :: Prism' (Pattern Name) a -> Tableau () -> Covers (Type, [Pattern Name]) (Tableau ())
+match _ tableau@(Tableau [] _)  = pure tableau
+match o (Tableau (t:ctx) heads) = do
+  (prefix, canonical) <- wild t
+  Tableau (prefix <> ctx) <$> forOf (traversed.patterns_) heads (\case
+    p:ps | Right _ <- matching o (instantiateHead canonical p) -> pure ps
+    ps                                                         -> throw (t, ps))
+
 
 instantiateHead :: Pattern Name -> Pattern Name -> Pattern Name
 instantiateHead d Wildcard = d
