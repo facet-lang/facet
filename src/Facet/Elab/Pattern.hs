@@ -156,29 +156,28 @@ covers tableau = case context tableau of
 
 coverStep :: Tableau () -> Covers (Type, [Pattern Name]) (Tableau ())
 coverStep tableau@(Tableau [] _) = pure tableau -- FIXME: fail if clauses aren't all empty
-coverStep (Tableau context heads) = case context of
-  t:ctx -> case t of
-    Opaque   -> Tableau ctx <$> forOf (traversed.patterns_) heads (\case
-      Wildcard:ps -> pure ps
-      Var _:ps    -> pure ps
-      ps          -> throw (Opaque, ps))
-    One      -> do
-      (prefix, canonical) <- wild t
-      Tableau (prefix <> ctx) <$> forOf (traversed.patterns_) heads (\case
-        p:ps | Right _ <- matching _Unit (instantiateHead canonical p) -> pure ps
-        ps                                                             -> throw (t, ps))
-    t1 :+ t2 -> foldMapOf (folded.patterns_) (\case
-      Wildcard:ps -> pure ([Clause (Wildcard:ps) ()], [Clause (Wildcard:ps) ()])
-      Var n:ps    -> pure ([Clause (Var n:ps) ()],    [Clause (Var n:ps) ()])
-      InL p:ps    -> pure ([Clause (p:ps) ()],        [Clause [] ()])
-      InR q:qs    -> pure ([Clause [] ()],            [Clause (q:qs) ()])
-      ps          -> throw (t, ps)) heads
-      >>= \ (cs1, cs2) -> pure (Tableau (t1:ctx) cs1) <|> pure (Tableau (t2:ctx) cs2)
-    _ :* _ -> do
-      (prefix, canonical) <- wild t
-      Tableau (prefix <> ctx) <$> forOf (traversed.patterns_) heads (\case
-        p:ps | Right (p1, p2) <- matching _Pair (instantiateHead canonical p) -> pure (p1:p2:ps)
-        ps                                                                    -> throw (t, ps))
+coverStep (Tableau (t:ctx) heads) = case t of
+  Opaque   -> Tableau ctx <$> forOf (traversed.patterns_) heads (\case
+    Wildcard:ps -> pure ps
+    Var _:ps    -> pure ps
+    ps          -> throw (Opaque, ps))
+  One      -> do
+    (prefix, canonical) <- wild t
+    Tableau (prefix <> ctx) <$> forOf (traversed.patterns_) heads (\case
+      p:ps | Right _ <- matching _Unit (instantiateHead canonical p) -> pure ps
+      ps                                                             -> throw (t, ps))
+  t1 :+ t2 -> foldMapOf (folded.patterns_) (\case
+    Wildcard:ps -> pure ([Clause (Wildcard:ps) ()], [Clause (Wildcard:ps) ()])
+    Var n:ps    -> pure ([Clause (Var n:ps) ()],    [Clause (Var n:ps) ()])
+    InL p:ps    -> pure ([Clause (p:ps) ()],        [Clause [] ()])
+    InR q:qs    -> pure ([Clause [] ()],            [Clause (q:qs) ()])
+    ps          -> throw (t, ps)) heads
+    >>= \ (cs1, cs2) -> pure (Tableau (t1:ctx) cs1) <|> pure (Tableau (t2:ctx) cs2)
+  _ :* _ -> do
+    (prefix, canonical) <- wild t
+    Tableau (prefix <> ctx) <$> forOf (traversed.patterns_) heads (\case
+      p:ps | Right (p1, p2) <- matching _Pair (instantiateHead canonical p) -> pure (p1:p2:ps)
+      ps                                                                    -> throw (t, ps))
 
 instantiateHead :: Pattern Name -> Pattern Name -> Pattern Name
 instantiateHead d Wildcard = d
