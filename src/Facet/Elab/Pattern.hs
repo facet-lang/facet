@@ -173,12 +173,11 @@ coverStep tableau@(Tableau context heads) = case context of
       InR q:qs    -> pure ([Clause [] ()],            [Clause (q:qs) ()])
       ps          -> throw (t, ps)) heads
       >>= \ (cs1, cs2) -> pure (Tableau (t1:ctx) cs1) <|> pure (Tableau (t2:ctx) cs2)
-    t1 :* t2 -> Tableau (t1:t2:ctx) <$> forOf (traversed.patterns_) heads (\case
-      Wildcard:ps   -> pure (Wildcard:Wildcard:ps)
-      -- FIXME: substitute variables out for wildcards so we don't have to bind fresh variable names
-      Var n:ps      -> pure (Var n:Var n:ps)
-      Pair p1 p2:ps -> pure (p1:p2:ps)
-      ps            -> throw (t1 :* t2, ps))
+    _ :* _ -> do
+      (prefix, canonical) <- wild t
+      Tableau (prefix <> ctx) <$> forOf (traversed.patterns_) heads (\case
+        p:ps | Right (p1, p2) <- matching _Pair (instantiateHead canonical p) -> pure (p1:p2:ps)
+        ps                                                                    -> throw (t, ps))
   []           -> pure tableau -- FIXME: fail if clauses aren't all empty
 
 instantiateHead :: Pattern Name -> Pattern Name -> Pattern Name
