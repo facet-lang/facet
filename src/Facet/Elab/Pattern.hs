@@ -63,13 +63,13 @@ _Unit = prism' (const Unit) (\case
   Unit -> Just ()
   _    -> Nothing)
 
-_Inl :: Prism' (Pattern a) (Pattern a)
-_Inl = prism' InL (\case
+_InL :: Prism' (Pattern a) (Pattern a)
+_InL = prism' InL (\case
   InL p -> Just p
   _     -> Nothing)
 
-_Inr :: Prism' (Pattern a) (Pattern a)
-_Inr = prism' InR (\case
+_InR :: Prism' (Pattern a) (Pattern a)
+_InR = prism' InR (\case
   InR p -> Just p
   _     -> Nothing)
 
