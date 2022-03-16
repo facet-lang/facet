@@ -12,6 +12,7 @@ module Facet.Elab.Pattern
 , (\/)
   -- * Coverage judgement
 , Covers(..)
+, covers
 , coverLoop
 , coverStep
 ) where
@@ -144,6 +145,9 @@ instance Monoid a => Monoid (Covers e a) where
 
 throw :: e -> Covers e a
 throw e = Covers (\ _ _ _ err -> err e)
+
+covers :: Tableau () -> Bool
+covers t = runCovers (coverLoop t) (&&) (const True) True (const False)
 
 coverLoop :: Tableau () -> Covers String (Tableau ())
 coverLoop tableau = case context tableau of
