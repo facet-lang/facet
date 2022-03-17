@@ -17,14 +17,15 @@ module Facet.Elab.Pattern
 , coverStep
 ) where
 
-import Control.Applicative (Alternative(..), liftA2)
-import Control.Monad (ap)
-import Data.Bifunctor
-import Facet.Name
-import Fresnel.Fold
-import Fresnel.Lens
-import Fresnel.Prism (Prism', matching', prism')
-import Fresnel.Traversal (forOf, traversed)
+import           Control.Applicative (Alternative(..), liftA2)
+import           Control.Monad (ap)
+import           Data.Bifunctor
+import qualified Data.List.NonEmpty as NE
+import           Facet.Name
+import           Fresnel.Fold
+import           Fresnel.Lens
+import           Fresnel.Prism (Prism', matching', prism')
+import           Fresnel.Traversal (forOf, traversed)
 
 data Pattern a
   = Wildcard
@@ -151,20 +152,21 @@ covers t = runCovers (coverLoop t) (&&) (const True) True (const False)
 
 coverLoop :: Tableau a -> Covers String (Tableau a)
 coverLoop tableau = case context tableau of
-  [] -> pure tableau -- FIXME: fail if clauses aren't all empty
-  _  -> first (uncurry formatError) (coverStep tableau) >>= coverLoop
+  []   -> pure tableau -- FIXME: fail if clauses aren't all empty
+  t:ts -> first (uncurry formatError) (coverStep (t NE.:| ts) (heads tableau)) >>= coverLoop
   where
   formatError t = \case
     []  -> "expected " <> show t <> ", got nothing"
     p:_ -> "expected " <> show t <> ", got " <> show p
 
-coverStep :: Tableau a -> Covers (Type, [Pattern Name]) (Tableau a)
-coverStep tableau@(Tableau [] _) = pure tableau -- FIXME: fail if clauses aren't all empty
-coverStep tableau@(Tableau (t:_) _) = case t of
+coverStep :: NE.NonEmpty Type -> [Clause a] -> Covers (Type, [Pattern Name]) (Tableau a)
+coverStep ctx@(t NE.:| _) cs = case t of
   Opaque -> match (([] <$) . matching' _Wildcard) tableau
   One    -> match (([] <$) . matching' _Unit) tableau
   _ :+ _ -> match (\ p -> pure <$> (matching' _InL p <|> matching' _InR p)) tableau -- FIXME: match once and partition results
   _ :* _ -> match (fmap (\ (a, b) -> [a, b]) . matching' _Pair) tableau
+  where
+  tableau = Tableau (NE.toList ctx) cs
 
 match :: (Pattern Name -> Maybe [Pattern Name]) -> Tableau a -> Covers (Type, [Pattern Name]) (Tableau a)
 match _ tableau@(Tableau [] _)  = pure tableau
