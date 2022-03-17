@@ -151,7 +151,7 @@ covers t = runCovers (coverLoop t) (&&) (const True) True (const False)
 
 coverLoop :: Tableau a -> Covers String (Tableau a)
 coverLoop tableau = case context tableau of
-  [] -> pure tableau
+  [] -> pure tableau -- FIXME: fail if clauses aren't all empty
   _  -> first (uncurry formatError) (coverStep tableau) >>= coverLoop
   where
   formatError t = \case
