@@ -161,7 +161,6 @@ library
     , exceptions ^>= 0.10
     , filepath
     , fresnel
-    , fresnel-fused-effects
     , fused-effects
     , haskeline ^>= 0.8.1
     , optparse-applicative
