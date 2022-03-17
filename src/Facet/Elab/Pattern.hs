@@ -149,7 +149,7 @@ throw e = Covers (\ _ _ _ err -> err e)
 covers :: Tableau () -> Bool
 covers t = runCovers (coverLoop t) (&&) (const True) True (const False)
 
-coverLoop :: Tableau () -> Covers String (Tableau ())
+coverLoop :: Tableau a -> Covers String (Tableau a)
 coverLoop tableau = case context tableau of
   [] -> pure tableau
   _  -> first (uncurry formatError) (coverStep tableau) >>= coverLoop
