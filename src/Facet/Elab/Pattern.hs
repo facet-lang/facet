@@ -155,10 +155,10 @@ coverLoop tableau = case context tableau of
 
 coverStep :: NE.NonEmpty Type -> [Clause a] -> Covers (Type, [Pattern Name]) (Tableau a)
 coverStep ctx@(t NE.:| _) heads = case t of
-  Opaque -> match (pure ([], Wildcard))                                   ctx heads (\ p -> [] <$ matching' _Wildcard p)
-  One    -> match (pure ([], Unit))                                       ctx heads (\ p -> [] <$ matching' _Unit p)
-  s :+ t -> match (pure ([s], InL Wildcard) <|> pure ([t], InR Wildcard)) ctx heads (\ p -> pure <$> (matching' _InL p <|> matching' _InR p)) -- FIXME: match once and partition results
-  s :* t -> match (pure ([s, t], Pair Wildcard Wildcard))                 ctx heads (\ p -> (\ (a, b) -> [a, b]) <$> matching' _Pair p)
+  Opaque -> match [([], Wildcard)]                           ctx heads (\ p -> [] <$ matching' _Wildcard p)
+  One    -> match [([], Unit)]                               ctx heads (\ p -> [] <$ matching' _Unit p)
+  s :+ t -> match [([s], InL Wildcard), ([t], InR Wildcard)] ctx heads (\ p -> pure <$> (matching' _InL p <|> matching' _InR p)) -- FIXME: match once and partition results
+  s :* t -> match [([s, t], Pair Wildcard Wildcard)]         ctx heads (\ p -> (\ (a, b) -> [a, b]) <$> matching' _Pair p)
 
 match :: [([Type], Pattern Name)] -> NE.NonEmpty Type -> [Clause a] -> (Pattern Name -> Maybe [Pattern Name]) -> Covers (Type, [Pattern Name]) (Tableau a)
 match inst (t NE.:| ctx) heads decompose = do
