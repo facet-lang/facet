@@ -17,7 +17,7 @@ module Facet.Elab.Pattern
 , coverStep
 ) where
 
-import           Control.Applicative (Alternative(..))
+import           Control.Applicative (Alternative(..), asum)
 import           Control.Monad (ap)
 import           Data.Bifunctor
 import qualified Data.List.NonEmpty as NE
@@ -160,9 +160,9 @@ coverStep ctx@(t NE.:| _) heads = case t of
   s :+ t -> match (pure ([s], InL Wildcard) <|> pure ([t], InR Wildcard)) ctx heads (\ p -> pure <$> (matching' _InL p <|> matching' _InR p)) -- FIXME: match once and partition results
   s :* t -> match (pure ([s, t], Pair Wildcard Wildcard))                 ctx heads (\ p -> (\ (a, b) -> [a, b]) <$> matching' _Pair p)
 
-match :: Covers (Type, [Pattern Name]) ([Type], Pattern Name) -> NE.NonEmpty Type -> [Clause a] -> (Pattern Name -> Maybe [Pattern Name]) -> Covers (Type, [Pattern Name]) (Tableau a)
+match :: [([Type], Pattern Name)] -> NE.NonEmpty Type -> [Clause a] -> (Pattern Name -> Maybe [Pattern Name]) -> Covers (Type, [Pattern Name]) (Tableau a)
 match inst (t NE.:| ctx) heads decompose = do
-  (prefix, canonical) <- inst
+  (prefix, canonical) <- asum (pure <$> inst)
   Tableau (prefix <> ctx) <$> forOf (traversed.patterns_) heads (\case
     p:ps | Just p' <- decompose (instantiateHead canonical p) -> pure (p' <> ps)
     ps                                                        -> throw (t, ps))
