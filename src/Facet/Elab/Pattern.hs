@@ -166,7 +166,7 @@ coverStep tableau@(Tableau (t:_) _) = case t of
   _ :+ _ -> match (\ p -> pure <$> (matching' _InL p <|> matching' _InR p)) tableau
   _ :* _ -> match (fmap (\ (a, b) -> [a, b]) . matching' _Pair) tableau
 
-match :: (Pattern Name -> Maybe [Pattern Name]) -> Tableau () -> Covers (Type, [Pattern Name]) (Tableau ())
+match :: (Pattern Name -> Maybe [Pattern Name]) -> Tableau a -> Covers (Type, [Pattern Name]) (Tableau a)
 match _ tableau@(Tableau [] _)  = pure tableau
 match decompose (Tableau (t:ctx) heads) = do
   (prefix, canonical) <- wild t
