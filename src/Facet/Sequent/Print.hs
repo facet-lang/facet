@@ -37,6 +37,7 @@ instance S.Sequent Print Print Print where
   funL a k = a P.<+> P.dot P.<+> k
   sumL cs = µ̃ <> P.braces (commaSep (map (\ c -> fresh (\ v -> anon v P.<+> P.dot P.<+> c (anon v))) cs))
   prdL i k = P.parens (µ̃ <> withLevel (\ d -> k (map (\ i -> anon (d + fromIntegral i)) [0..i])))
+  stringL b = P.braces (fresh (\ v -> anon v P.<+> P.dot P.<+> b (anon v)))
 
   (.|.) = fmap (P.enclose P.langle P.rangle) . P.surround P.pipe
 
