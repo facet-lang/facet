@@ -17,7 +17,7 @@ module Facet.Elab.Pattern
 , coverStep
 ) where
 
-import           Control.Applicative (Alternative(..), liftA2)
+import           Control.Applicative (Alternative(..))
 import           Control.Monad (ap)
 import           Data.Bifunctor
 import qualified Data.List.NonEmpty as NE
@@ -137,12 +137,6 @@ instance Alternative (Covers e) where
 
 instance Monad (Covers e) where
   Covers m >>= k = Covers (\ fork leaf nil err -> m fork (\ a -> runCovers (k a) fork leaf nil err) nil err)
-
-instance Semigroup a => Semigroup (Covers e a) where
-  (<>) = liftA2 (<>)
-
-instance Monoid a => Monoid (Covers e a) where
-  mempty = pure mempty
 
 throw :: e -> Covers e a
 throw e = Covers (\ _ _ _ err -> err e)
