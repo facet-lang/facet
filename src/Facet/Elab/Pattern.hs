@@ -146,7 +146,7 @@ instance Monoid a => Monoid (Covers e a) where
 throw :: e -> Covers e a
 throw e = Covers (\ _ _ _ err -> err e)
 
-covers :: Tableau () -> Bool
+covers :: Tableau a -> Bool
 covers t = runCovers (coverLoop t) (&&) (const True) True (const False)
 
 coverLoop :: Tableau a -> Covers String (Tableau a)
