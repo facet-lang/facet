@@ -155,13 +155,13 @@ coverLoop tableau = case context tableau of
 
 coverStep :: NE.NonEmpty Type -> [Clause a] -> Covers (Type, [Pattern Name]) (Tableau a)
 coverStep ctx@(t NE.:| _) heads = case t of
-  Opaque -> match (\ p -> [] <$ matching' _Wildcard p) (pure ([], Wildcard)) ctx heads
-  One    -> match (\ p -> [] <$ matching' _Unit p) (pure ([], Unit)) ctx heads
-  s :+ t -> match (\ p -> pure <$> (matching' _InL p <|> matching' _InR p)) (pure ([s], InL Wildcard) <|> pure ([t], InR Wildcard)) ctx heads -- FIXME: match once and partition results
-  s :* t -> match (\ p -> (\ (a, b) -> [a, b]) <$> matching' _Pair p) (pure ([s, t], Pair Wildcard Wildcard)) ctx heads
+  Opaque -> match (pure ([], Wildcard))                                   ctx heads (\ p -> [] <$ matching' _Wildcard p)
+  One    -> match (pure ([], Unit))                                       ctx heads (\ p -> [] <$ matching' _Unit p)
+  s :+ t -> match (pure ([s], InL Wildcard) <|> pure ([t], InR Wildcard)) ctx heads (\ p -> pure <$> (matching' _InL p <|> matching' _InR p)) -- FIXME: match once and partition results
+  s :* t -> match (pure ([s, t], Pair Wildcard Wildcard))                 ctx heads (\ p -> (\ (a, b) -> [a, b]) <$> matching' _Pair p)
 
-match :: (Pattern Name -> Maybe [Pattern Name]) -> Covers (Type, [Pattern Name]) ([Type], Pattern Name) -> NE.NonEmpty Type -> [Clause a] -> Covers (Type, [Pattern Name]) (Tableau a)
-match decompose inst (t NE.:| ctx) heads = do
+match :: Covers (Type, [Pattern Name]) ([Type], Pattern Name) -> NE.NonEmpty Type -> [Clause a] -> (Pattern Name -> Maybe [Pattern Name]) -> Covers (Type, [Pattern Name]) (Tableau a)
+match inst (t NE.:| ctx) heads decompose = do
   (prefix, canonical) <- inst
   Tableau (prefix <> ctx) <$> forOf (traversed.patterns_) heads (\case
     p:ps | Just p' <- decompose (instantiateHead canonical p) -> pure (p' <> ps)
