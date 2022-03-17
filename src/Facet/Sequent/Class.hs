@@ -13,7 +13,6 @@ module Facet.Sequent.Class
 , funLA
 , sumLA
 , prdLA
-, stringLA
 , (.||.)
 -- , Ctx(..)
 -- , Binding(..)
@@ -43,7 +42,6 @@ class Sequent term coterm command | coterm -> term command, term -> coterm comma
   funL :: term -> coterm -> coterm
   sumL :: [term -> command] -> coterm
   prdL :: Int -> ([term] -> command) -> coterm
-  stringL :: (term -> command) -> coterm
 
   -- Commands
   (.|.) :: term -> coterm -> command
@@ -97,12 +95,6 @@ prdLA
   -> (forall j . Applicative j => (i ~> j) -> j [t] -> m (j d))
   -> m (i c)
 prdLA i = binder (prdL i)
-
-stringLA
-  :: (Sequent t c d, Applicative i, Applicative m)
-  => (forall j . Applicative j => (i ~> j) -> j t -> m (j d))
-  -> m (i c)
-stringLA = binder stringL
 
 
 (.||.) :: (Applicative m, Applicative i, Sequent t c d) => m (i t) -> m (i c) -> m (i d)
