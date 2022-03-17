@@ -163,7 +163,7 @@ coverStep tableau@(Tableau [] _) = pure tableau -- FIXME: fail if clauses aren't
 coverStep tableau@(Tableau (t:_) _) = case t of
   Opaque -> match (([] <$) . matching' _Wildcard) tableau
   One    -> match (([] <$) . matching' _Unit) tableau
-  _ :+ _ -> match (\ p -> pure <$> (matching' _InL p <|> matching' _InR p)) tableau
+  _ :+ _ -> match (\ p -> pure <$> (matching' _InL p <|> matching' _InR p)) tableau -- FIXME: match once and partition results
   _ :* _ -> match (fmap (\ (a, b) -> [a, b]) . matching' _Pair) tableau
 
 match :: (Pattern Name -> Maybe [Pattern Name]) -> Tableau a -> Covers (Type, [Pattern Name]) (Tableau a)
