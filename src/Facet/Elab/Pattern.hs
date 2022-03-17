@@ -161,10 +161,10 @@ coverLoop tableau = case context tableau of
 
 coverStep :: NE.NonEmpty Type -> [Clause a] -> Covers (Type, [Pattern Name]) (Tableau a)
 coverStep ctx@(t NE.:| _) cs = case t of
-  Opaque -> match (([] <$) . matching' _Wildcard) tableau
-  One    -> match (([] <$) . matching' _Unit) tableau
+  Opaque -> match (\ p -> [] <$ matching' _Wildcard p) tableau
+  One    -> match (\ p -> [] <$ matching' _Unit p) tableau
   _ :+ _ -> match (\ p -> pure <$> (matching' _InL p <|> matching' _InR p)) tableau -- FIXME: match once and partition results
-  _ :* _ -> match (fmap (\ (a, b) -> [a, b]) . matching' _Pair) tableau
+  _ :* _ -> match (\ p -> (\ (a, b) -> [a, b]) <$> matching' _Pair p) tableau
   where
   tableau = Tableau (NE.toList ctx) cs
 
