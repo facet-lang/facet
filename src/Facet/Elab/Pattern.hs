@@ -158,7 +158,7 @@ coverLoop tableau = case context tableau of
     []  -> "expected " <> show t <> ", got nothing"
     p:_ -> "expected " <> show t <> ", got " <> show p
 
-coverStep :: Tableau () -> Covers (Type, [Pattern Name]) (Tableau ())
+coverStep :: Tableau a -> Covers (Type, [Pattern Name]) (Tableau a)
 coverStep tableau@(Tableau [] _) = pure tableau -- FIXME: fail if clauses aren't all empty
 coverStep tableau@(Tableau (t:_) _) = case t of
   Opaque -> match (([] <$) . matching' _Wildcard) tableau
