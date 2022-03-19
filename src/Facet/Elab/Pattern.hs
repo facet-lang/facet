@@ -131,29 +131,26 @@ throw e = Covers (\ _ _ _ err -> err e)
 covers :: Type -> [Clause a] -> Bool
 covers ty heads = runCovers (coverLoop ty heads) (&&) (const True) True (const False)
 
-coverLoop :: Type -> [Clause a] -> Covers String (Type, [Clause a])
+coverLoop :: Type -> [Clause a] -> Covers (Type, [Pattern Name]) (Type, [Clause a])
 coverLoop ty heads = case ty of
-  hd :-> tl -> first (uncurry formatError) (coverStep hd heads) >>= \ (prefix, hd) -> coverLoop (prefix tl) hd
+  hd :-> tl -> (coverStep hd heads (\ prefix hd -> coverLoop (prefix tl) hd))
   ty        -> pure (ty, heads) -- FIXME: fail if clauses aren't all empty
-  where
-  formatError t = \case
-    []  -> "expected " <> show t <> ", got nothing"
-    p:_ -> "expected " <> show t <> ", got " <> show p
 
-coverStep :: Type -> [Clause a] -> Covers (Type, [Pattern Name]) (Type -> Type, [Clause a])
-coverStep hd heads = case hd of
-  Opaque  -> match [([], Wildcard)]                           hd heads (\ p -> [] <$ matching' _Wildcard p)
-  One     -> match [([], Unit)]                               hd heads (\ p -> [] <$ matching' _Unit p)
-  s :+ t  -> match [([s], InL Wildcard), ([t], InR Wildcard)] hd heads (\ p -> pure <$> (matching' _InL p <|> matching' _InR p)) -- FIXME: match once and partition results
-  s :* t  -> match [([s, t], Pair Wildcard Wildcard)]         hd heads (\ p -> (\ (a, b) -> [a, b]) <$> matching' _Pair p)
-  _ :-> _ -> match [([], Wildcard)]                           hd heads (\ p -> [] <$ matching' _Wildcard p)
+coverStep :: Type -> [Clause a] -> ((Type -> Type) -> [Clause a] -> Covers (Type, [Pattern Name]) x) -> Covers (Type, [Pattern Name]) x
+coverStep hd heads k = case hd of
+  Opaque  -> match [([], Wildcard)]                           hd heads (\ p -> [] <$ matching' _Wildcard p) k
+  One     -> match [([], Unit)]                               hd heads (\ p -> [] <$ matching' _Unit p) k
+  s :+ t  -> match [([s], InL Wildcard), ([t], InR Wildcard)] hd heads (\ p -> pure <$> (matching' _InL p <|> matching' _InR p)) k -- FIXME: match once and partition results
+  s :* t  -> match [([s, t], Pair Wildcard Wildcard)]         hd heads (\ p -> (\ (a, b) -> [a, b]) <$> matching' _Pair p) k
+  _ :-> _ -> match [([], Wildcard)]                           hd heads (\ p -> [] <$ matching' _Wildcard p) k
 
-match :: [([Type], Pattern Name)] -> Type -> [Clause a] -> (Pattern Name -> Maybe [Pattern Name]) -> Covers (Type, [Pattern Name]) (Type -> Type, [Clause a])
-match inst hd heads decompose = do
+match :: [([Type], Pattern Name)] -> Type -> [Clause a] -> (Pattern Name -> Maybe [Pattern Name]) -> ((Type -> Type) -> [Clause a] -> Covers (Type, [Pattern Name]) x) -> Covers (Type, [Pattern Name]) x
+match inst hd heads decompose k = do
   (prefix, canonical) <- asum (pure <$> inst)
-  (\ tl -> foldr (:->) tl prefix,) <$> forOf (traversed.patterns_) heads (\case
+  heads' <- forOf (traversed.patterns_) heads (\case
     p:ps | Just p' <- decompose (instantiateHead canonical p) -> pure (p' <> ps)
     ps                                                        -> throw (hd, ps))
+  k (\ tl -> foldr (:->) tl prefix) heads'
 
 
 instantiateHead :: Pattern Name -> Pattern Name -> Pattern Name
