@@ -143,8 +143,8 @@ instance Monad (Covers e) where
 throw :: e -> Covers e a
 throw e = Covers (\ _ _ _ err -> err e)
 
-covers :: Tableau a -> Bool
-covers t = runCovers (coverLoop t) (&&) (const True) True (const False)
+covers :: [Type] -> [Clause a] -> Bool
+covers ctx heads = runCovers (coverLoop (Tableau ctx heads)) (&&) (const True) True (const False)
 
 coverLoop :: Tableau a -> Covers String (Tableau a)
 coverLoop tableau = case context tableau of
