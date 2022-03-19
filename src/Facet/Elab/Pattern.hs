@@ -92,10 +92,12 @@ data Type
   | One
   | Type :+ Type
   | Type :* Type
+  | Type :-> Type
   deriving (Eq, Ord, Show)
 
 infixl 6 :+
 infixl 7 :*
+infixl 1 :->
 
 data Tableau a = Tableau
   { context :: [Type]
@@ -155,10 +157,11 @@ coverLoop tableau = case context tableau of
 
 coverStep :: NE.NonEmpty Type -> [Clause a] -> Covers (Type, [Pattern Name]) (Tableau a)
 coverStep ctx@(t NE.:| _) heads = case t of
-  Opaque -> match [([], Wildcard)]                           ctx heads (\ p -> [] <$ matching' _Wildcard p)
-  One    -> match [([], Unit)]                               ctx heads (\ p -> [] <$ matching' _Unit p)
-  s :+ t -> match [([s], InL Wildcard), ([t], InR Wildcard)] ctx heads (\ p -> pure <$> (matching' _InL p <|> matching' _InR p)) -- FIXME: match once and partition results
-  s :* t -> match [([s, t], Pair Wildcard Wildcard)]         ctx heads (\ p -> (\ (a, b) -> [a, b]) <$> matching' _Pair p)
+  Opaque  -> match [([], Wildcard)]                           ctx heads (\ p -> [] <$ matching' _Wildcard p)
+  One     -> match [([], Unit)]                               ctx heads (\ p -> [] <$ matching' _Unit p)
+  s :+ t  -> match [([s], InL Wildcard), ([t], InR Wildcard)] ctx heads (\ p -> pure <$> (matching' _InL p <|> matching' _InR p)) -- FIXME: match once and partition results
+  s :* t  -> match [([s, t], Pair Wildcard Wildcard)]         ctx heads (\ p -> (\ (a, b) -> [a, b]) <$> matching' _Pair p)
+  _ :-> _ -> match [([], Wildcard)]                           ctx heads (\ p -> [] <$ matching' _Wildcard p)
 
 match :: [([Type], Pattern Name)] -> NE.NonEmpty Type -> [Clause a] -> (Pattern Name -> Maybe [Pattern Name]) -> Covers (Type, [Pattern Name]) (Tableau a)
 match inst (t NE.:| ctx) heads decompose = do
