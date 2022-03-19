@@ -16,7 +16,6 @@ module Facet.Elab.Pattern
 
 import Control.Applicative (Alternative(..), asum)
 import Control.Monad (ap)
-import Data.Bifunctor
 import Facet.Name
 import Fresnel.Fold
 import Fresnel.Lens
@@ -108,9 +107,6 @@ infixr 2 \/
 
 newtype Covers e a = Covers { runCovers :: forall r . (r -> r -> r) -> (a -> r) -> r -> (e -> r) -> r }
   deriving (Functor)
-
-instance Bifunctor Covers where
-  bimap f g (Covers e) = Covers (\ fork leaf nil err -> e fork (leaf . g) nil (err . f))
 
 instance Applicative (Covers e) where
   pure a = Covers (\ _ leaf _ _ -> leaf a)
