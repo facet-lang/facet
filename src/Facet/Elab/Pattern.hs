@@ -5,9 +5,6 @@ module Facet.Elab.Pattern
 , Clause(..)
 , patterns_
 , Type(..)
-, Tableau(..)
-, context_
-, heads_
 , Branch(..)
 , (\/)
   -- * Coverage judgement
@@ -98,17 +95,6 @@ data Type
 infixl 6 :+
 infixl 7 :*
 infixl 1 :->
-
-data Tableau a = Tableau
-  { context :: [Type]
-  , heads   :: [Clause a]
-  }
-
-context_ :: Lens' (Tableau a) [Type]
-context_ = lens context (\ t context -> t{context})
-
-heads_ :: Lens (Tableau a) (Tableau b) [Clause a] [Clause b]
-heads_ = lens heads (\ t heads -> t{heads})
 
 
 data Branch s m a = forall x . Branch (Fold s x) (x -> m a)
