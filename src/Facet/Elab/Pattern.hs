@@ -146,9 +146,9 @@ throw e = Covers (\ _ _ _ err -> err e)
 covers :: [Type] -> [Clause a] -> Bool
 covers ctx heads = runCovers (coverLoop ctx heads) (&&) (const True) True (const False)
 
-coverLoop :: [Type] -> [Clause a] -> Covers String (Tableau a)
+coverLoop :: [Type] -> [Clause a] -> Covers String ([Type], [Clause a])
 coverLoop ctx heads = case ctx of
-  []   -> pure (Tableau ctx heads) -- FIXME: fail if clauses aren't all empty
+  []   -> pure (ctx, heads) -- FIXME: fail if clauses aren't all empty
   t:ts -> first (uncurry formatError) (coverStep (t NE.:| ts) heads) >>= \ (Tableau ctx heads) -> coverLoop ctx heads
   where
   formatError t = \case
