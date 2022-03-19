@@ -133,7 +133,7 @@ covers ty heads = runCovers (coverLoop ty heads) (&&) (const True) True (const F
 
 coverLoop :: Type -> [Clause a] -> Covers (Type, [Pattern Name]) (Type, [Clause a])
 coverLoop ty heads = case ty of
-  hd :-> tl -> (coverStep hd heads (\ prefix hd -> coverLoop (prefix tl) hd))
+  hd :-> tl -> coverStep hd heads (\ prefix hd -> coverLoop (prefix tl) hd)
   ty        -> pure (ty, heads) -- FIXME: fail if clauses aren't all empty
 
 coverStep :: Type -> [Clause a] -> ((Type -> Type) -> [Clause a] -> Covers (Type, [Pattern Name]) x) -> Covers (Type, [Pattern Name]) x
