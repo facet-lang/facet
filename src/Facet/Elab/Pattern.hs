@@ -149,13 +149,13 @@ covers ctx heads = runCovers (coverLoop ctx heads) (&&) (const True) True (const
 coverLoop :: [Type] -> [Clause a] -> Covers String ([Type], [Clause a])
 coverLoop ctx heads = case ctx of
   []   -> pure (ctx, heads) -- FIXME: fail if clauses aren't all empty
-  t:ts -> first (uncurry formatError) (coverStep (t NE.:| ts) heads) >>= \ (Tableau ctx heads) -> coverLoop ctx heads
+  t:ts -> first (uncurry formatError) (coverStep (t NE.:| ts) heads) >>= uncurry coverLoop
   where
   formatError t = \case
     []  -> "expected " <> show t <> ", got nothing"
     p:_ -> "expected " <> show t <> ", got " <> show p
 
-coverStep :: NE.NonEmpty Type -> [Clause a] -> Covers (Type, [Pattern Name]) (Tableau a)
+coverStep :: NE.NonEmpty Type -> [Clause a] -> Covers (Type, [Pattern Name]) ([Type], [Clause a])
 coverStep ctx@(t NE.:| _) heads = case t of
   Opaque  -> match [([], Wildcard)]                           ctx heads (\ p -> [] <$ matching' _Wildcard p)
   One     -> match [([], Unit)]                               ctx heads (\ p -> [] <$ matching' _Unit p)
@@ -163,10 +163,10 @@ coverStep ctx@(t NE.:| _) heads = case t of
   s :* t  -> match [([s, t], Pair Wildcard Wildcard)]         ctx heads (\ p -> (\ (a, b) -> [a, b]) <$> matching' _Pair p)
   _ :-> _ -> match [([], Wildcard)]                           ctx heads (\ p -> [] <$ matching' _Wildcard p)
 
-match :: [([Type], Pattern Name)] -> NE.NonEmpty Type -> [Clause a] -> (Pattern Name -> Maybe [Pattern Name]) -> Covers (Type, [Pattern Name]) (Tableau a)
+match :: [([Type], Pattern Name)] -> NE.NonEmpty Type -> [Clause a] -> (Pattern Name -> Maybe [Pattern Name]) -> Covers (Type, [Pattern Name]) ([Type], [Clause a])
 match inst (t NE.:| ctx) heads decompose = do
   (prefix, canonical) <- asum (pure <$> inst)
-  Tableau (prefix <> ctx) <$> forOf (traversed.patterns_) heads (\case
+  (prefix <> ctx,) <$> forOf (traversed.patterns_) heads (\case
     p:ps | Just p' <- decompose (instantiateHead canonical p) -> pure (p' <> ps)
     ps                                                        -> throw (t, ps))
 
