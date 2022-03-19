@@ -144,12 +144,12 @@ throw :: e -> Covers e a
 throw e = Covers (\ _ _ _ err -> err e)
 
 covers :: [Type] -> [Clause a] -> Bool
-covers ctx heads = runCovers (coverLoop (Tableau ctx heads)) (&&) (const True) True (const False)
+covers ctx heads = runCovers (coverLoop ctx heads) (&&) (const True) True (const False)
 
-coverLoop :: Tableau a -> Covers String (Tableau a)
-coverLoop tableau = case context tableau of
-  []   -> pure tableau -- FIXME: fail if clauses aren't all empty
-  t:ts -> first (uncurry formatError) (coverStep (t NE.:| ts) (heads tableau)) >>= coverLoop
+coverLoop :: [Type] -> [Clause a] -> Covers String (Tableau a)
+coverLoop ctx heads = case ctx of
+  []   -> pure (Tableau ctx heads) -- FIXME: fail if clauses aren't all empty
+  t:ts -> first (uncurry formatError) (coverStep (t NE.:| ts) heads) >>= \ (Tableau ctx heads) -> coverLoop ctx heads
   where
   formatError t = \case
     []  -> "expected " <> show t <> ", got nothing"
