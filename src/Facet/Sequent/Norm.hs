@@ -20,7 +20,7 @@ import           Facet.Syntax
 data Term
   = Var (Var Level)
   | MuR (Coterm -> Command)
-  | FunR (Term -> Term)
+  | FunR (Term -> Coterm -> Command)
   | SumR RName Term
   | PrdR [Term]
   | StringR Text
@@ -62,7 +62,7 @@ instance Quote Term X.Term where
   quote = \case
     Var v     -> Quoter (\ d -> X.Var (toIndexed d v))
     MuR b     -> X.MuR <$> quoteBinder (Quoter (Covar . Free . getUsed)) b
-    FunR b    -> X.FunR <$> quoteBinder (Quoter (Var . Free . getUsed)) b
+    FunR b    -> X.FunR <$> Quoter (\ d -> runQuoter (d + 2) (quote (b (Var (Free (getUsed d))) (Covar (Free (getUsed (d + 1)))))))
     SumR i t  -> X.SumR i <$> quote t
     PrdR fs   -> X.PrdR <$> traverse quote fs
     StringR t -> pure (X.StringR t)

@@ -27,7 +27,7 @@ instance Show Print where
 instance S.Sequent Print Print Print where
   var = var
   µR b = P.pretty "µ" <> P.braces (fresh (\ v -> anon v P.<+> P.dot P.<+> b (anon v)))
-  funR c = P.braces (let v = nameVar in v P.<+> P.pretty "->" P.<+> c v)
+  funR c = P.braces (fresh (\ u -> fresh (\ v -> P.brackets (anon u <> P.comma P.<+> anon v) P.<+> P.pretty "->" P.<+> c (anon u) (anon v))))
   sumR i t = P.parens (P.pretty "in" <> P.pretty i P.<+> t)
   prdR = P.tupled
   stringR = P.pretty . show
@@ -56,9 +56,6 @@ var :: Var Level -> Print
 var v = case v of
   Free l   -> lower (getLevel l)
   Global n -> P.pretty n
-
-nameVar :: Print
-nameVar = withLevel (incrLevel . var . Free . getUsed)
 
 commaSep :: [Print] -> Print
 commaSep = P.encloseSep mempty mempty (P.comma <> P.space)

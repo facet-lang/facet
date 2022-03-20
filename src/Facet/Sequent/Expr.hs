@@ -23,7 +23,7 @@ import           Facet.Syntax
 data Term
   = Var (Var Index)
   | MuR Command
-  | FunR Term
+  | FunR Command
   | SumR RName Term
   | PrdR [Term]
   | StringR Text
@@ -47,7 +47,7 @@ data Command = Term :|: Coterm
 instance C.Sequent (Quoter Term) (Quoter Coterm) (Quoter Command) where
   var v = Quoter (\ d -> Var (toIndexed d v))
   µR b = MuR <$> binder (\ d' -> Quoter (\ d -> covar (toIndexed d d'))) b
-  funR b = FunR <$> binder (\ d' -> Quoter (\ d -> var (toIndexed d d'))) b
+  funR b = FunR <$> binder (\ d' -> Quoter (\ d -> var (toIndexed d d'))) (\ t -> binder (\ d'' -> Quoter (\ d -> covar (toIndexed d d''))) (b t))
   sumR = fmap . SumR
   prdR = fmap PrdR . sequenceA
   stringR = pure . StringR
@@ -72,7 +72,7 @@ interpretTerm _G _D = \case
   Var (Free n)   -> _G `index` n
   Var (Global n) -> C.var (Global n)
   MuR b          -> C.µR (\ k -> interpretCommand _G (k:_D) b)
-  FunR b         -> C.funR (\ a -> interpretTerm (a:_G) _D b)
+  FunR b         -> C.funR (\ a k -> interpretCommand (a:_G) (k:_D) b)
   SumR i t       -> C.sumR i (interpretTerm _G _D t)
   PrdR fs        -> C.prdR (map (interpretTerm _G _D) fs)
   StringR s      -> C.stringR s

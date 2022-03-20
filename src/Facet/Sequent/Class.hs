@@ -31,7 +31,7 @@ class Sequent term coterm command | coterm -> term command, term -> coterm comma
   -- Terms
   var :: Var Level -> term
   µR :: (coterm -> command) -> term
-  funR :: (term -> term) -> term
+  funR :: (term -> coterm -> command) -> term
   sumR :: RName -> term -> term
   prdR :: [term] -> term
   stringR :: Text -> term
@@ -60,8 +60,8 @@ varA v = pure (pure (var v))
   -> m (i t)
 µRA = binder µR
 
-funRA :: (Sequent t c d, Applicative i, Applicative m) => (forall j . Applicative j => (i ~> j) -> j t -> m (j t)) -> m (i t)
-funRA = binder funR
+funRA :: (Sequent t c d, Applicative i, Applicative m) => (forall j . Applicative j => (i ~> j) -> j (t, c) -> m (j d)) -> m (i t)
+funRA = binder (funR . curry)
 
 stringRA :: (Sequent t c d, Applicative i, Applicative m) => Text -> m (i t)
 stringRA = pure . pure . stringR
