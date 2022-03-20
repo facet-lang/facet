@@ -6,11 +6,11 @@ module Facet.Sequent.Class
 , varA
 , µRA
 , C.Clause(..)
-, funRA
+, lamRA
 , stringRA
 , covarA
 , µLA
-, funLA
+, lamLA
 , sumLA
 , prdLA
 , (.||.)
@@ -31,7 +31,7 @@ class Sequent term coterm command | coterm -> term command, term -> coterm comma
   -- Terms
   var :: Var Level -> term
   µR :: (coterm -> command) -> term
-  funR :: (term -> coterm -> command) -> term
+  lamR :: (term -> coterm -> command) -> term
   sumR :: RName -> term -> term
   prdR :: [term] -> term
   stringR :: Text -> term
@@ -39,7 +39,7 @@ class Sequent term coterm command | coterm -> term command, term -> coterm comma
   -- Coterms
   covar :: Var Level -> coterm
   µL :: (term -> command) -> coterm
-  funL :: term -> coterm -> coterm
+  lamL :: term -> coterm -> coterm
   sumL :: [term -> command] -> coterm
   prdL :: Int -> ([term] -> command) -> coterm
 
@@ -60,9 +60,9 @@ varA v = pure (pure (var v))
   -> m (i t)
 µRA = binder µR
 
-funRA :: (Sequent t c d, Applicative i, Applicative m) => (forall j . Applicative j => (i ~> j) -> j t -> j c -> m (j d)) -> m (i t)
-funRA f = inner (\ wk v -> f wk (fst <$> v) (snd <$> v)) where
-  inner = binder (funR . curry)
+lamRA :: (Sequent t c d, Applicative i, Applicative m) => (forall j . Applicative j => (i ~> j) -> j t -> j c -> m (j d)) -> m (i t)
+lamRA f = inner (\ wk v -> f wk (fst <$> v) (snd <$> v)) where
+  inner = binder (lamR . curry)
 
 stringRA :: (Sequent t c d, Applicative i, Applicative m) => Text -> m (i t)
 stringRA = pure . pure . stringR
@@ -77,12 +77,12 @@ covarA v = pure (pure (covar v))
   -> m (i c)
 µLA = binder µL
 
-funLA
+lamLA
   :: (Sequent t c d, Applicative i, Applicative m)
   => m (i t)
   -> m (i c)
   -> m (i c)
-funLA = liftA2 (liftA2 funL)
+lamLA = liftA2 (liftA2 lamL)
 
 sumLA
   :: (Sequent t c d, Applicative i, Applicative m)

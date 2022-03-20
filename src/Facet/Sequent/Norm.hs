@@ -20,7 +20,7 @@ import           Facet.Syntax
 data Term
   = Var (Var Level)
   | MuR (Coterm -> Command)
-  | FunR (Term -> Coterm -> Command)
+  | LamR (Term -> Coterm -> Command)
   | SumR RName Term
   | PrdR [Term]
   | StringR Text
@@ -31,7 +31,7 @@ data Term
 data Coterm
   = Covar (Var Level)
   | MuL (Term -> Command)
-  | FunL Term Coterm
+  | LamL Term Coterm
   | SumL [Term -> Command]
   | PrdL Int ([Term] -> Command)
 
@@ -44,14 +44,14 @@ data Command = Term :|: Coterm
 instance Class.Sequent Term Coterm Command where
   var = Var
   µR = MuR
-  funR = FunR
+  lamR = LamR
   sumR = SumR
   prdR = PrdR
   stringR = StringR
 
   covar = Covar
   µL = MuL
-  funL = FunL
+  lamL = LamL
   sumL = SumL
   prdL = PrdL
 
@@ -62,7 +62,7 @@ instance Quote Term X.Term where
   quote = \case
     Var v     -> Quoter (\ d -> X.Var (toIndexed d v))
     MuR b     -> X.MuR <$> quoteBinder (Quoter (Covar . Free . getUsed)) b
-    FunR b    -> X.FunR <$> Quoter (\ d -> runQuoter (d + 2) (quote (b (Var (Free (getUsed d))) (Covar (Free (getUsed (d + 1)))))))
+    LamR b    -> X.LamR <$> Quoter (\ d -> runQuoter (d + 2) (quote (b (Var (Free (getUsed d))) (Covar (Free (getUsed (d + 1)))))))
     SumR i t  -> X.SumR i <$> quote t
     PrdR fs   -> X.PrdR <$> traverse quote fs
     StringR t -> pure (X.StringR t)
@@ -75,7 +75,7 @@ instance Quote Coterm X.Coterm where
   quote = \case
     Covar v  -> Quoter (\ d -> X.Covar (toIndexed d v))
     MuL b    -> X.MuL <$> quoteBinder (Quoter var) b
-    FunL a b -> liftA2 X.FunL (quote a) (quote b)
+    LamL a b -> liftA2 X.LamL (quote a) (quote b)
     SumL cs  -> X.SumL <$> traverse (quoteBinder (Quoter var)) cs
     PrdL n k -> X.PrdL n <$> quoteBinder (Quoter (\ d -> map (var .  (d +) . fromIntegral) [0..n])) k
 

@@ -27,14 +27,14 @@ instance Show Print where
 instance S.Sequent Print Print Print where
   var = var
   µR b = P.pretty "µ" <> P.braces (fresh (\ v -> anon v P.<+> P.dot P.<+> b (anon v)))
-  funR c = P.braces (fresh (\ u -> fresh (\ v -> P.brackets (anon u <> P.comma P.<+> anon v) P.<+> P.pretty "->" P.<+> c (anon u) (anon v))))
+  lamR c = P.braces (fresh (\ u -> fresh (\ v -> P.brackets (anon u <> P.comma P.<+> anon v) P.<+> P.pretty "->" P.<+> c (anon u) (anon v))))
   sumR i t = P.parens (P.pretty "in" <> P.pretty i P.<+> t)
   prdR = P.tupled
   stringR = P.pretty . show
 
   covar = var
   µL b = µ̃ <> P.braces (fresh (\ v -> anon v P.<+> P.dot P.<+> b (anon v)))
-  funL a k = a P.<+> P.dot P.<+> k
+  lamL a k = a P.<+> P.dot P.<+> k
   sumL cs = µ̃ <> P.braces (commaSep (map (\ c -> fresh (\ v -> anon v P.<+> P.dot P.<+> c (anon v))) cs))
   prdL i k = P.parens (µ̃ <> withLevel (\ d -> k (map (\ i -> anon (d + fromIntegral i)) [0..i])))
 

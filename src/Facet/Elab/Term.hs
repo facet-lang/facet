@@ -174,7 +174,7 @@ lam1 :: (HasCallStack, Has (Throw Err) sig m) => Bind m (Pattern (Name :==> Type
 lam1 p b = lam [(p, b)]
 
 lamS :: (HasCallStack, Has (Throw Err) sig m, SQ.Sequent t c d, Applicative i) => (forall j . Applicative j => (i ~> j) -> (j t :@ Quantity :==> Type) -> (j c :@ Quantity :==> Type) -> (Type <==: Elab m (j d))) -> Type <==: Elab m (i t)
-lamS f = runC $ SQ.funRA $ \ wk a k -> C $ Check $ \ _T -> do
+lamS f = runC $ SQ.lamRA $ \ wk a k -> C $ Check $ \ _T -> do
   (_, q, _A, _B) <- assertTacitFunction _T
   check (f wk (a :@ q :==> _A) (k :@ q :==> _B) ::: _B)
 
@@ -190,7 +190,7 @@ appS f a = do
   f' :==> _F <- f
   (_, q, _A, _B) <- assertFunction _F
   a' <- censor @Usage (q ><<) $ check (a ::: _A)
-  (:==> _B) <$> SQ.µRA (\ wk k -> pure (wk f') SQ..||. SQ.funLA (pure (wk a')) (pure k))
+  (:==> _B) <$> SQ.µRA (\ wk k -> pure (wk f') SQ..||. SQ.lamLA (pure (wk a')) (pure k))
 
 
 string :: Text -> Elab m (Term :==> Type)
@@ -490,7 +490,7 @@ letrec getter key projection initial final = do
 assertQuantifier :: (HasCallStack, Has (Throw Err) sig m) => Type -> Elab m (Name, Kind, Type -> Type)
 assertQuantifier = assertMatch _ForAll "{_} -> _"
 
--- | Expect a tacit (non-variable-binding) function type.
+-- | Expect a tacit (non-variable-binding) lamction type.
 assertTacitFunction :: (HasCallStack, Has (Throw Err) sig m) => Type -> Elab m (Maybe Name, Quantity, Type, Type)
 assertTacitFunction = assertMatch _Arrow "_ -> _"
 
