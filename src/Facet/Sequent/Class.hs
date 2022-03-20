@@ -82,7 +82,7 @@ funLA
   => m (i t)
   -> m (i c)
   -> m (i c)
-funLA f a = liftA2 funL <$> f <*> a
+funLA = liftA2 (liftA2 funL)
 
 sumLA
   :: (Sequent t c d, Applicative i, Applicative m)
