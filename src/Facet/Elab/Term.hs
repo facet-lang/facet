@@ -173,10 +173,10 @@ lam cs = Check $ \ _T -> do
 lam1 :: (HasCallStack, Has (Throw Err) sig m) => Bind m (Pattern (Name :==> Type)) -> Type <==: Elab m Term -> Type <==: Elab m Term
 lam1 p b = lam [(p, b)]
 
-lamS :: (HasCallStack, Has (Throw Err) sig m, SQ.Sequent t c d, Applicative i) => (forall j . Applicative j => (i ~> j) -> (j (t, c) :@ Quantity :==> Type) -> (Type <==: Elab m (j d))) -> Type <==: Elab m (i t)
-lamS f = runC $ SQ.funRA $ \ wk v -> C $ Check $ \ _T -> do
+lamS :: (HasCallStack, Has (Throw Err) sig m, SQ.Sequent t c d, Applicative i) => (forall j . Applicative j => (i ~> j) -> (j t :@ Quantity :==> Type) -> (j c :@ Quantity :==> Type) -> (Type <==: Elab m (j d))) -> Type <==: Elab m (i t)
+lamS f = runC $ SQ.funRA $ \ wk a k -> C $ Check $ \ _T -> do
   (_, q, _A, _B) <- assertTacitFunction _T
-  check (f wk (v :@ q :==> _A) ::: _B)
+  check (f wk (a :@ q :==> _A) (k :@ q :==> _B) ::: _B)
 
 app :: (HasCallStack, Has (Throw Err) sig m) => (a -> b -> c) -> (HasCallStack => Elab m (a :==> Type)) -> (HasCallStack => Type <==: Elab m b) -> Elab m (c :==> Type)
 app mk operator operand = do

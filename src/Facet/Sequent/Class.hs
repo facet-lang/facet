@@ -60,8 +60,9 @@ varA v = pure (pure (var v))
   -> m (i t)
 µRA = binder µR
 
-funRA :: (Sequent t c d, Applicative i, Applicative m) => (forall j . Applicative j => (i ~> j) -> j (t, c) -> m (j d)) -> m (i t)
-funRA = binder (funR . curry)
+funRA :: (Sequent t c d, Applicative i, Applicative m) => (forall j . Applicative j => (i ~> j) -> j t -> j c -> m (j d)) -> m (i t)
+funRA f = inner (\ wk v -> f wk (fst <$> v) (snd <$> v)) where
+  inner = binder (funR . curry)
 
 stringRA :: (Sequent t c d, Applicative i, Applicative m) => Text -> m (i t)
 stringRA = pure . pure . stringR
