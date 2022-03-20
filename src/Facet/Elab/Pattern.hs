@@ -92,7 +92,7 @@ data Type
 
 infixl 6 :+
 infixl 7 :*
-infixl 1 :->
+infixr 1 :->
 
 
 data Branch s m a = forall x . Branch (Fold s x) (x -> m a)
