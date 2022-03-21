@@ -8,6 +8,7 @@ module Facet.Sequent.Class
 , µRA
 , C.Clause(..)
 , lamRA
+, (.$$.)
 , stringRA
 , covarA
 , µLA
@@ -89,6 +90,15 @@ lamLA
   -> m (i c)
   -> m (i c)
 lamLA = liftA2 (liftA2 lamL)
+
+(.$$.)
+  :: (Sequent t c d, Applicative i, Applicative m)
+  => m (i t)
+  -> m (i c)
+  -> m (i c)
+(.$$.) = lamLA
+
+infixr 9 .$$.
 
 sumLA
   :: (Sequent t c d, Applicative i, Applicative m)
