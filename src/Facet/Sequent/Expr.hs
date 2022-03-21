@@ -43,7 +43,9 @@ data Coterm
 
 -- Commands
 
-data Command = Term :|: Coterm
+data Command
+  = Term :|: Coterm
+  | Let Term Command
 
 
 instance C.Sequent (Quoter Term) (Quoter Coterm) (Quoter Command) where
@@ -63,6 +65,7 @@ instance C.Sequent (Quoter Term) (Quoter Coterm) (Quoter Command) where
   prdL2 b = PrdL2 <$> b
 
   (.|.) = liftA2 (:|:)
+  let' t b = Let <$> t <*> binder (\ d' -> Quoter (\ d -> var (toIndexed d d'))) b
 
 var :: Index -> Term
 var = Var . Free
@@ -94,6 +97,7 @@ interpretCoterm _G _D = \case
 
 interpretCommand :: C.Sequent t c d => [t] -> [c] -> Command -> d
 interpretCommand _G _D (t :|: c) = interpretTerm _G _D t C..|. interpretCoterm _G _D c
+interpretCommand _G _D (Let t b) = C.let' (interpretTerm _G _D t) (\ t -> interpretCommand (t:_G) _D b)
 
 index :: [a] -> Index -> a
 index as (Index i) = as !! i

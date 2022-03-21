@@ -41,6 +41,7 @@ instance S.Sequent Print Print Print where
   prdL2 k = P.parens (µ̃ <> P.braces (P.pretty "πr" P.<+> k))
 
   (.|.) = fmap (P.enclose P.langle P.rangle) . P.surround P.pipe
+  let' v b = P.pretty "let" P.<+> withLevel anon P.<+> P.pretty '=' P.<+> v P.<+> P.pretty "in" P.<+> fresh (b . anon)
 
 withLevel :: (Used -> Print) -> Print
 withLevel f = Print (\ o d -> doc (f d) o d)

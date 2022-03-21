@@ -50,6 +50,7 @@ class Sequent term coterm command | coterm -> term command, term -> coterm comma
 
   -- Commands
   (.|.) :: term -> coterm -> command
+  let' :: term -> (term -> command) -> command
 
   infix 1 .|.
 

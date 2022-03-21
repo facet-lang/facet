@@ -40,7 +40,9 @@ data Coterm
 
 -- Commands
 
-data Command = Term :|: Coterm
+data Command
+  = Term :|: Coterm
+  | Let Term (Term -> Command)
 
 
 instance Class.Sequent Term Coterm Command where
@@ -60,6 +62,7 @@ instance Class.Sequent Term Coterm Command where
   prdL2 = PrdL2
 
   (.|.) = (:|:)
+  let' = Let
 
 
 instance Quote Term X.Term where
@@ -88,3 +91,4 @@ instance Quote Coterm X.Coterm where
 
 instance Quote Command X.Command where
   quote (t :|: c) = liftA2 (X.:|:) (quote t) (quote c)
+  quote (Let t b) = X.Let <$> quote t <*> quoteBinder (Quoter var) b
