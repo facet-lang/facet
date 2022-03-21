@@ -2,6 +2,7 @@
 module Facet.Sequent.Class
 ( -- * Sequent abstraction
   Sequent(..)
+, (.$.)
   -- * Effectful abstractions
 , varA
 , µRA
@@ -47,6 +48,11 @@ class Sequent term coterm command | coterm -> term command, term -> coterm comma
   (.|.) :: term -> coterm -> command
 
   infix 1 .|.
+
+(.$.) :: Sequent term coterm command => term -> coterm -> coterm
+(.$.) = lamL
+
+infixr 9 .$.
 
 
 -- * Effectful abstractions
