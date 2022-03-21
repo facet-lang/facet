@@ -34,8 +34,8 @@ data Coterm
   | MuL (Term -> Command)
   | LamL Term Coterm
   | SumL (Term -> Command) (Term -> Command)
-  | PrdL1 (Term -> Command)
-  | PrdL2 (Term -> Command)
+  | PrdL1 Coterm
+  | PrdL2 Coterm
 
 
 -- Commands
@@ -82,8 +82,8 @@ instance Quote Coterm X.Coterm where
     MuL b    -> X.MuL <$> quoteBinder (Quoter var) b
     LamL a b -> liftA2 X.LamL (quote a) (quote b)
     SumL l r -> X.SumL <$> quoteBinder (Quoter var) l <*> quoteBinder (Quoter var) r
-    PrdL1 k  -> X.PrdL1 <$> quoteBinder (Quoter var) k
-    PrdL2 k  -> X.PrdL2 <$> quoteBinder (Quoter var) k
+    PrdL1 k  -> X.PrdL1 <$> quote k
+    PrdL2 k  -> X.PrdL2 <$> quote k
 
 
 instance Quote Command X.Command where

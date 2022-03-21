@@ -45,8 +45,8 @@ class Sequent term coterm command | coterm -> term command, term -> coterm comma
   µL :: (term -> command) -> coterm
   lamL :: term -> coterm -> coterm
   sumL :: (term -> command) -> (term -> command) -> coterm
-  prdL1 :: (term -> command) -> coterm
-  prdL2 :: (term -> command) -> coterm
+  prdL1 :: coterm -> coterm
+  prdL2 :: coterm -> coterm
 
   -- Commands
   (.|.) :: term -> coterm -> command
@@ -118,15 +118,15 @@ sumLA l r = liftA2 sumL <$> binder id l <*> binder id r
 
 prdL1A
   :: (Sequent t c d, Applicative i, Applicative m)
-  => (forall j . Applicative j => (i ~> j) -> j t -> m (j d))
+  => m (i c)
   -> m (i c)
-prdL1A = binder prdL1
+prdL1A = fmap (fmap prdL1)
 
 prdL2A
   :: (Sequent t c d, Applicative i, Applicative m)
-  => (forall j . Applicative j => (i ~> j) -> j t -> m (j d))
+  => m (i c)
   -> m (i c)
-prdL2A = binder prdL2
+prdL2A = fmap (fmap prdL2)
 
 
 (.||.) :: (Applicative m, Applicative i, Sequent t c d) => m (i t) -> m (i c) -> m (i d)

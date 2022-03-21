@@ -37,8 +37,8 @@ instance S.Sequent Print Print Print where
   µL b = µ̃ <> P.braces (fresh (\ v -> anon v P.<+> P.dot P.<+> b (anon v)))
   lamL a k = a P.<+> P.dot P.<+> k
   sumL l r = µ̃ <> P.braces (commaSep [go l, go r]) where go c = fresh (\ v -> anon v P.<+> P.dot P.<+> c (anon v))
-  prdL1 k = P.parens (µ̃ <> P.braces (P.pretty "πl" P.<+> fresh (\ v -> anon v P.<+> P.dot P.<+> k (anon v))))
-  prdL2 k = P.parens (µ̃ <> P.braces (P.pretty "πr" P.<+> fresh (\ v -> anon v P.<+> P.dot P.<+> k (anon v))))
+  prdL1 k = P.parens (µ̃ <> P.braces (P.pretty "πl" P.<+> k))
+  prdL2 k = P.parens (µ̃ <> P.braces (P.pretty "πr" P.<+> k))
 
   (.|.) = fmap (P.enclose P.langle P.rangle) . P.surround P.pipe
 

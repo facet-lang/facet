@@ -37,8 +37,8 @@ data Coterm
   | MuL Command
   | LamL Term Coterm
   | SumL Command Command
-  | PrdL1 Command
-  | PrdL2 Command
+  | PrdL1 Coterm
+  | PrdL2 Coterm
 
 
 -- Commands
@@ -59,8 +59,8 @@ instance C.Sequent (Quoter Term) (Quoter Coterm) (Quoter Command) where
   µL b = MuL <$> binder (\ d' -> Quoter (\ d -> var (toIndexed d d'))) b
   lamL a b = LamL <$> a <*> b
   sumL l r = SumL <$> go l <*> go r where go = binder (\ d' -> Quoter (\ d -> var (toIndexed d d')))
-  prdL1 b = PrdL1 <$> binder (\ d' -> Quoter (\ d -> var (toIndexed d d'))) b
-  prdL2 b = PrdL2 <$> binder (\ d' -> Quoter (\ d -> var (toIndexed d d'))) b
+  prdL1 b = PrdL1 <$> b
+  prdL2 b = PrdL2 <$> b
 
   (.|.) = liftA2 (:|:)
 
@@ -89,8 +89,8 @@ interpretCoterm _G _D = \case
   MuL b            -> C.µL (\ t -> interpretCommand (t:_G) _D b)
   LamL a k         -> C.lamL (interpretTerm _G _D a) (interpretCoterm _G _D k)
   SumL l r         -> C.sumL (go l) (go r) where go d t = interpretCommand (t:_G) _D d
-  PrdL1 c          -> C.prdL1 (\ t -> interpretCommand (t:_G) _D c)
-  PrdL2 c          -> C.prdL2 (\ t -> interpretCommand (t:_G) _D c)
+  PrdL1 c          -> C.prdL1 (interpretCoterm _G _D c)
+  PrdL2 c          -> C.prdL2 (interpretCoterm _G _D c)
 
 interpretCommand :: C.Sequent t c d => [t] -> [c] -> Command -> d
 interpretCommand _G _D (t :|: c) = interpretTerm _G _D t C..|. interpretCoterm _G _D c
