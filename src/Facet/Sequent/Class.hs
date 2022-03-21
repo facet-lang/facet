@@ -24,7 +24,7 @@ module Facet.Sequent.Class
 import Control.Applicative (liftA2)
 import Data.Text (Text)
 import Facet.Functor.Compose as C
-import Facet.Name (Level, RName)
+import Facet.Name (Level)
 import Facet.Syntax (Var, type (~>))
 
 -- * Term abstraction
@@ -34,7 +34,8 @@ class Sequent term coterm command | coterm -> term command, term -> coterm comma
   var :: Var Level -> term
   µR :: (coterm -> command) -> term
   lamR :: (term -> coterm -> command) -> term
-  sumR :: RName -> term -> term
+  sumR1 :: term -> term
+  sumR2 :: term -> term
   prdR :: [term] -> term
   stringR :: Text -> term
 
@@ -42,7 +43,7 @@ class Sequent term coterm command | coterm -> term command, term -> coterm comma
   covar :: Var Level -> coterm
   µL :: (term -> command) -> coterm
   lamL :: term -> coterm -> coterm
-  sumL :: [term -> command] -> coterm
+  sumL :: (term -> command) -> (term -> command) -> coterm
   prdL :: Int -> ([term] -> command) -> coterm
 
   -- Commands
@@ -102,9 +103,16 @@ infixr 9 .$$.
 
 sumLA
   :: (Sequent t c d, Applicative i, Applicative m)
-  => [C.Clause m i t d]
+  => (forall j . Applicative j => (i ~> j) -> j t -> m (j d))
+  -> (forall j . Applicative j => (i ~> j) -> j t -> m (j d))
   -> m (i c)
-sumLA cs = runC (sumL <$> traverse (\ (C.Clause c) -> C (binder id c)) cs)
+sumLA l r = liftA2 sumL <$> binder id l <*> binder id r
+
+-- sumLA
+--   :: (Sequent t c d, Applicative i, Applicative m)
+--   => [C.Clause m i t d]
+--   -> m (i c)
+-- sumLA cs = runC (sumL <$> traverse (\ (C.Clause c) -> C (binder id c)) cs)
 
 prdLA
   :: (Sequent t c d, Applicative i, Applicative m)

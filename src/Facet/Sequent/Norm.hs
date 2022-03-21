@@ -21,7 +21,8 @@ data Term
   = Var (Var Level)
   | MuR (Coterm -> Command)
   | LamR (Term -> Coterm -> Command)
-  | SumR RName Term
+  | SumR1 Term
+  | SumR2 Term
   | PrdR [Term]
   | StringR Text
 
@@ -32,7 +33,7 @@ data Coterm
   = Covar (Var Level)
   | MuL (Term -> Command)
   | LamL Term Coterm
-  | SumL [Term -> Command]
+  | SumL (Term -> Command) (Term -> Command)
   | PrdL Int ([Term] -> Command)
 
 
@@ -45,7 +46,8 @@ instance Class.Sequent Term Coterm Command where
   var = Var
   µR = MuR
   lamR = LamR
-  sumR = SumR
+  sumR1 = SumR1
+  sumR2 = SumR2
   prdR = PrdR
   stringR = StringR
 
@@ -63,7 +65,8 @@ instance Quote Term X.Term where
     Var v     -> Quoter (\ d -> X.Var (toIndexed d v))
     MuR b     -> X.MuR <$> quoteBinder (Quoter (Covar . Free . getUsed)) b
     LamR b    -> X.LamR <$> Quoter (\ d -> runQuoter (d + 2) (quote (b (Var (Free (getUsed d))) (Covar (Free (getUsed (d + 1)))))))
-    SumR i t  -> X.SumR i <$> quote t
+    SumR1 t   -> X.SumR1 <$> quote t
+    SumR2 t   -> X.SumR2 <$> quote t
     PrdR fs   -> X.PrdR <$> traverse quote fs
     StringR t -> pure (X.StringR t)
 
@@ -76,7 +79,7 @@ instance Quote Coterm X.Coterm where
     Covar v  -> Quoter (\ d -> X.Covar (toIndexed d v))
     MuL b    -> X.MuL <$> quoteBinder (Quoter var) b
     LamL a b -> liftA2 X.LamL (quote a) (quote b)
-    SumL cs  -> X.SumL <$> traverse (quoteBinder (Quoter var)) cs
+    SumL l r -> X.SumL <$> quoteBinder (Quoter var) l <*> quoteBinder (Quoter var) r
     PrdL n k -> X.PrdL n <$> quoteBinder (Quoter (\ d -> map (var .  (d +) . fromIntegral) [0..n])) k
 
 
