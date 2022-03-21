@@ -14,7 +14,8 @@ module Facet.Sequent.Class
 , µLA
 , lamLA
 , sumLA
-, prdLA
+, prdL1A
+, prdL2A
 , (.||.)
 -- , Ctx(..)
 -- , Binding(..)
@@ -36,7 +37,7 @@ class Sequent term coterm command | coterm -> term command, term -> coterm comma
   lamR :: (term -> coterm -> command) -> term
   sumR1 :: term -> term
   sumR2 :: term -> term
-  prdR :: [term] -> term
+  prdR :: term -> term -> term
   stringR :: Text -> term
 
   -- Coterms
@@ -44,7 +45,8 @@ class Sequent term coterm command | coterm -> term command, term -> coterm comma
   µL :: (term -> command) -> coterm
   lamL :: term -> coterm -> coterm
   sumL :: (term -> command) -> (term -> command) -> coterm
-  prdL :: Int -> ([term] -> command) -> coterm
+  prdL1 :: (term -> command) -> coterm
+  prdL2 :: (term -> command) -> coterm
 
   -- Commands
   (.|.) :: term -> coterm -> command
@@ -114,12 +116,17 @@ sumLA l r = liftA2 sumL <$> binder id l <*> binder id r
 --   -> m (i c)
 -- sumLA cs = runC (sumL <$> traverse (\ (C.Clause c) -> C (binder id c)) cs)
 
-prdLA
+prdL1A
   :: (Sequent t c d, Applicative i, Applicative m)
-  => Int
-  -> (forall j . Applicative j => (i ~> j) -> j [t] -> m (j d))
+  => (forall j . Applicative j => (i ~> j) -> j t -> m (j d))
   -> m (i c)
-prdLA i = binder (prdL i)
+prdL1A = binder prdL1
+
+prdL2A
+  :: (Sequent t c d, Applicative i, Applicative m)
+  => (forall j . Applicative j => (i ~> j) -> j t -> m (j d))
+  -> m (i c)
+prdL2A = binder prdL2
 
 
 (.||.) :: (Applicative m, Applicative i, Sequent t c d) => m (i t) -> m (i c) -> m (i d)

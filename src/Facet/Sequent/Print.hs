@@ -30,14 +30,15 @@ instance S.Sequent Print Print Print where
   lamR c = P.braces (fresh (\ u -> fresh (\ v -> P.brackets (anon u <> P.comma P.<+> anon v) P.<+> P.pretty "->" P.<+> c (anon u) (anon v))))
   sumR1 t = P.parens (P.pretty "inl" P.<+> t)
   sumR2 t = P.parens (P.pretty "inr" P.<+> t)
-  prdR = P.tupled
+  prdR l r = P.tupled [l, r]
   stringR = P.pretty . show
 
   covar = var
   µL b = µ̃ <> P.braces (fresh (\ v -> anon v P.<+> P.dot P.<+> b (anon v)))
   lamL a k = a P.<+> P.dot P.<+> k
   sumL l r = µ̃ <> P.braces (commaSep [go l, go r]) where go c = fresh (\ v -> anon v P.<+> P.dot P.<+> c (anon v))
-  prdL i k = P.parens (µ̃ <> withLevel (\ d -> k (map (\ i -> anon (d + fromIntegral i)) [0..i])))
+  prdL1 k = P.parens (µ̃ <> P.braces (P.pretty "πl" P.<+> fresh (\ v -> anon v P.<+> P.dot P.<+> k (anon v))))
+  prdL2 k = P.parens (µ̃ <> P.braces (P.pretty "πr" P.<+> fresh (\ v -> anon v P.<+> P.dot P.<+> k (anon v))))
 
   (.|.) = fmap (P.enclose P.langle P.rangle) . P.surround P.pipe
 

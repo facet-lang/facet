@@ -23,7 +23,7 @@ data Term
   | LamR (Term -> Coterm -> Command)
   | SumR1 Term
   | SumR2 Term
-  | PrdR [Term]
+  | PrdR Term Term
   | StringR Text
 
 
@@ -34,7 +34,8 @@ data Coterm
   | MuL (Term -> Command)
   | LamL Term Coterm
   | SumL (Term -> Command) (Term -> Command)
-  | PrdL Int ([Term] -> Command)
+  | PrdL1 (Term -> Command)
+  | PrdL2 (Term -> Command)
 
 
 -- Commands
@@ -55,7 +56,8 @@ instance Class.Sequent Term Coterm Command where
   µL = MuL
   lamL = LamL
   sumL = SumL
-  prdL = PrdL
+  prdL1 = PrdL1
+  prdL2 = PrdL2
 
   (.|.) = (:|:)
 
@@ -67,7 +69,7 @@ instance Quote Term X.Term where
     LamR b    -> X.LamR <$> Quoter (\ d -> runQuoter (d + 2) (quote (b (Var (Free (getUsed d))) (Covar (Free (getUsed (d + 1)))))))
     SumR1 t   -> X.SumR1 <$> quote t
     SumR2 t   -> X.SumR2 <$> quote t
-    PrdR fs   -> X.PrdR <$> traverse quote fs
+    PrdR l r  -> X.PrdR <$> quote l <*> quote r
     StringR t -> pure (X.StringR t)
 
 var :: Used -> Term
@@ -80,7 +82,8 @@ instance Quote Coterm X.Coterm where
     MuL b    -> X.MuL <$> quoteBinder (Quoter var) b
     LamL a b -> liftA2 X.LamL (quote a) (quote b)
     SumL l r -> X.SumL <$> quoteBinder (Quoter var) l <*> quoteBinder (Quoter var) r
-    PrdL n k -> X.PrdL n <$> quoteBinder (Quoter (\ d -> map (var .  (d +) . fromIntegral) [0..n])) k
+    PrdL1 k  -> X.PrdL1 <$> quoteBinder (Quoter var) k
+    PrdL2 k  -> X.PrdL2 <$> quoteBinder (Quoter var) k
 
 
 instance Quote Command X.Command where
