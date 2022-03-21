@@ -88,7 +88,7 @@ interpretCoterm _G _D = \case
   Covar (Global n) -> C.covar (Global n)
   MuL b            -> C.µL (\ t -> interpretCommand (t:_G) _D b)
   LamL a k         -> C.lamL (interpretTerm _G _D a) (interpretCoterm _G _D k)
-  SumL l r         -> C.sumL (go l) (go r) where go d t =interpretCommand (t:_G) _D d
+  SumL l r         -> C.sumL (go l) (go r) where go d t = interpretCommand (t:_G) _D d
   PrdL1 c          -> C.prdL1 (\ t -> interpretCommand (t:_G) _D c)
   PrdL2 c          -> C.prdL2 (\ t -> interpretCommand (t:_G) _D c)
 
