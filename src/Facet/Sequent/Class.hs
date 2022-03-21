@@ -17,6 +17,7 @@ module Facet.Sequent.Class
 , prdL1A
 , prdL2A
 , (.||.)
+, letA
 -- , Ctx(..)
 -- , Binding(..)
 -- , lookupCtx
@@ -134,6 +135,9 @@ prdL2A = fmap (fmap prdL2)
 (.||.) = liftA2 (liftA2 (.|.))
 
 infix 1 .||.
+
+letA :: (Applicative m, Applicative i, Sequent t c d) => m (i t) -> (forall j . Applicative j => (i ~> j) -> j t -> m (j d)) -> m (i d)
+letA t b = liftA2 let' <$> t <*> (runC <$> b weaken (liftCInner id))
 
 
 -- data Ctx j t
