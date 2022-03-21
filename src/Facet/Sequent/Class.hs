@@ -44,7 +44,7 @@ class Sequent term coterm command | coterm -> term command, term -> coterm comma
   covar :: Var Level -> coterm
   µL :: (term -> command) -> coterm
   lamL :: term -> coterm -> coterm
-  sumL :: (term -> command) -> (term -> command) -> coterm
+  sumL :: coterm -> coterm -> coterm
   prdL1 :: coterm -> coterm
   prdL2 :: coterm -> coterm
 
@@ -105,10 +105,10 @@ infixr 9 .$$.
 
 sumLA
   :: (Sequent t c d, Applicative i, Applicative m)
-  => (forall j . Applicative j => (i ~> j) -> j t -> m (j d))
-  -> (forall j . Applicative j => (i ~> j) -> j t -> m (j d))
+  => m (i c)
   -> m (i c)
-sumLA l r = liftA2 sumL <$> binder id l <*> binder id r
+  -> m (i c)
+sumLA l r = liftA2 sumL <$> l <*> r
 
 -- sumLA
 --   :: (Sequent t c d, Applicative i, Applicative m)

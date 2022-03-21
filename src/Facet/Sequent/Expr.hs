@@ -36,7 +36,7 @@ data Coterm
   = Covar (Var Index)
   | MuL Command
   | LamL Term Coterm
-  | SumL Command Command
+  | SumL Coterm Coterm
   | PrdL1 Coterm
   | PrdL2 Coterm
 
@@ -58,7 +58,7 @@ instance C.Sequent (Quoter Term) (Quoter Coterm) (Quoter Command) where
   covar v = Quoter (\ d -> Covar (toIndexed d v))
   µL b = MuL <$> binder (\ d' -> Quoter (\ d -> var (toIndexed d d'))) b
   lamL a b = LamL <$> a <*> b
-  sumL l r = SumL <$> go l <*> go r where go = binder (\ d' -> Quoter (\ d -> var (toIndexed d d')))
+  sumL l r = SumL <$> l <*> r
   prdL1 b = PrdL1 <$> b
   prdL2 b = PrdL2 <$> b
 
@@ -88,7 +88,7 @@ interpretCoterm _G _D = \case
   Covar (Global n) -> C.covar (Global n)
   MuL b            -> C.µL (\ t -> interpretCommand (t:_G) _D b)
   LamL a k         -> C.lamL (interpretTerm _G _D a) (interpretCoterm _G _D k)
-  SumL l r         -> C.sumL (go l) (go r) where go d t = interpretCommand (t:_G) _D d
+  SumL l r         -> C.sumL (interpretCoterm _G _D l) (interpretCoterm _G _D r)
   PrdL1 c          -> C.prdL1 (interpretCoterm _G _D c)
   PrdL2 c          -> C.prdL2 (interpretCoterm _G _D c)
 

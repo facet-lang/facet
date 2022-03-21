@@ -36,7 +36,7 @@ instance S.Sequent Print Print Print where
   covar = var
   µL b = µ̃ <> P.braces (fresh (\ v -> anon v P.<+> P.dot P.<+> b (anon v)))
   lamL a k = a P.<+> P.dot P.<+> k
-  sumL l r = µ̃ <> P.braces (commaSep [go l, go r]) where go c = fresh (\ v -> anon v P.<+> P.dot P.<+> c (anon v))
+  sumL l r = P.pretty "case" <> P.braces (commaSep [l, r])
   prdL1 k = P.parens (µ̃ <> P.braces (P.pretty "πl" P.<+> k))
   prdL2 k = P.parens (µ̃ <> P.braces (P.pretty "πr" P.<+> k))
 

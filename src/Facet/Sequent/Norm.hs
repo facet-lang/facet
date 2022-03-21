@@ -33,7 +33,7 @@ data Coterm
   = Covar (Var Level)
   | MuL (Term -> Command)
   | LamL Term Coterm
-  | SumL (Term -> Command) (Term -> Command)
+  | SumL Coterm Coterm
   | PrdL1 Coterm
   | PrdL2 Coterm
 
@@ -81,7 +81,7 @@ instance Quote Coterm X.Coterm where
     Covar v  -> Quoter (\ d -> X.Covar (toIndexed d v))
     MuL b    -> X.MuL <$> quoteBinder (Quoter var) b
     LamL a b -> liftA2 X.LamL (quote a) (quote b)
-    SumL l r -> X.SumL <$> quoteBinder (Quoter var) l <*> quoteBinder (Quoter var) r
+    SumL l r -> X.SumL <$> quote l <*> quote r
     PrdL1 k  -> X.PrdL1 <$> quote k
     PrdL2 k  -> X.PrdL2 <$> quote k
 
