@@ -191,6 +191,5 @@ loop ty heads = case ty of
         _        -> Nothing
       _    -> Nothing)
     pure u SQ..||. SQ.sumLA (SQ.µLA (\ wk a -> loop ((a ::: _A):map (first wk) ts) headsL)) (SQ.µLA (\ wk b -> loop ((b ::: _B):map (first wk) ts) headsR))
-  []
-    | Just (Clause [] b) <- getFirst (foldMap (First . Just) heads) -> Just (pure b)
+  [] | Just (Clause [] b) <- getFirst (foldMap (First . Just) heads) -> Just (pure b)
   _ -> Nothing
