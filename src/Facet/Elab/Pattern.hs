@@ -12,15 +12,22 @@ module Facet.Elab.Pattern
 , covers
 , coverLoop
 , coverStep
+, loop
 ) where
 
-import Control.Applicative (Alternative(..), asum)
-import Control.Monad (ap)
-import Facet.Name
-import Fresnel.Fold
-import Fresnel.Lens
-import Fresnel.Prism (Prism', matching', prism')
-import Fresnel.Traversal (forOf, traversed)
+import           Control.Applicative (Alternative(..), asum)
+import           Control.Monad (ap)
+import           Data.Bifunctor (first)
+import           Data.Foldable (fold)
+import           Data.Monoid (First(..))
+import           Data.Traversable (for)
+import           Facet.Name
+import qualified Facet.Sequent.Class as SQ
+import           Facet.Syntax ((:::)(..))
+import           Fresnel.Fold
+import           Fresnel.Lens
+import           Fresnel.Prism (Prism', matching', prism')
+import           Fresnel.Traversal (forOf, traversed)
 
 data Pattern a
   = Wildcard
@@ -153,3 +160,37 @@ instantiateHead :: Pattern Name -> Pattern Name -> Pattern Name
 instantiateHead d Wildcard = d
 instantiateHead d (Var _)  = d -- FIXME: let-bind any variables first
 instantiateHead _ p        = p
+
+
+loop :: (SQ.Sequent term coterm command, Applicative i) => [i term ::: Type] -> [Clause command] -> Maybe (i command)
+loop ty heads = case ty of
+  (_ ::: Opaque):ts -> do
+    heads' <- forOf (traversed.patterns_) heads (\case
+      p:ps | Wildcard <- instantiateHead Wildcard p -> Just ps
+      _                                             -> Nothing)
+    loop ts heads'
+  (_ ::: One):ts -> do
+    heads' <- forOf (traversed.patterns_) heads (\case
+      p:ps | Unit <- instantiateHead Unit p -> Just ps
+      _                                     -> Nothing)
+    loop ts heads'
+  (u ::: _A :* _B):ts -> do
+    heads' <- forOf (traversed.patterns_) heads (\case
+      p:ps | Pair p q <- instantiateHead (Pair Wildcard Wildcard) p -> Just (p:q:ps)
+      _                                                             -> Nothing)
+    let a wk' = SQ.µRA (\ wk k -> pure (wk (wk' u)) SQ..||. SQ.prdL1A (pure k))
+        b wk' = SQ.µRA (\ wk k -> pure (wk (wk' u)) SQ..||. SQ.prdL2A (pure k))
+    SQ.letA (a id) (\ wkA a -> SQ.letA (b wkA) (\ wkB b ->
+      loop ((wkB a ::: _A) : (b ::: _B) : map (first (wkB . wkA)) ts) heads'))
+  (u ::: _A :+ _B):ts -> do
+    (headsL, headsR) <- fold <$> for heads (\case
+      Clause (p:ps) b -> case instantiateHead Wildcard p of
+        InL p    -> Just ([Clause (p:ps) b], [])
+        InR p    -> Just ([], [Clause (p:ps) b])
+        Wildcard -> Just ([Clause (Wildcard:ps) b], [Clause (Wildcard:ps) b])
+        _        -> Nothing
+      _    -> Nothing)
+    pure u SQ..||. SQ.sumLA (SQ.µLA (\ wk a -> loop ((a ::: _A):map (first wk) ts) headsL)) (SQ.µLA (\ wk b -> loop ((b ::: _B):map (first wk) ts) headsR))
+  []
+    | Just (Clause [] b) <- getFirst (foldMap (First . Just) heads) -> Just (pure b)
+  _ -> Nothing
