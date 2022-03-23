@@ -6,7 +6,6 @@ module Facet.Sequent.Class
   -- * Effectful abstractions
 , varA
 , µRA
-, C.Clause(..)
 , lamRA
 , (.$$.)
 , stringRA
