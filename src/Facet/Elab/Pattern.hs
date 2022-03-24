@@ -116,16 +116,16 @@ compilePattern ty heads = case ty of
   (u ::: _A :+ _B):ts -> do
     (headsL, headsR) <- fold <$> for heads (\case
       Clause (p:ps) b -> case instantiateHead Wildcard p of
-        InL p    -> Just ([Clause (p:ps) b], [])
-        InR p    -> Just ([], [Clause (p:ps) b])
-        Wildcard -> Just ([Clause (Wildcard:ps) b], [Clause (Wildcard:ps) b])
+        InL p    -> pure ([Clause (p:ps) b], [])
+        InR p    -> pure ([], [Clause (p:ps) b])
+        Wildcard -> pure ([Clause (Wildcard:ps) b], [Clause (Wildcard:ps) b])
         _        -> Nothing
       _    -> Nothing)
     pure u SQ..||. SQ.sumLA (SQ.µLA (\ wk a -> compilePattern ((a ::: _A):map (first wk) ts) headsL)) (SQ.µLA (\ wk b -> compilePattern ((b ::: _B):map (first wk) ts) headsR))
-  [] | Just (Clause [] b) <- getFirst (foldMap (First . Just) heads) -> Just (pure b)
+  [] | Just (Clause [] b) <- getFirst (foldMap (First . Just) heads) -> pure (pure b)
   _ -> Nothing
 
 match :: (Pattern Name -> Maybe [Pattern Name]) -> [Clause command] -> Pattern Name -> Maybe [Clause command]
 match decompose heads p' = forOf (traversed.patterns_) heads (\case
-  p:ps | Just prefix <- decompose (instantiateHead p' p) -> Just (prefix <> ps)
+  p:ps | Just prefix <- decompose (instantiateHead p' p) -> pure (prefix <> ps)
   _                                                      -> Nothing)
