@@ -106,9 +106,9 @@ instantiateHead p       = p
 
 compilePattern :: (Has Empty sig m, SQ.Sequent term coterm command, Applicative i) => [i term ::: Type] -> [Clause command] -> m (i command)
 compilePattern ty heads = case ty of
-  (_ ::: Opaque):ts -> match (_Wildcard.to (const [])) heads >>= compilePattern ts
+  (_ ::: Opaque):ts    -> match (_Wildcard.to (const [])) heads >>= compilePattern ts
   (_ ::: (_ :-> _)):ts -> match (_Wildcard.to (const [])) heads >>= compilePattern ts
-  (_ ::: One):ts -> match (_Unit.to (const [])) heads >>= compilePattern ts
+  (_ ::: One):ts       -> match (_Unit.to (const [])) heads >>= compilePattern ts
   (u ::: _A :* _B):ts -> do
     heads' <- match (getUnion (Union (_Pair.to (\ (p, q) -> [p, q])) <> Union (_Wildcard.to (const [Wildcard, Wildcard])))) heads
     let a wk' = SQ.µRA (\ wk k -> pure (wk (wk' u)) SQ..||. SQ.prdL1A (pure k))
