@@ -169,6 +169,11 @@ loop ty heads = case ty of
       p:ps | Wildcard <- instantiateHead Wildcard p -> Just ps
       _                                             -> Nothing)
     loop ts heads'
+  (_ ::: (_ :-> _)):ts -> do
+    heads' <- forOf (traversed.patterns_) heads (\case
+      p:ps | Wildcard <- instantiateHead Wildcard p -> Just ps
+      _                                             -> Nothing)
+    loop ts heads'
   (_ ::: One):ts -> do
     heads' <- forOf (traversed.patterns_) heads (\case
       p:ps | Unit <- instantiateHead Unit p -> Just ps
