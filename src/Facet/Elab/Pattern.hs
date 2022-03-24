@@ -115,11 +115,11 @@ instantiateHead _ p        = p
 
 loop :: (SQ.Sequent term coterm command, Applicative i) => [i term ::: Type] -> [Clause command] -> Maybe (i command)
 loop ty heads = case ty of
-  (_ ::: Opaque):ts -> match' (fmap (const []) . matching' _Wildcard) heads Wildcard >>= loop ts
-  (_ ::: (_ :-> _)):ts -> match' (fmap (const []) . matching' _Wildcard) heads Wildcard >>= loop ts
-  (_ ::: One):ts -> match' (fmap (const []) . matching' _Unit) heads Unit >>= loop ts
+  (_ ::: Opaque):ts -> match (fmap (const []) . matching' _Wildcard) heads Wildcard >>= loop ts
+  (_ ::: (_ :-> _)):ts -> match (fmap (const []) . matching' _Wildcard) heads Wildcard >>= loop ts
+  (_ ::: One):ts -> match (fmap (const []) . matching' _Unit) heads Unit >>= loop ts
   (u ::: _A :* _B):ts -> do
-    heads' <- match' (fmap (\ (p, q) -> [p, q]) . matching' _Pair) heads Unit
+    heads' <- match (fmap (\ (p, q) -> [p, q]) . matching' _Pair) heads Unit
     let a wk' = SQ.µRA (\ wk k -> pure (wk (wk' u)) SQ..||. SQ.prdL1A (pure k))
         b wk' = SQ.µRA (\ wk k -> pure (wk (wk' u)) SQ..||. SQ.prdL2A (pure k))
     SQ.letA (a id) (\ wkA a -> SQ.letA (b wkA) (\ wkB b ->
@@ -136,7 +136,7 @@ loop ty heads = case ty of
   [] | Just (Clause [] b) <- getFirst (foldMap (First . Just) heads) -> Just (pure b)
   _ -> Nothing
 
-match' :: (Pattern Name -> Maybe [Pattern Name]) -> [Clause command] -> Pattern Name -> Maybe [Clause command]
-match' decompose heads p' = forOf (traversed.patterns_) heads (\case
+match :: (Pattern Name -> Maybe [Pattern Name]) -> [Clause command] -> Pattern Name -> Maybe [Clause command]
+match decompose heads p' = forOf (traversed.patterns_) heads (\case
   p:ps | Just prefix <- decompose (instantiateHead p' p) -> Just (prefix <> ps)
   _                                                      -> Nothing)
