@@ -164,21 +164,9 @@ instantiateHead _ p        = p
 
 loop :: (SQ.Sequent term coterm command, Applicative i) => [i term ::: Type] -> [Clause command] -> Maybe (i command)
 loop ty heads = case ty of
-  (_ ::: Opaque):ts -> do
-    heads' <- forOf (traversed.patterns_) heads (\case
-      p:ps | Wildcard <- instantiateHead Wildcard p -> Just ps
-      _                                             -> Nothing)
-    loop ts heads'
-  (_ ::: (_ :-> _)):ts -> do
-    heads' <- forOf (traversed.patterns_) heads (\case
-      p:ps | Wildcard <- instantiateHead Wildcard p -> Just ps
-      _                                             -> Nothing)
-    loop ts heads'
-  (_ ::: One):ts -> do
-    heads' <- forOf (traversed.patterns_) heads (\case
-      p:ps | Unit <- instantiateHead Unit p -> Just ps
-      _                                     -> Nothing)
-    loop ts heads'
+  (_ ::: Opaque):ts -> match' (fmap (const []) . matching' _Wildcard) heads Wildcard >>= loop ts
+  (_ ::: (_ :-> _)):ts -> match' (fmap (const []) . matching' _Wildcard) heads Wildcard >>= loop ts
+  (_ ::: One):ts -> match' (fmap (const []) . matching' _Unit) heads Unit >>= loop ts
   (u ::: _A :* _B):ts -> do
     heads' <- forOf (traversed.patterns_) heads (\case
       p:ps | Pair p q <- instantiateHead (Pair Wildcard Wildcard) p -> Just (p:q:ps)
@@ -198,3 +186,8 @@ loop ty heads = case ty of
     pure u SQ..||. SQ.sumLA (SQ.µLA (\ wk a -> loop ((a ::: _A):map (first wk) ts) headsL)) (SQ.µLA (\ wk b -> loop ((b ::: _B):map (first wk) ts) headsR))
   [] | Just (Clause [] b) <- getFirst (foldMap (First . Just) heads) -> Just (pure b)
   _ -> Nothing
+
+match' :: (Pattern Name -> Maybe [Pattern Name]) -> [Clause command] -> Pattern Name -> Maybe [Clause command]
+match' decompose heads p' = forOf (traversed.patterns_) heads (\case
+  p:ps | Just prefix <- decompose (instantiateHead p' p) -> Just (prefix <> ps)
+  _                                                      -> Nothing)
