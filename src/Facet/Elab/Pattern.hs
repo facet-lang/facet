@@ -5,7 +5,6 @@ module Facet.Elab.Pattern
 , Clause(..)
 , patterns_
 , Type(..)
-, Branch(..)
 , (\/)
   -- * Coverage judgement
 , compilePattern
@@ -96,8 +95,6 @@ infixl 6 :+
 infixl 7 :*
 infixr 1 :->
 
-
-data Branch s m a = forall x . Branch (Fold s x) (x -> m a)
 
 (\/) :: Fold s a -> Fold s a -> Fold s a
 f1 \/ f2 = getUnion (Union f1 <> Union f2)
