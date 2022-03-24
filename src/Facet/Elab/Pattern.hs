@@ -9,6 +9,7 @@ module Facet.Elab.Pattern
 , compilePattern
 ) where
 
+import           Control.Applicative ((<|>))
 import           Control.Effect.Empty
 import           Control.Monad (ap)
 import           Data.Bifunctor (first)
@@ -110,7 +111,7 @@ compilePattern ty heads = case ty of
   (_ ::: (_ :-> _)):ts -> match (preview (_Wildcard.to (const []))) heads >>= compilePattern ts
   (_ ::: One):ts -> match (preview (_Unit.to (const []))) heads >>= compilePattern ts
   (u ::: _A :* _B):ts -> do
-    heads' <- match (\case{ Pair p q -> Just [p, q] ; Wildcard -> Just [Wildcard, Wildcard] ; _ -> Nothing }) heads
+    heads' <- match (\ p -> preview (_Pair.to (\ (p, q) -> [p, q])) p <|> preview (_Wildcard.to (const [Wildcard, Wildcard])) p) heads
     let a wk' = SQ.µRA (\ wk k -> pure (wk (wk' u)) SQ..||. SQ.prdL1A (pure k))
         b wk' = SQ.µRA (\ wk k -> pure (wk (wk' u)) SQ..||. SQ.prdL2A (pure k))
     SQ.letA (a id) (\ wkA a -> SQ.letA (b wkA) (\ wkB b ->
