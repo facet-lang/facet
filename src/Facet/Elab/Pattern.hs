@@ -168,9 +168,7 @@ loop ty heads = case ty of
   (_ ::: (_ :-> _)):ts -> match' (fmap (const []) . matching' _Wildcard) heads Wildcard >>= loop ts
   (_ ::: One):ts -> match' (fmap (const []) . matching' _Unit) heads Unit >>= loop ts
   (u ::: _A :* _B):ts -> do
-    heads' <- forOf (traversed.patterns_) heads (\case
-      p:ps | Pair p q <- instantiateHead (Pair Wildcard Wildcard) p -> Just (p:q:ps)
-      _                                                             -> Nothing)
+    heads' <- match' (fmap (\ (p, q) -> [p, q]) . matching' _Pair) heads Unit
     let a wk' = SQ.µRA (\ wk k -> pure (wk (wk' u)) SQ..||. SQ.prdL1A (pure k))
         b wk' = SQ.µRA (\ wk k -> pure (wk (wk' u)) SQ..||. SQ.prdL2A (pure k))
     SQ.letA (a id) (\ wkA a -> SQ.letA (b wkA) (\ wkB b ->
