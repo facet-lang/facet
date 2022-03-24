@@ -8,17 +8,12 @@ module Facet.Elab.Pattern
 , Branch(..)
 , (\/)
   -- * Coverage judgement
-, Covers(..)
-, covers
-, coverLoop
-, coverStep
 , loop
 ) where
 
-import           Control.Applicative (Alternative(..))
 import           Control.Monad (ap)
 import           Data.Bifunctor (first)
-import           Data.Foldable (asum, fold)
+import           Data.Foldable (fold)
 import           Data.Monoid (First(..))
 import           Data.Traversable (for)
 import           Facet.Name
@@ -111,50 +106,6 @@ infixr 2 \/
 
 
 -- Coverage judgement
-
-newtype Covers a = Covers { runCovers :: forall r . (r -> r -> r) -> (a -> r) -> r -> (Type -> [Pattern Name] -> r) -> r }
-  deriving (Functor)
-
-instance Applicative Covers where
-  pure a = Covers (\ _ leaf _ _ -> leaf a)
-
-  (<*>) = ap
-
-instance Alternative Covers where
-  empty = Covers (\ _ _ nil _ -> nil)
-
-  Covers a <|> Covers b = Covers (\ (<|>) leaf nil err -> a (<|>) leaf nil err <|> b (<|>) leaf nil err)
-
-instance Monad Covers where
-  Covers m >>= k = Covers (\ fork leaf nil err -> m fork (\ a -> runCovers (k a) fork leaf nil err) nil err)
-
-throw :: Type -> [Pattern Name] -> Covers a
-throw ty ps = Covers (\ _ _ _ err -> err ty ps)
-
-covers :: Type -> [Clause a] -> Bool
-covers ty heads = runCovers (coverLoop ty heads) (&&) (const True) True (const (const False))
-
-coverLoop :: Type -> [Clause a] -> Covers (Type, [Clause a])
-coverLoop ty heads = case ty of
-  hd :-> tl -> coverStep hd heads (\ prefix -> coverLoop (prefix tl))
-  ty        -> pure (ty, heads) -- FIXME: fail if clauses aren't all empty
-
-coverStep :: Type -> [Clause a] -> ((Type -> Type) -> [Clause a] -> Covers x) -> Covers x
-coverStep hd heads k = case hd of
-  Opaque  -> match [([], Wildcard)]                           hd heads (\ p -> [] <$ matching' _Wildcard p) k
-  One     -> match [([], Unit)]                               hd heads (\ p -> [] <$ matching' _Unit p) k
-  s :+ t  -> match [([s], InL Wildcard), ([t], InR Wildcard)] hd heads (\ p -> pure <$> (matching' _InL p <|> matching' _InR p)) k -- FIXME: match once and partition results
-  s :* t  -> match [([s, t], Pair Wildcard Wildcard)]         hd heads (\ p -> (\ (a, b) -> [a, b]) <$> matching' _Pair p) k
-  _ :-> _ -> match [([], Wildcard)]                           hd heads (\ p -> [] <$ matching' _Wildcard p) k
-
-match :: [([Type], Pattern Name)] -> Type -> [Clause a] -> (Pattern Name -> Maybe [Pattern Name]) -> ((Type -> Type) -> [Clause a] -> Covers x) -> Covers x
-match inst hd heads decompose k = do
-  (prefix, canonical) <- asum (pure <$> inst)
-  heads' <- forOf (traversed.patterns_) heads (\case
-    p:ps | Just p' <- decompose (instantiateHead canonical p) -> pure (p' <> ps)
-    ps                                                        -> throw hd ps)
-  k (\ tl -> foldr (:->) tl prefix) heads'
-
 
 instantiateHead :: Pattern Name -> Pattern Name -> Pattern Name
 instantiateHead d Wildcard = d
