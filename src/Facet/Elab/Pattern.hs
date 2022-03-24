@@ -8,7 +8,7 @@ module Facet.Elab.Pattern
 , Branch(..)
 , (\/)
   -- * Coverage judgement
-, loop
+, compilePattern
 ) where
 
 import           Control.Monad (ap)
@@ -113,17 +113,17 @@ instantiateHead d (Var _)  = d -- FIXME: let-bind any variables first
 instantiateHead _ p        = p
 
 
-loop :: (SQ.Sequent term coterm command, Applicative i) => [i term ::: Type] -> [Clause command] -> Maybe (i command)
-loop ty heads = case ty of
-  (_ ::: Opaque):ts -> match (fmap (const []) . matching' _Wildcard) heads Wildcard >>= loop ts
-  (_ ::: (_ :-> _)):ts -> match (fmap (const []) . matching' _Wildcard) heads Wildcard >>= loop ts
-  (_ ::: One):ts -> match (fmap (const []) . matching' _Unit) heads Unit >>= loop ts
+compilePattern :: (SQ.Sequent term coterm command, Applicative i) => [i term ::: Type] -> [Clause command] -> Maybe (i command)
+compilePattern ty heads = case ty of
+  (_ ::: Opaque):ts -> match (fmap (const []) . matching' _Wildcard) heads Wildcard >>= compilePattern ts
+  (_ ::: (_ :-> _)):ts -> match (fmap (const []) . matching' _Wildcard) heads Wildcard >>= compilePattern ts
+  (_ ::: One):ts -> match (fmap (const []) . matching' _Unit) heads Unit >>= compilePattern ts
   (u ::: _A :* _B):ts -> do
     heads' <- match (fmap (\ (p, q) -> [p, q]) . matching' _Pair) heads Unit
     let a wk' = SQ.µRA (\ wk k -> pure (wk (wk' u)) SQ..||. SQ.prdL1A (pure k))
         b wk' = SQ.µRA (\ wk k -> pure (wk (wk' u)) SQ..||. SQ.prdL2A (pure k))
     SQ.letA (a id) (\ wkA a -> SQ.letA (b wkA) (\ wkB b ->
-      loop ((wkB a ::: _A) : (b ::: _B) : map (first (wkB . wkA)) ts) heads'))
+      compilePattern ((wkB a ::: _A) : (b ::: _B) : map (first (wkB . wkA)) ts) heads'))
   (u ::: _A :+ _B):ts -> do
     (headsL, headsR) <- fold <$> for heads (\case
       Clause (p:ps) b -> case instantiateHead Wildcard p of
@@ -132,7 +132,7 @@ loop ty heads = case ty of
         Wildcard -> Just ([Clause (Wildcard:ps) b], [Clause (Wildcard:ps) b])
         _        -> Nothing
       _    -> Nothing)
-    pure u SQ..||. SQ.sumLA (SQ.µLA (\ wk a -> loop ((a ::: _A):map (first wk) ts) headsL)) (SQ.µLA (\ wk b -> loop ((b ::: _B):map (first wk) ts) headsR))
+    pure u SQ..||. SQ.sumLA (SQ.µLA (\ wk a -> compilePattern ((a ::: _A):map (first wk) ts) headsL)) (SQ.µLA (\ wk b -> compilePattern ((b ::: _B):map (first wk) ts) headsR))
   [] | Just (Clause [] b) <- getFirst (foldMap (First . Just) heads) -> Just (pure b)
   _ -> Nothing
 
