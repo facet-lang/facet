@@ -5,7 +5,6 @@ module Facet.Elab.Pattern
 , Clause(..)
 , patterns_
 , Type(..)
-, (\/)
   -- * Coverage judgement
 , compilePattern
 ) where
@@ -18,7 +17,6 @@ import           Data.Traversable (for)
 import           Facet.Name
 import qualified Facet.Sequent.Class as SQ
 import           Facet.Syntax ((:::)(..))
-import           Fresnel.Fold
 import           Fresnel.Lens
 import           Fresnel.Prism (Prism', matching', prism')
 import           Fresnel.Traversal (forOf, traversed)
@@ -94,12 +92,6 @@ data Type
 infixl 6 :+
 infixl 7 :*
 infixr 1 :->
-
-
-(\/) :: Fold s a -> Fold s a -> Fold s a
-f1 \/ f2 = getUnion (Union f1 <> Union f2)
-
-infixr 2 \/
 
 
 -- Coverage judgement
