@@ -97,26 +97,25 @@ infixr 1 :->
 
 -- Coverage judgement
 
-instantiateHead :: Pattern Name -> Pattern Name -> Pattern Name
-instantiateHead d Wildcard = d
-instantiateHead d (Var _)  = d -- FIXME: let-bind any variables first
-instantiateHead _ p        = p
+instantiateHead :: Pattern Name -> Pattern Name
+instantiateHead (Var _) = Wildcard -- FIXME: let-bind any variables first
+instantiateHead p       = p
 
 
 compilePattern :: (Has Empty sig m, SQ.Sequent term coterm command, Applicative i) => [i term ::: Type] -> [Clause command] -> m (i command)
 compilePattern ty heads = case ty of
-  (_ ::: Opaque):ts -> match (fmap (const []) . matching' _Wildcard) heads Wildcard >>= compilePattern ts
-  (_ ::: (_ :-> _)):ts -> match (fmap (const []) . matching' _Wildcard) heads Wildcard >>= compilePattern ts
-  (_ ::: One):ts -> match (fmap (const []) . matching' _Unit) heads Unit >>= compilePattern ts
+  (_ ::: Opaque):ts -> match (fmap (const []) . matching' _Wildcard) heads >>= compilePattern ts
+  (_ ::: (_ :-> _)):ts -> match (fmap (const []) . matching' _Wildcard) heads >>= compilePattern ts
+  (_ ::: One):ts -> match (fmap (const []) . matching' _Unit) heads >>= compilePattern ts
   (u ::: _A :* _B):ts -> do
-    heads' <- match (fmap (\ (p, q) -> [p, q]) . matching' _Pair) heads Unit
+    heads' <- match (fmap (\ (p, q) -> [p, q]) . matching' _Pair) heads
     let a wk' = SQ.µRA (\ wk k -> pure (wk (wk' u)) SQ..||. SQ.prdL1A (pure k))
         b wk' = SQ.µRA (\ wk k -> pure (wk (wk' u)) SQ..||. SQ.prdL2A (pure k))
     SQ.letA (a id) (\ wkA a -> SQ.letA (b wkA) (\ wkB b ->
       compilePattern ((wkB a ::: _A) : (b ::: _B) : map (first (wkB . wkA)) ts) heads'))
   (u ::: _A :+ _B):ts -> do
     (headsL, headsR) <- fold <$> for heads (\case
-      Clause (p:ps) b -> case instantiateHead Wildcard p of
+      Clause (p:ps) b -> case instantiateHead p of
         InL p    -> pure ([Clause (p:ps) b], [])
         InR p    -> pure ([], [Clause (p:ps) b])
         Wildcard -> pure ([Clause (Wildcard:ps) b], [Clause (Wildcard:ps) b])
@@ -126,7 +125,7 @@ compilePattern ty heads = case ty of
   [] | Just (Clause [] b) <- getFirst (foldMap (First . Just) heads) -> pure (pure b)
   _ -> empty
 
-match :: Has Empty sig m => (Pattern Name -> Maybe [Pattern Name]) -> [Clause command] -> Pattern Name -> m [Clause command]
-match decompose heads p' = forOf (traversed.patterns_) heads (\case
-  p:ps | Just prefix <- decompose (instantiateHead p' p) -> pure (prefix <> ps)
-  _                                                      -> empty)
+match :: Has Empty sig m => (Pattern Name -> Maybe [Pattern Name]) -> [Clause command] -> m [Clause command]
+match decompose heads = forOf (traversed.patterns_) heads (\case
+  p:ps | Just prefix <- decompose (instantiateHead p) -> pure (prefix <> ps)
+  _                                                   -> empty)
