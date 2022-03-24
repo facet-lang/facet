@@ -15,10 +15,10 @@ module Facet.Elab.Pattern
 , loop
 ) where
 
-import           Control.Applicative (Alternative(..), asum)
+import           Control.Applicative (Alternative(..))
 import           Control.Monad (ap)
 import           Data.Bifunctor (first)
-import           Data.Foldable (fold)
+import           Data.Foldable (asum, fold)
 import           Data.Monoid (First(..))
 import           Data.Traversable (for)
 import           Facet.Name
