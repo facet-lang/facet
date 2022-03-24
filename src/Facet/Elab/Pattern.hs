@@ -9,7 +9,6 @@ module Facet.Elab.Pattern
 , compilePattern
 ) where
 
-import           Control.Applicative ((<|>))
 import           Control.Effect.Empty
 import           Control.Monad (ap)
 import           Data.Bifunctor (first)
@@ -19,7 +18,7 @@ import           Data.Traversable (for)
 import           Facet.Name
 import qualified Facet.Sequent.Class as SQ
 import           Facet.Syntax ((:::)(..))
-import           Fresnel.Fold (preview)
+import           Fresnel.Fold (Fold, Union(..), preview)
 import           Fresnel.Getter (to)
 import           Fresnel.Lens (Lens', lens)
 import           Fresnel.Prism (Prism', prism')
@@ -107,11 +106,11 @@ instantiateHead p       = p
 
 compilePattern :: (Has Empty sig m, SQ.Sequent term coterm command, Applicative i) => [i term ::: Type] -> [Clause command] -> m (i command)
 compilePattern ty heads = case ty of
-  (_ ::: Opaque):ts -> match (preview (_Wildcard.to (const []))) heads >>= compilePattern ts
-  (_ ::: (_ :-> _)):ts -> match (preview (_Wildcard.to (const []))) heads >>= compilePattern ts
-  (_ ::: One):ts -> match (preview (_Unit.to (const []))) heads >>= compilePattern ts
+  (_ ::: Opaque):ts -> match (_Wildcard.to (const [])) heads >>= compilePattern ts
+  (_ ::: (_ :-> _)):ts -> match (_Wildcard.to (const [])) heads >>= compilePattern ts
+  (_ ::: One):ts -> match (_Unit.to (const [])) heads >>= compilePattern ts
   (u ::: _A :* _B):ts -> do
-    heads' <- match (\ p -> preview (_Pair.to (\ (p, q) -> [p, q])) p <|> preview (_Wildcard.to (const [Wildcard, Wildcard])) p) heads
+    heads' <- match (getUnion (Union (_Pair.to (\ (p, q) -> [p, q])) <> Union (_Wildcard.to (const [Wildcard, Wildcard])))) heads
     let a wk' = SQ.µRA (\ wk k -> pure (wk (wk' u)) SQ..||. SQ.prdL1A (pure k))
         b wk' = SQ.µRA (\ wk k -> pure (wk (wk' u)) SQ..||. SQ.prdL2A (pure k))
     SQ.letA (a id) (\ wkA a -> SQ.letA (b wkA) (\ wkB b ->
@@ -128,7 +127,7 @@ compilePattern ty heads = case ty of
   [] | Just (Clause [] b) <- getFirst (foldMap (First . Just) heads) -> pure (pure b)
   _ -> empty
 
-match :: Has Empty sig m => (Pattern Name -> Maybe [Pattern Name]) -> [Clause command] -> m [Clause command]
-match decompose heads = forOf (traversed.patterns_) heads (\case
-  p:ps | Just prefix <- decompose (instantiateHead p) -> pure (prefix <> ps)
+match :: Has Empty sig m => Fold (Pattern Name) [Pattern Name] -> [Clause command] -> m [Clause command]
+match o heads = forOf (traversed.patterns_) heads (\case
+  p:ps | Just prefix <- preview o (instantiateHead p) -> pure (prefix <> ps)
   _                                                   -> empty)
