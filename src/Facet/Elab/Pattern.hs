@@ -18,8 +18,10 @@ import           Data.Traversable (for)
 import           Facet.Name
 import qualified Facet.Sequent.Class as SQ
 import           Facet.Syntax ((:::)(..))
-import           Fresnel.Lens
-import           Fresnel.Prism (Prism', matching', prism')
+import           Fresnel.Fold (preview)
+import           Fresnel.Getter (to)
+import           Fresnel.Lens (Lens', lens)
+import           Fresnel.Prism (Prism', prism')
 import           Fresnel.Traversal (forOf, traversed)
 
 data Pattern a
@@ -104,9 +106,9 @@ instantiateHead p       = p
 
 compilePattern :: (Has Empty sig m, SQ.Sequent term coterm command, Applicative i) => [i term ::: Type] -> [Clause command] -> m (i command)
 compilePattern ty heads = case ty of
-  (_ ::: Opaque):ts -> match (fmap (const []) . matching' _Wildcard) heads >>= compilePattern ts
-  (_ ::: (_ :-> _)):ts -> match (fmap (const []) . matching' _Wildcard) heads >>= compilePattern ts
-  (_ ::: One):ts -> match (fmap (const []) . matching' _Unit) heads >>= compilePattern ts
+  (_ ::: Opaque):ts -> match (preview (_Wildcard.to (const []))) heads >>= compilePattern ts
+  (_ ::: (_ :-> _)):ts -> match (preview (_Wildcard.to (const []))) heads >>= compilePattern ts
+  (_ ::: One):ts -> match (preview (_Unit.to (const []))) heads >>= compilePattern ts
   (u ::: _A :* _B):ts -> do
     heads' <- match (\case{ Pair p q -> Just [p, q] ; Wildcard -> Just [Wildcard, Wildcard] ; _ -> Nothing }) heads
     let a wk' = SQ.µRA (\ wk k -> pure (wk (wk' u)) SQ..||. SQ.prdL1A (pure k))
