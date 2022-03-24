@@ -9,6 +9,7 @@ module Facet.Elab.Pattern
 , compilePattern
 ) where
 
+import           Control.Effect.Empty
 import           Control.Monad (ap)
 import           Data.Bifunctor (first)
 import           Data.Foldable (fold)
@@ -102,7 +103,7 @@ instantiateHead d (Var _)  = d -- FIXME: let-bind any variables first
 instantiateHead _ p        = p
 
 
-compilePattern :: (SQ.Sequent term coterm command, Applicative i) => [i term ::: Type] -> [Clause command] -> Maybe (i command)
+compilePattern :: (Has Empty sig m, SQ.Sequent term coterm command, Applicative i) => [i term ::: Type] -> [Clause command] -> m (i command)
 compilePattern ty heads = case ty of
   (_ ::: Opaque):ts -> match (fmap (const []) . matching' _Wildcard) heads Wildcard >>= compilePattern ts
   (_ ::: (_ :-> _)):ts -> match (fmap (const []) . matching' _Wildcard) heads Wildcard >>= compilePattern ts
@@ -119,13 +120,13 @@ compilePattern ty heads = case ty of
         InL p    -> pure ([Clause (p:ps) b], [])
         InR p    -> pure ([], [Clause (p:ps) b])
         Wildcard -> pure ([Clause (Wildcard:ps) b], [Clause (Wildcard:ps) b])
-        _        -> Nothing
-      _    -> Nothing)
+        _        -> empty
+      _    -> empty)
     pure u SQ..||. SQ.sumLA (SQ.µLA (\ wk a -> compilePattern ((a ::: _A):map (first wk) ts) headsL)) (SQ.µLA (\ wk b -> compilePattern ((b ::: _B):map (first wk) ts) headsR))
   [] | Just (Clause [] b) <- getFirst (foldMap (First . Just) heads) -> pure (pure b)
-  _ -> Nothing
+  _ -> empty
 
-match :: (Pattern Name -> Maybe [Pattern Name]) -> [Clause command] -> Pattern Name -> Maybe [Clause command]
+match :: Has Empty sig m => (Pattern Name -> Maybe [Pattern Name]) -> [Clause command] -> Pattern Name -> m [Clause command]
 match decompose heads p' = forOf (traversed.patterns_) heads (\case
   p:ps | Just prefix <- decompose (instantiateHead p' p) -> pure (prefix <> ps)
-  _                                                      -> Nothing)
+  _                                                      -> empty)
