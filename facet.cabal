@@ -124,6 +124,7 @@ library
     Facet.Sequent.Class
     Facet.Sequent.Expr
     Facet.Sequent.Norm
+    Facet.Sequent.Pattern
     Facet.Sequent.Print
     Facet.Sequent.Type
     Facet.Snoc
