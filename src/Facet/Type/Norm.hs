@@ -11,8 +11,6 @@ module Facet.Type.Norm
 , metavar
 , unNeutral
 , unComp
-, Classifier(..)
-, Classified(..)
 , occursIn
   -- ** Elimination
 , ($$)
@@ -108,20 +106,6 @@ unComp :: Has Empty sig m => Type -> m (Signature Type, Type)
 unComp = \case
   Comp sig _T -> pure (sig, _T)
   _T          -> empty
-
-
-data Classifier
-  = CK Kind
-  | CT Type
-
-class Classified t where
-  classified :: t -> Classifier
-
-instance Classified Kind where
-  classified = CK
-
-instance Classified Type where
-  classified = CT
 
 
 occursIn :: Meta -> Level -> Type -> Bool
