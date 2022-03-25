@@ -103,7 +103,7 @@ synthInterface (S.Ann s _ (S.Interface h sp)) = pushSpan s $ do
 -- Assertions
 
 assertTypeConstructor :: (HasCallStack, Has (Throw Err) sig m) => Kind -> Elab m (Maybe Name, Kind, Kind)
-assertTypeConstructor = assertMatch _KArrow "_ -> _"
+assertTypeConstructor = assertMatch mismatchKinds _KArrow "_ -> _"
 
 
 -- Judgements
@@ -111,4 +111,4 @@ assertTypeConstructor = assertMatch _KArrow "_ -> _"
 switch :: (HasCallStack, Has (Reader ElabContext) sig m, Has (Reader StaticContext) sig m, Has (State (Subst Type)) sig m, Has (Throw Err) sig m) => m (a :==> Kind) -> Kind <==: m a
 switch m = Check $ \ _K -> do
   a :==> _KA <- m
-  a <$ unless (_KA == _K) (couldNotUnify (Exp (CK _K)) (Act (CK _KA)))
+  a <$ unless (_KA == _K) (couldNotUnifyKinds (Exp _K) (Act _KA))

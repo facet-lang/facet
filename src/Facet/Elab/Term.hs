@@ -488,15 +488,15 @@ letrec getter key projection initial final = do
 -- Errors
 
 assertQuantifier :: (HasCallStack, Has (Throw Err) sig m) => Type -> Elab m (Name, Kind, Type -> Type)
-assertQuantifier = assertMatch _ForAll "{_} -> _"
+assertQuantifier = assertMatch mismatchTypes _ForAll "{_} -> _"
 
 -- | Expect a tacit (non-variable-binding) lamction type.
 assertTacitFunction :: (HasCallStack, Has (Throw Err) sig m) => Type -> Elab m (Maybe Name, Quantity, Type, Type)
-assertTacitFunction = assertMatch _Arrow "_ -> _"
+assertTacitFunction = assertMatch mismatchTypes _Arrow "_ -> _"
 
 -- | Expect a computation type with effects.
 assertComp :: (HasCallStack, Has (Throw Err) sig m) => Type -> Elab m (Signature Type, Type)
-assertComp = assertMatch _Comp "[_] _"
+assertComp = assertMatch mismatchTypes _Comp "[_] _"
 
 
 -- Elaboration

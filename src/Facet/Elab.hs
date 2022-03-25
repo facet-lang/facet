@@ -20,13 +20,15 @@ module Facet.Elab
 , ErrReason(..)
 , _FreeVariable
 , _AmbiguousName
-, _Unify
+, _UnifyType
 , UnifyErrReason(..)
 , _Mismatch
 , _Occurs
 , err
 , makeErr
-, couldNotUnify
+, mismatchTypes
+, mismatchKinds
+, couldNotUnifyKinds
 , couldNotSynthesize
 , resourceMismatch
 , freeVariable
@@ -91,7 +93,7 @@ import           Facet.Usage as Usage
 import           Facet.Vars as Vars
 import           Fresnel.Fold ((^?))
 import           Fresnel.Lens (Lens', lens)
-import           Fresnel.Prism (Prism', prism')
+import           Fresnel.Prism (Prism, Prism', prism, prism')
 import           GHC.Stack
 import           Prelude hiding (span, zipWith)
 
@@ -212,7 +214,8 @@ data ErrReason
   | AmbiguousName QName [RName]
   | CouldNotSynthesize
   | ResourceMismatch Name Quantity Quantity
-  | Unify UnifyErrReason (Exp (Either String Classifier)) (Act Classifier)
+  | UnifyType (UnifyErrReason Type) (Exp (Either String Type)) (Act Type)
+  | UnifyKind (UnifyErrReason Type) (Exp (Either String Kind)) (Act Kind)
   | Hole Name Classifier
   | Invariant String
   | MissingInterface (Interface Type)
@@ -227,24 +230,24 @@ _AmbiguousName = prism' (uncurry AmbiguousName) (\case
   AmbiguousName n ns -> Just (n, ns)
   _                  -> Nothing)
 
-_Unify :: Prism' ErrReason (UnifyErrReason, Exp (Either String Classifier), Act Classifier)
-_Unify = prism' (\ (r, x, a) -> Unify r x a) (\case
-  Unify r x a -> Just (r, x, a)
-  _           -> Nothing)
+_UnifyType :: Prism' ErrReason (UnifyErrReason Type, Exp (Either String Type), Act Type)
+_UnifyType = prism' (\ (r, x, a) -> UnifyType r x a) (\case
+  UnifyType r x a -> Just (r, x, a)
+  _               -> Nothing)
 
-data UnifyErrReason
+data UnifyErrReason t
   = Mismatch
-  | Occurs Meta Classifier
+  | Occurs Meta t
 
-_Mismatch :: Prism' UnifyErrReason ()
+_Mismatch :: Prism' (UnifyErrReason t) ()
 _Mismatch = prism' (const Mismatch) (\case
   Mismatch -> Just ()
   _        -> Nothing)
 
-_Occurs :: Prism' UnifyErrReason (Meta, Classifier)
-_Occurs = prism' (uncurry Occurs) (\case
-  Occurs v c -> Just (v, c)
-  _          -> Nothing)
+_Occurs :: Prism (UnifyErrReason s) (UnifyErrReason t) (Meta, s) (Meta, t)
+_Occurs = prism (uncurry Occurs) (\case
+  Occurs v c -> Right (v, c)
+  Mismatch   -> Left Mismatch)
 
 applySubst :: Context -> Subst Type -> ErrReason -> ErrReason
 applySubst ctx subst r = case r of
@@ -253,7 +256,8 @@ applySubst ctx subst r = case r of
   CouldNotSynthesize{} -> r
   ResourceMismatch{}   -> r
   -- NB: not substituting in @r@ because we want to retain the cyclic occurrence (and finitely)
-  Unify r exp act      -> Unify r (fmap roundtripS <$> exp) (roundtripS <$> act)
+  UnifyType r exp act  -> UnifyType r (fmap roundtrip <$> exp) (roundtrip <$> act)
+  UnifyKind{}          -> r
   Hole n t             -> Hole n (roundtripS t)
   Invariant{}          -> r
   MissingInterface i   -> MissingInterface (roundtrip <$> i)
@@ -274,11 +278,14 @@ makeErr reason = do
   subst <- get
   pure $ Err (maybe source (slice source) (peek spans)) (applySubst context subst reason) context subst sig GHC.Stack.callStack
 
-mismatch :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err) sig m) => Exp (Either String Classifier) -> Act Classifier -> m a
-mismatch exp act = withFrozenCallStack $ err $ Unify Mismatch exp act
+mismatchTypes :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err) sig m) => Exp (Either String Type) -> Act Type -> m a
+mismatchTypes exp act = withFrozenCallStack $ err $ UnifyType Mismatch exp act
 
-couldNotUnify :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err) sig m) => Exp Classifier -> Act Classifier -> m a
-couldNotUnify t1 t2 = withFrozenCallStack $ mismatch (Right <$> t1) t2
+mismatchKinds :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err) sig m) => Exp (Either String Kind) -> Act Kind -> m a
+mismatchKinds exp act = withFrozenCallStack $ err $ UnifyKind Mismatch exp act
+
+couldNotUnifyKinds :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err) sig m) => Exp Kind -> Act Kind -> m a
+couldNotUnifyKinds t1 t2 = withFrozenCallStack $ mismatchKinds (Right <$> t1) t2
 
 couldNotSynthesize :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err) sig m) => m a
 couldNotSynthesize = withFrozenCallStack $ err CouldNotSynthesize
@@ -326,11 +333,11 @@ warn reason = do
 
 -- Patterns
 
-assertMatch :: (HasCallStack, Has (Throw Err) sig m, Classified s) => Prism' s a -> String -> s -> Elab m a
-assertMatch pat exp _T = maybe (mismatch (Exp (Left exp)) (Act (classified _T))) pure (_T ^? pat)
+assertMatch :: (Exp (Either String b) -> Act s -> Elab m a) -> Prism' s a -> String -> s -> Elab m a
+assertMatch mismatch pat exp _T = maybe (mismatch (Exp (Left exp)) (Act _T)) pure (_T ^? pat)
 
 assertFunction :: (HasCallStack, Has (Throw Err) sig m) => Type -> Elab m (Maybe Name, Quantity, Type, Type)
-assertFunction = assertMatch _Arrow "_ -> _"
+assertFunction = assertMatch mismatchTypes _Arrow "_ -> _"
 
 
 -- Unification

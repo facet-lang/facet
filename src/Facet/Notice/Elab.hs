@@ -72,7 +72,18 @@ printErrReason opts ctx = group . \case
       Zero -> pretty "0"
       One  -> pretty "1"
       Many -> pretty "arbitrarily many"
-  Unify r (Exp exp) (Act act) -> reason r
+  UnifyType r (Exp exp) (Act act) -> reason r
+    <> hardline <> pretty "expected:" <> align exp'
+    <> hardline <> pretty "  actual:" <> align act'
+    where
+    reason = \case
+      Mismatch   -> pretty "mismatch"
+      Occurs v t -> reflow "infinite type:" <+> getPrint (print opts ctx (metavar v)) <+> reflow "occurs in" <+> getPrint (print opts ctx t)
+    exp' = either reflow (getPrint . print opts ctx) exp
+    act' = getPrint (print opts ctx act)
+    -- line things up nicely for e.g. wrapped function types
+    align = nest 2 . (flatAlt (line <> stimes (3 :: Int) space) mempty <>)
+  UnifyKind r (Exp exp) (Act act) -> reason r
     <> hardline <> pretty "expected:" <> align exp'
     <> hardline <> pretty "  actual:" <> align act'
     where
