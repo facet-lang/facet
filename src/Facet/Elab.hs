@@ -93,7 +93,7 @@ import           Facet.Usage as Usage
 import           Facet.Vars as Vars
 import           Fresnel.Fold ((^?))
 import           Fresnel.Lens (Lens', lens)
-import           Fresnel.Prism (Prism, Prism', prism, prism')
+import           Fresnel.Prism (Prism', prism')
 import           GHC.Stack
 import           Prelude hiding (span, zipWith)
 
@@ -214,7 +214,7 @@ data ErrReason
   | AmbiguousName QName [RName]
   | CouldNotSynthesize
   | ResourceMismatch Name Quantity Quantity
-  | UnifyType (UnifyErrReason Type) (Exp (Either String Type)) (Act Type)
+  | UnifyType UnifyErrReason (Exp (Either String Type)) (Act Type)
   | UnifyKind (Exp (Either String Kind)) (Act Kind)
   | Hole Name Type
   | Invariant String
@@ -230,24 +230,24 @@ _AmbiguousName = prism' (uncurry AmbiguousName) (\case
   AmbiguousName n ns -> Just (n, ns)
   _                  -> Nothing)
 
-_UnifyType :: Prism' ErrReason (UnifyErrReason Type, Exp (Either String Type), Act Type)
+_UnifyType :: Prism' ErrReason (UnifyErrReason, Exp (Either String Type), Act Type)
 _UnifyType = prism' (\ (r, x, a) -> UnifyType r x a) (\case
   UnifyType r x a -> Just (r, x, a)
   _               -> Nothing)
 
-data UnifyErrReason t
+data UnifyErrReason
   = Mismatch
-  | Occurs Meta t
+  | Occurs Meta Type
 
-_Mismatch :: Prism' (UnifyErrReason t) ()
+_Mismatch :: Prism' UnifyErrReason ()
 _Mismatch = prism' (const Mismatch) (\case
   Mismatch -> Just ()
   _        -> Nothing)
 
-_Occurs :: Prism (UnifyErrReason s) (UnifyErrReason t) (Meta, s) (Meta, t)
-_Occurs = prism (uncurry Occurs) (\case
-  Occurs v c -> Right (v, c)
-  Mismatch   -> Left Mismatch)
+_Occurs :: Prism' UnifyErrReason (Meta, Type)
+_Occurs = prism' (uncurry Occurs) (\case
+  Occurs v c -> Just (v, c)
+  _          -> Nothing)
 
 applySubst :: Context -> Subst Type -> ErrReason -> ErrReason
 applySubst ctx subst r = case r of
