@@ -4,7 +4,6 @@ module Facet.Elab.Pattern
 ( Pattern(..)
 , Clause(..)
 , patterns_
-, Type(..)
   -- * Coverage judgement
 , compilePattern
 ) where
@@ -17,6 +16,7 @@ import           Data.Monoid (First(..))
 import           Data.Traversable (for)
 import           Facet.Name
 import qualified Facet.Sequent.Class as SQ
+import           Facet.Sequent.Type
 import           Facet.Syntax ((:::)(..))
 import           Fresnel.Fold (Fold, Union(..), preview)
 import           Fresnel.Getter (to)
@@ -82,19 +82,6 @@ data Clause a = Clause { patterns :: [Pattern Name], body :: a }
 
 patterns_ :: Lens' (Clause a) [Pattern Name]
 patterns_ = lens patterns (\ c patterns -> c{patterns})
-
-
-data Type
-  = Opaque
-  | One
-  | Type :+ Type
-  | Type :* Type
-  | Type :-> Type
-  deriving (Eq, Ord, Show)
-
-infixl 6 :+
-infixl 7 :*
-infixr 1 :->
 
 
 -- Coverage judgement
