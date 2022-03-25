@@ -25,8 +25,6 @@ module Facet.Elab.Term
 , conP
 , fieldsP
 , allP
-  -- * Pattern compilation
-, coverTableau
   -- * Expression elaboration
 , synthExpr
 , checkExpr
@@ -46,13 +44,9 @@ module Facet.Elab.Term
 ) where
 
 import           Control.Algebra
-import           Control.Applicative (liftA2)
-import           Control.Carrier.Empty.Church
-import           Control.Carrier.NonDet.Church hiding (Alternative(..), guard)
 import           Control.Carrier.Reader
 import           Control.Carrier.State.Church
 import           Control.Carrier.Writer.Church
-import           Control.Effect.Choose
 import           Control.Effect.Throw
 import           Data.Bifunctor (first)
 import           Data.Either (partitionEithers)
@@ -94,15 +88,11 @@ import           Facet.Type.Norm as T hiding (global)
 import           Facet.Unify
 import           Facet.Usage hiding (restrict)
 import           Fresnel.At as At
-import           Fresnel.Fold (Fold, Union(..), allOf, folded, forOf_, has, preview)
-import           Fresnel.Getter (to)
-import           Fresnel.Iso (Iso', coerced)
 import           Fresnel.Ixed
-import           Fresnel.List (head_)
 import           Fresnel.Prism (Prism')
 import           Fresnel.Review (review)
-import           Fresnel.Setter (Setter', (%~))
-import           Fresnel.Traversal (Traversal', traversed)
+import           Fresnel.Setter (Setter')
+import           Fresnel.Traversal (Traversal')
 import           GHC.Stack
 
 -- General combinators
@@ -251,86 +241,6 @@ allP :: (HasCallStack, Has (Throw Err :+: Write Warn) sig m) => Name -> Bind m (
 allP n = Bind $ \ _A k -> do
   (sig, _T) <- assertComp _A
   k (PVar (n :==> T.Arrow Nothing Many (T.Ne (Global (NE.FromList ["Data", "Unit"] :.: U "Unit")) Nil) (T.Comp sig _T)))
-
-
--- Pattern compilation
-
-newtype Clause = Clause [Pattern ()]
-
-patterns_ :: Iso' Clause [Pattern ()]
-patterns_ = coerced
-
-newtype Tableau = Tableau [Clause]
-
-clauses_ :: Iso' Tableau [Clause]
-clauses_ = coerced
-
-type Ctx = [Type]
-
-data Branch s m = forall x . Branch (Fold s x) (x -> m ())
-
-coverTableau :: (HasCallStack, Has (Reader ElabContext) sig m, Has (Reader StaticContext) sig m, Has (State (Subst Type)) sig m, Has (Throw Err) sig m) => Tableau -> Ctx -> m Bool
-coverTableau tableau context = runNonDet (liftA2 (&&)) (const (pure True)) (pure False) (coverClauses tableau context)
-
-coverClauses :: (HasCallStack, Has NonDet sig m, Has (Reader ElabContext) sig m, Has (Reader StaticContext) sig m, Has (State (Subst Type)) sig m, Has (Throw Err) sig m) => Tableau -> Ctx -> m ()
-coverClauses tableau = \case
-  T.String:ctx   -> everyClauseHead tableau
-    [ Branch (_PWildcard ||| _PVar) (const (coverClauses (dropClauseHead tableau) ctx)) ]
-  -- FIXME: type patterns to bind type variables?
-  T.ForAll{}:ctx -> everyClauseHead tableau
-    [ Branch (_PWildcard ||| _PVar) (const (coverClauses (dropClauseHead tableau) ctx)) ]
-  T.Arrow{}:ctx  -> everyClauseHead tableau
-    [ Branch (_PWildcard ||| _PVar) (const (coverClauses (dropClauseHead tableau) ctx)) ]
-  c@(T.Ne h _:_) -> case h of
-    Global n -> resolveQ (toQ n) >>= \case
-      _ :=: DSubmodule (SData scope) _ -> decomposeSum tableau c (scopeToList scope)
-      _                                -> empty
-    _        -> empty
-  T.Comp{}:_     -> empty -- resolve signature, then treat as effect patterns
-  []             -> eachClauseHead null tableau
-
-decomposeSum :: (HasCallStack, Has NonDet sig m, Has (Reader ElabContext) sig m, Has (Reader StaticContext) sig m, Has (State (Subst Type)) sig m, Has (Throw Err) sig m) => Tableau -> Ctx -> [Name :=: Def] -> m ()
-decomposeSum tableau ctx = \case
-  [] -> empty
-  xs -> let partitions = tableauPartitions tableau ctx xs in getChoosing (foldMap (\ (tableau', ctx') -> Choosing (coverClauses tableau' ctx')) partitions)
-
-tableauPartitions :: Tableau -> Ctx -> [Name :=: Def] -> [(Tableau, Ctx)]
--- FIXME: check for inapplicable patterns in tableau
-tableauPartitions _       _   []             = []
-tableauPartitions tableau ctx ((n :=: d):cs) =
-  let (tableau', tableau'') = partitionTableau tableau n in
-  case d of
-    DTerm _ ty -> (tableau', typeOf ty <> ctx):tableauPartitions tableau'' ctx cs
-    _          -> []
-
-partitionTableau :: Tableau -> Name -> (Tableau, Tableau)
-partitionTableau (Tableau clauses) name =
-  ( Tableau (filter (has (patterns_.head_.(to        conMatches  ||| _PWildcard ||| _PVar))) clauses)
-  , Tableau (filter (has (patterns_.head_.(to (not . conMatches) ||| _PWildcard ||| _PVar))) clauses) )
-  where
-  conMatches (PCon (_:.:name') _) = name == name'
-  conMatches _                    = False
-
-typeOf :: Type -> Ctx
-typeOf = \case
-  T.Arrow _ _ _A _B -> _A : typeOf _B
-  _T                -> [_T]
-
-dropClauseHead :: Tableau -> Tableau
-dropClauseHead = clauses_.traversed.patterns_ %~ drop 1
-
-eachClauseHead :: Has Empty sig m => (Pattern () -> Bool) -> Tableau -> m ()
-eachClauseHead pred = guard . allOf (clauses_.folded.patterns_.folded) pred
-
-everyClauseHead :: Has Empty sig m => Tableau -> [Branch (Pattern ()) m] -> m ()
-everyClauseHead tableau = go where
-  go []              = empty
-  go (Branch b k:bs) = forOf_ (clauses_.folded.patterns_.head_) tableau (maybe (go bs) k . preview b)
-
-(|||) :: Fold s a1 -> Fold s a2 -> Fold s ()
-p ||| q = getUnion (Union (p . to (const ())) <> Union (q . to (const ())))
-
-infixr 2 |||
 
 
 -- Expression elaboration
