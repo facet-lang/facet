@@ -49,7 +49,7 @@ mismatch :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: 
 mismatch   = withFrozenCallStack $ throwError $ WithCallStack GHC.Stack.callStack Mismatch
 
 occurs :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err :+: Throw (WithCallStack UnifyErrReason) :+: Writer Usage) sig m) => Meta -> Type -> m a
-occurs v t = withFrozenCallStack $ throwError $ WithCallStack GHC.Stack.callStack  (Occurs v t)
+occurs v t = withFrozenCallStack $ throwError $ WithCallStack GHC.Stack.callStack (Occurs v t)
 
 unifyType :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err :+: Throw (WithCallStack UnifyErrReason) :+: Writer Usage) sig m) => Type -> Type -> m Type
 unifyType = curry $ \case
