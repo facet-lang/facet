@@ -287,9 +287,9 @@ bindPattern = withSpanB $ \case
   S.PCon n ps -> conP n (map bindPattern ps)
 
 
--- | Elaborate a type abstracted over another type’s parameters.
+-- | Elaborate a type abstracted over a kind’s parameters.
 --
--- This is used to elaborate data constructors & effect operations, which receive the type/interface parameters as implicit parameters ahead of their own explicit ones.
+-- This is used to elaborate data constructors & effect operations, which receive the type/interface's kind's parameters as implicit parameters ahead of their own explicit ones.
 abstractType :: Has (Reader ElabContext) sig m => m TX.Type -> Kind -> m TX.Type
 abstractType body = \case
   KArrow (Just n) a b -> TX.ForAll n a <$> (n :==> a ||- abstractType body b)
