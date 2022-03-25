@@ -153,11 +153,6 @@ instance Printable Print where
 instance (Quote v t, Printable t) => Printable (Quoting t v) where
   print opts env = print opts env . runQuoter (level env) . quote . getQuoting
 
-instance Printable TN.Classifier where
-  print opts env = \case
-    TN.CK k -> print opts env k
-    TN.CT t -> print opts env t
-
 instance Printable Kind where
   print opts env = \case
     KType               -> annotate Type $ pretty "Type"
