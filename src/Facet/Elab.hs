@@ -215,7 +215,7 @@ data ErrReason
   | CouldNotSynthesize
   | ResourceMismatch Name Quantity Quantity
   | UnifyType (UnifyErrReason Type) (Exp (Either String Type)) (Act Type)
-  | UnifyKind (UnifyErrReason Type) (Exp (Either String Kind)) (Act Kind)
+  | UnifyKind (Exp (Either String Kind)) (Act Kind)
   | Hole Name Type
   | Invariant String
   | MissingInterface (Interface Type)
@@ -279,7 +279,7 @@ mismatchTypes :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext
 mismatchTypes exp act = withFrozenCallStack $ err $ UnifyType Mismatch exp act
 
 mismatchKinds :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err) sig m) => Exp (Either String Kind) -> Act Kind -> m a
-mismatchKinds exp act = withFrozenCallStack $ err $ UnifyKind Mismatch exp act
+mismatchKinds exp act = withFrozenCallStack $ err $ UnifyKind exp act
 
 couldNotUnifyKinds :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err) sig m) => Exp Kind -> Act Kind -> m a
 couldNotUnifyKinds t1 t2 = withFrozenCallStack $ mismatchKinds (Right <$> t1) t2

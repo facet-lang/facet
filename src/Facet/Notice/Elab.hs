@@ -83,13 +83,10 @@ printErrReason opts ctx = group . \case
     act' = getPrint (print opts ctx act)
     -- line things up nicely for e.g. wrapped function types
     align = nest 2 . (flatAlt (line <> stimes (3 :: Int) space) mempty <>)
-  UnifyKind r (Exp exp) (Act act) -> reason r
+  UnifyKind (Exp exp) (Act act) -> pretty "mismatch"
     <> hardline <> pretty "expected:" <> align exp'
     <> hardline <> pretty "  actual:" <> align act'
     where
-    reason = \case
-      Mismatch   -> pretty "mismatch"
-      Occurs v t -> reflow "infinite type:" <+> getPrint (print opts ctx (metavar v)) <+> reflow "occurs in" <+> getPrint (print opts ctx t)
     exp' = either reflow (getPrint . print opts ctx) exp
     act' = getPrint (print opts ctx act)
     -- line things up nicely for e.g. wrapped function types
