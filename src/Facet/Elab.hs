@@ -216,7 +216,7 @@ data ErrReason
   | ResourceMismatch Name Quantity Quantity
   | UnifyType (UnifyErrReason Type) (Exp (Either String Type)) (Act Type)
   | UnifyKind (UnifyErrReason Type) (Exp (Either String Kind)) (Act Kind)
-  | Hole Name Classifier
+  | Hole Name Type
   | Invariant String
   | MissingInterface (Interface Type)
 
@@ -258,13 +258,10 @@ applySubst ctx subst r = case r of
   -- NB: not substituting in @r@ because we want to retain the cyclic occurrence (and finitely)
   UnifyType r exp act  -> UnifyType r (fmap roundtrip <$> exp) (roundtrip <$> act)
   UnifyKind{}          -> r
-  Hole n t             -> Hole n (roundtripS t)
+  Hole n t             -> Hole n (roundtrip t)
   Invariant{}          -> r
   MissingInterface i   -> MissingInterface (roundtrip <$> i)
   where
-  roundtripS = \case
-    CK k -> CK k
-    CT k -> CT $ roundtrip k
   roundtrip = apply subst (toEnv ctx)
 
 
