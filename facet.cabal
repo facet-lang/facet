@@ -125,6 +125,7 @@ library
     Facet.Sequent.Expr
     Facet.Sequent.Norm
     Facet.Sequent.Print
+    Facet.Sequent.Type
     Facet.Snoc
     Facet.Snoc.NonEmpty
     Facet.Source
