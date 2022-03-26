@@ -40,11 +40,10 @@ compileClauses (ty:ts) heads = SQ.lamRA $ \ wk _v k -> case ty of
   (_ ::: Opaque)    -> (match (_Wildcard.to (const [])) heads >>= compileClauses (map (first wk) ts)) SQ..||. pure k
   (_ ::: (_ :-> _)) -> (match (_Wildcard.to (const [])) heads >>= compileClauses (map (first wk) ts)) SQ..||. pure k
   (_ ::: One)       -> (match (_Unit.to (const [])) heads >>= compileClauses (map (first wk) ts)) SQ..||. pure k
-  (u ::: _A :* _B) -> do
-    heads' <- match (getUnion (Union (_Pair.to (\ (p, q) -> [p, q])) <> Union (_Wildcard.to (const [Wildcard, Wildcard])))) heads
+  (u ::: _A :* _B)  -> match (getUnion (Union (_Pair.to (\ (p, q) -> [p, q])) <> Union (_Wildcard.to (const [Wildcard, Wildcard])))) heads >>= \ heads' ->
     let a wk' = SQ.µRA (\ wk k -> pure (wk (wk' u)) SQ..||. SQ.prdL1A (pure k))
         b wk' = SQ.µRA (\ wk k -> pure (wk (wk' u)) SQ..||. SQ.prdL2A (pure k))
-    SQ.letA (a wk) (\ wkA a -> SQ.letA (b (wkA . wk)) (\ wkB b ->
+    in SQ.letA (a wk) (\ wkA a -> SQ.letA (b (wkA . wk)) (\ wkB b ->
       compileClauses ((wkB a ::: _A) : (b ::: _B) : map (first (wkB . wkA . wk)) ts) heads' SQ..||. pure (wkB (wkA k))))
   (u ::: _A :+ _B) -> do
     (headsL, headsR) <- fold <$> for heads (\case
