@@ -54,7 +54,9 @@ compilePattern ty heads = case ty of
         Wildcard -> pure ([Clause (Wildcard:ps) b], [Clause (Wildcard:ps) b])
         _        -> empty
       _    -> empty)
-    pure u SQ..||. SQ.sumLA (SQ.µLA (\ wk a -> compilePattern ((a ::: _A):map (first wk) ts) headsL)) (SQ.µLA (\ wk b -> compilePattern ((b ::: _B):map (first wk) ts) headsR))
+    pure u SQ..||. SQ.sumLA
+      (SQ.µLA (\ wk a -> compilePattern ((a ::: _A):map (first wk) ts) headsL))
+      (SQ.µLA (\ wk b -> compilePattern ((b ::: _B):map (first wk) ts) headsR))
   [] | Just (Clause [] b) <- getFirst (foldMap (First . Just) heads) -> pure (pure b)
   _ -> empty
 
