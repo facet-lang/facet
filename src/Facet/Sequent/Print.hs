@@ -27,7 +27,7 @@ instance Show Print where
 instance S.Sequent Print Print Print where
   var = var
   µR b = P.pretty "µ" <> P.braces (fresh (\ v -> anon v P.<+> P.dot P.<+> b (anon v)))
-  lamR c = P.braces (fresh (\ u -> fresh (\ v -> anon u <> P.comma P.<+> anon v P.<+> P.pretty "->" P.<+> c (anon u) (anon v))))
+  lamR c = P.braces (fresh (\ u -> fresh (\ v -> anon u <> P.comma P.<+> anon v P.<+> P.pretty "." P.<+> c (anon u) (anon v))))
   sumR1 t = P.parens (P.pretty "inl" P.<+> t)
   sumR2 t = P.parens (P.pretty "inr" P.<+> t)
   unitR = P.parens mempty
