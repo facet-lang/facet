@@ -71,3 +71,4 @@ _Pair = prism' (uncurry Pair) (\case
 data Copattern a
   = All (Maybe a)
   | Comp (Pattern a) (Maybe a)
+  deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
