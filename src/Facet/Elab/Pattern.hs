@@ -36,15 +36,15 @@ instantiateHead p       = p
 
 
 compileClauses :: (Has Empty sig m, SQ.Sequent term coterm command, Applicative i) => [i term ::: Type] -> [Clause term] -> m (i term)
-compileClauses (ty:ts) heads = SQ.lamRA $ \ wk _v k -> case ty of
+compileClauses (ty:ts) heads = SQ.lamRA $ \ wk v k -> case ty of
   (_ ::: Opaque)    -> (match (_Wildcard.to (const [])) heads >>= compileClauses (map (first wk) ts)) SQ..||. pure k
   (_ ::: (_ :-> _)) -> (match (_Wildcard.to (const [])) heads >>= compileClauses (map (first wk) ts)) SQ..||. pure k
   (_ ::: One)       -> (match (_Unit.to (const [])) heads >>= compileClauses (map (first wk) ts)) SQ..||. pure k
-  (u ::: _A :* _B)  -> match (getUnion (Union (_Pair.to (\ (p, q) -> [p, q])) <> Union (_Wildcard.to (const [Wildcard, Wildcard])))) heads >>= \ heads' ->
-    SQ.letA (SQ.µRA (\ wk' k -> pure (wk' (wk u))       SQ..||. SQ.prdL1A (pure k))) (\ wkA a ->
-    SQ.letA (SQ.µRA (\ wk' k -> pure (wk' (wkA (wk u))) SQ..||. SQ.prdL2A (pure k))) (\ wkB b ->
+  (_ ::: _A :* _B)  -> match (getUnion (Union (_Pair.to (\ (p, q) -> [p, q])) <> Union (_Wildcard.to (const [Wildcard, Wildcard])))) heads >>= \ heads' ->
+    SQ.letA (SQ.µRA (\ wk' k -> pure (wk' v)       SQ..||. SQ.prdL1A (pure k))) (\ wkA a ->
+    SQ.letA (SQ.µRA (\ wk' k -> pure (wk' (wkA v)) SQ..||. SQ.prdL2A (pure k))) (\ wkB b ->
       compileClauses ((wkB a ::: _A) : (b ::: _B) : map (first (wkB . wkA . wk)) ts) heads' SQ..||. pure (wkB (wkA k))))
-  (u ::: _A :+ _B) -> do
+  (_ ::: _A :+ _B) -> do
     (headsL, headsR) <- fold <$> for heads (\case
       Clause (p:ps) b -> case instantiateHead p of
         InL p    -> pure ([Clause (p:ps) b], [])
@@ -52,7 +52,7 @@ compileClauses (ty:ts) heads = SQ.lamRA $ \ wk _v k -> case ty of
         Wildcard -> pure ([Clause (Wildcard:ps) b], [Clause (Wildcard:ps) b])
         _        -> empty
       _    -> empty)
-    pure (wk u) SQ..||. SQ.sumLA
+    pure v SQ..||. SQ.sumLA
       (SQ.µLA (\ wk' a -> compileClauses ((a ::: _A):map (first (wk' . wk)) ts) headsL SQ..||. pure (wk' k)))
       (SQ.µLA (\ wk' b -> compileClauses ((b ::: _B):map (first (wk' . wk)) ts) headsR SQ..||. pure (wk' k)))
 compileClauses [] heads
