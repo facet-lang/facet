@@ -10,6 +10,7 @@ module Facet.Sequent.Pattern
   -- * Copatterns
 , Copattern(..)
 , _All
+, _Comp
 ) where
 
 import Control.Monad (ap)
@@ -79,3 +80,8 @@ _All :: Prism' (Copattern a) (Maybe a)
 _All = prism' All (\case
   All v  -> Just v
   Comp{} -> Nothing)
+
+_Comp :: Prism' (Copattern a) (Pattern a, Maybe a)
+_Comp = prism' (uncurry Comp) (\case
+  Comp p k -> Just (p, k)
+  All{}    -> Nothing)
