@@ -35,17 +35,17 @@ instantiateHead (Var _) = Wildcard -- FIXME: let-bind any variables first
 instantiateHead p       = p
 
 
-compilePattern :: (Has Empty sig m, SQ.Sequent term coterm command, Applicative i) => [i term ::: Type] -> [Clause command] -> m (i command)
-compilePattern ty heads = case ty of
-  (_ ::: Opaque):ts    -> match (_Wildcard.to (const [])) heads >>= compilePattern ts
-  (_ ::: (_ :-> _)):ts -> match (_Wildcard.to (const [])) heads >>= compilePattern ts
-  (_ ::: One):ts       -> match (_Unit.to (const [])) heads >>= compilePattern ts
+compilePattern :: (Has Empty sig m, SQ.Sequent term coterm command, Applicative i) => [i term ::: Type] -> [Clause command] -> m (i term)
+compilePattern ty heads = SQ.lamRA $ \ wk _v k -> case ty of
+  (_ ::: Opaque):ts    -> (match (_Wildcard.to (const [])) heads >>= compilePattern (map (first wk) ts)) SQ..||. pure k
+  (_ ::: (_ :-> _)):ts -> (match (_Wildcard.to (const [])) heads >>= compilePattern (map (first wk) ts)) SQ..||. pure k
+  (_ ::: One):ts       -> (match (_Unit.to (const [])) heads >>= compilePattern (map (first wk) ts)) SQ..||. pure k
   (u ::: _A :* _B):ts -> do
     heads' <- match (getUnion (Union (_Pair.to (\ (p, q) -> [p, q])) <> Union (_Wildcard.to (const [Wildcard, Wildcard])))) heads
     let a wk' = SQ.µRA (\ wk k -> pure (wk (wk' u)) SQ..||. SQ.prdL1A (pure k))
         b wk' = SQ.µRA (\ wk k -> pure (wk (wk' u)) SQ..||. SQ.prdL2A (pure k))
-    SQ.letA (a id) (\ wkA a -> SQ.letA (b wkA) (\ wkB b ->
-      compilePattern ((wkB a ::: _A) : (b ::: _B) : map (first (wkB . wkA)) ts) heads'))
+    SQ.letA (a wk) (\ wkA a -> SQ.letA (b (wkA . wk)) (\ wkB b ->
+      compilePattern ((wkB a ::: _A) : (b ::: _B) : map (first (wkB . wkA . wk)) ts) heads' SQ..||. pure (wkB (wkA k))))
   (u ::: _A :+ _B):ts -> do
     (headsL, headsR) <- fold <$> for heads (\case
       Clause (p:ps) b -> case instantiateHead p of
@@ -54,9 +54,9 @@ compilePattern ty heads = case ty of
         Wildcard -> pure ([Clause (Wildcard:ps) b], [Clause (Wildcard:ps) b])
         _        -> empty
       _    -> empty)
-    pure u SQ..||. SQ.sumLA
-      (SQ.µLA (\ wk a -> compilePattern ((a ::: _A):map (first wk) ts) headsL))
-      (SQ.µLA (\ wk b -> compilePattern ((b ::: _B):map (first wk) ts) headsR))
+    pure (wk u) SQ..||. SQ.sumLA
+      (SQ.µLA (\ wk' a -> compilePattern ((a ::: _A):map (first (wk' . wk)) ts) headsL SQ..||. pure (wk' k)))
+      (SQ.µLA (\ wk' b -> compilePattern ((b ::: _B):map (first (wk' . wk)) ts) headsR SQ..||. pure (wk' k)))
   [] | Just (Clause [] b) <- getFirst (foldMap (First . Just) heads) -> pure (pure b)
   _ -> empty
 
