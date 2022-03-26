@@ -1,7 +1,6 @@
 module Facet.Sequent.Pattern
 ( -- * Patterns
   Pattern(..)
-, _Wildcard
 , _Var
 , _Unit
 , _InL
@@ -17,8 +16,7 @@ import Control.Monad (ap)
 import Fresnel.Prism (Prism', prism')
 
 data Pattern a
-  = Wildcard
-  | Var a
+  = Var (Maybe a)
   | Unit
   | InL (Pattern a)
   | InR (Pattern a)
@@ -26,25 +24,20 @@ data Pattern a
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
 instance Applicative Pattern where
-  pure = Var
+  pure = Var . Just
   (<*>) = ap
 
 instance Monad Pattern where
   m >>= f = case m of
-    Wildcard -> Wildcard
-    Var a    -> f a
-    Unit     -> Unit
-    InL p    -> InL (p >>= f)
-    InR q    -> InR (q >>= f)
-    Pair p q -> Pair (p >>= f) (q >>= f)
+    Var (Just a) -> f a
+    Var Nothing  -> Var Nothing
+    Unit         -> Unit
+    InL p        -> InL (p >>= f)
+    InR q        -> InR (q >>= f)
+    Pair p q     -> Pair (p >>= f) (q >>= f)
 
 
-_Wildcard :: Prism' (Pattern a) ()
-_Wildcard = prism' (const Wildcard) (\case
-  Wildcard -> Just ()
-  _        -> Nothing)
-
-_Var :: Prism' (Pattern a) a
+_Var :: Prism' (Pattern a) (Maybe a)
 _Var = prism' Var (\case
   Var a -> Just a
   _     -> Nothing)
