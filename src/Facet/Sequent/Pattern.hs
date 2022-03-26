@@ -1,12 +1,14 @@
 module Facet.Sequent.Pattern
-( Pattern(..)
-  -- * Prisms
+( -- * Patterns
+  Pattern(..)
 , _Wildcard
 , _Var
 , _Unit
 , _InL
 , _InR
 , _Pair
+  -- * Copatterns
+, Copattern(..)
 ) where
 
 import Control.Monad (ap)
@@ -64,3 +66,8 @@ _Pair :: Prism' (Pattern a) (Pattern a, Pattern a)
 _Pair = prism' (uncurry Pair) (\case
   Pair p q -> Just (p, q)
   _        -> Nothing)
+
+
+data Copattern a
+  = All (Maybe a)
+  | Comp (Pattern a) (Maybe a)
