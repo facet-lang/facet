@@ -4,7 +4,7 @@ module Facet.Elab.Pattern
 ( Clause(..)
 , patterns_
   -- * Coverage judgement
-, compilePattern
+, compileClauses
 ) where
 
 import           Control.Effect.Empty
@@ -35,17 +35,17 @@ instantiateHead (Var _) = Wildcard -- FIXME: let-bind any variables first
 instantiateHead p       = p
 
 
-compilePattern :: (Has Empty sig m, SQ.Sequent term coterm command, Applicative i) => [i term ::: Type] -> [Clause command] -> m (i term)
-compilePattern ty heads = SQ.lamRA $ \ wk _v k -> case ty of
-  (_ ::: Opaque):ts    -> (match (_Wildcard.to (const [])) heads >>= compilePattern (map (first wk) ts)) SQ..||. pure k
-  (_ ::: (_ :-> _)):ts -> (match (_Wildcard.to (const [])) heads >>= compilePattern (map (first wk) ts)) SQ..||. pure k
-  (_ ::: One):ts       -> (match (_Unit.to (const [])) heads >>= compilePattern (map (first wk) ts)) SQ..||. pure k
+compileClauses :: (Has Empty sig m, SQ.Sequent term coterm command, Applicative i) => [i term ::: Type] -> [Clause command] -> m (i term)
+compileClauses ty heads = SQ.lamRA $ \ wk _v k -> case ty of
+  (_ ::: Opaque):ts    -> (match (_Wildcard.to (const [])) heads >>= compileClauses (map (first wk) ts)) SQ..||. pure k
+  (_ ::: (_ :-> _)):ts -> (match (_Wildcard.to (const [])) heads >>= compileClauses (map (first wk) ts)) SQ..||. pure k
+  (_ ::: One):ts       -> (match (_Unit.to (const [])) heads >>= compileClauses (map (first wk) ts)) SQ..||. pure k
   (u ::: _A :* _B):ts -> do
     heads' <- match (getUnion (Union (_Pair.to (\ (p, q) -> [p, q])) <> Union (_Wildcard.to (const [Wildcard, Wildcard])))) heads
     let a wk' = SQ.µRA (\ wk k -> pure (wk (wk' u)) SQ..||. SQ.prdL1A (pure k))
         b wk' = SQ.µRA (\ wk k -> pure (wk (wk' u)) SQ..||. SQ.prdL2A (pure k))
     SQ.letA (a wk) (\ wkA a -> SQ.letA (b (wkA . wk)) (\ wkB b ->
-      compilePattern ((wkB a ::: _A) : (b ::: _B) : map (first (wkB . wkA . wk)) ts) heads' SQ..||. pure (wkB (wkA k))))
+      compileClauses ((wkB a ::: _A) : (b ::: _B) : map (first (wkB . wkA . wk)) ts) heads' SQ..||. pure (wkB (wkA k))))
   (u ::: _A :+ _B):ts -> do
     (headsL, headsR) <- fold <$> for heads (\case
       Clause (p:ps) b -> case instantiateHead p of
@@ -55,8 +55,8 @@ compilePattern ty heads = SQ.lamRA $ \ wk _v k -> case ty of
         _        -> empty
       _    -> empty)
     pure (wk u) SQ..||. SQ.sumLA
-      (SQ.µLA (\ wk' a -> compilePattern ((a ::: _A):map (first (wk' . wk)) ts) headsL SQ..||. pure (wk' k)))
-      (SQ.µLA (\ wk' b -> compilePattern ((b ::: _B):map (first (wk' . wk)) ts) headsR SQ..||. pure (wk' k)))
+      (SQ.µLA (\ wk' a -> compileClauses ((a ::: _A):map (first (wk' . wk)) ts) headsL SQ..||. pure (wk' k)))
+      (SQ.µLA (\ wk' b -> compileClauses ((b ::: _B):map (first (wk' . wk)) ts) headsR SQ..||. pure (wk' k)))
   [] | Just (Clause [] b) <- getFirst (foldMap (First . Just) heads) -> pure (pure b)
   _ -> empty
 
