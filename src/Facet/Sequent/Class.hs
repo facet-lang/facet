@@ -1,3 +1,4 @@
+{-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE FunctionalDependencies #-}
 module Facet.Sequent.Class
 ( -- * Sequent abstraction
@@ -17,15 +18,16 @@ module Facet.Sequent.Class
 , prdL2A
 , (.||.)
 , letA
--- , Ctx(..)
--- , Binding(..)
--- , lookupCtx
+, Ctx(..)
+, Binding(..)
+, lookupCtx
 ) where
 
-import Control.Applicative (liftA2)
+import Control.Applicative (liftA2, (<|>))
+import Control.Monad (guard)
 import Data.Text (Text)
 import Facet.Functor.Compose as C
-import Facet.Name (Level)
+import Facet.Name (Level, Name)
 import Facet.Syntax (Var, type (~>))
 
 -- * Term abstraction
@@ -141,18 +143,18 @@ letA :: (Applicative m, Applicative i, Sequent t c d) => m (i t) -> (forall j . 
 letA t b = liftA2 let' <$> t <*> (runC <$> b weaken (liftCInner id))
 
 
--- data Ctx j t
---   = Nil
---   | forall i . Ctx i t :> Binding i j t
+data Ctx j t
+  = Nil
+  | forall i . Ctx i t :> Binding i j t
 
--- infixl 5 :>
+infixl 5 :>
 
--- data Binding i j t = Binding Name (i ~> j) (j t)
+data Binding i j t = Binding Name (i ~> j) (j t)
 
--- lookupCtx :: Name -> Ctx i t -> Maybe (i t)
--- lookupCtx n = go id
---   where
---   go :: (i ~> j) -> Ctx i t -> Maybe (j t)
---   go wk = \case
---     Nil                   -> Nothing
---     c :> Binding n' wk' t -> wk t <$ guard (n == n') <|> go (wk . wk') c
+lookupCtx :: Name -> Ctx i t -> Maybe (i t)
+lookupCtx n = go id
+  where
+  go :: (i ~> j) -> Ctx i t -> Maybe (j t)
+  go wk = \case
+    Nil                   -> Nothing
+    c :> Binding n' wk' t -> wk t <$ guard (n == n') <|> go (wk . wk') c
