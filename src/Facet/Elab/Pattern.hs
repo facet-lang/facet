@@ -39,8 +39,8 @@ compileClauses (ty:ts) heads = SQ.lamRA $ \ _wk v k -> case ty of
   _ :-> _   -> (match (_Wildcard.to (const [])) heads >>= compileClauses ts) SQ..||. pure k
   One       -> (match (_Unit.to (const [])) heads >>= compileClauses ts) SQ..||. pure k
   _A :* _B  -> match (getUnion (Union (_Pair.to (\ (p, q) -> [p, q])) <> Union (_Wildcard.to (const [Wildcard, Wildcard])))) heads >>= \ heads' ->
-    SQ.letA (SQ.µRA (\ wk' k -> pure (wk' v)       SQ..||. SQ.prdL1A (pure k))) (\ wkA _ ->
-    SQ.letA (SQ.µRA (\ wk' k -> pure (wk' (wkA v)) SQ..||. SQ.prdL2A (pure k))) (\ wkB _ ->
+    SQ.letA (SQ.µRA (\ wk k -> pure (wk v)       SQ..||. SQ.prdL1A (pure k))) (\ wkA _ ->
+    SQ.letA (SQ.µRA (\ wk k -> pure (wk (wkA v)) SQ..||. SQ.prdL2A (pure k))) (\ wkB _ ->
       compileClauses (_A:_B:ts) heads' SQ..||. pure (wkB (wkA k))))
   _A :+ _B  -> do
     (headsL, headsR) <- fold <$> for heads (\case
@@ -51,8 +51,8 @@ compileClauses (ty:ts) heads = SQ.lamRA $ \ _wk v k -> case ty of
         _        -> empty
       _    -> empty)
     pure v SQ..||. SQ.sumLA
-      (SQ.µLA (\ wk' _ -> compileClauses (_A:ts) headsL SQ..||. pure (wk' k)))
-      (SQ.µLA (\ wk' _ -> compileClauses (_B:ts) headsR SQ..||. pure (wk' k)))
+      (SQ.µLA (\ wk _ -> compileClauses (_A:ts) headsL SQ..||. pure (wk k)))
+      (SQ.µLA (\ wk _ -> compileClauses (_B:ts) headsR SQ..||. pure (wk k)))
 compileClauses [] heads
   | Just (Clause [] b) <- getFirst (foldMap (First . Just) heads) = pure (pure b)
   | otherwise                                                     = empty
