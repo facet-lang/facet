@@ -26,6 +26,7 @@ data Term
   | LamR Command
   | SumR1 Term
   | SumR2 Term
+  | UnitR
   | PrdR Term Term
   | StringR Text
 
@@ -37,6 +38,7 @@ data Coterm
   | MuL Command
   | LamL Term Coterm
   | SumL Coterm Coterm
+  | UnitL
   | PrdL1 Coterm
   | PrdL2 Coterm
 
@@ -54,6 +56,7 @@ instance C.Sequent (Quoter Term) (Quoter Coterm) (Quoter Command) where
   lamR b = LamR <$> binder (\ d' -> Quoter (\ d -> var (toIndexed d d'))) (\ t -> binder (\ d'' -> Quoter (\ d -> covar (toIndexed d d''))) (b t))
   sumR1 = fmap SumR1
   sumR2 = fmap SumR2
+  unitR = pure UnitR
   prdR l r = PrdR <$> l <*> r
   stringR = pure . StringR
 
@@ -61,6 +64,7 @@ instance C.Sequent (Quoter Term) (Quoter Coterm) (Quoter Command) where
   µL b = MuL <$> binder (\ d' -> Quoter (\ d -> var (toIndexed d d'))) b
   lamL a b = LamL <$> a <*> b
   sumL l r = SumL <$> l <*> r
+  unitL = pure UnitL
   prdL1 b = PrdL1 <$> b
   prdL2 b = PrdL2 <$> b
 
@@ -82,6 +86,7 @@ interpretTerm _G _D = \case
   LamR b         -> C.lamR (\ a k -> interpretCommand (a:_G) (k:_D) b)
   SumR1 t        -> C.sumR1 (interpretTerm _G _D t)
   SumR2 t        -> C.sumR2 (interpretTerm _G _D t)
+  UnitR          -> C.unitR
   PrdR l r       -> C.prdR (interpretTerm _G _D l) (interpretTerm _G _D r)
   StringR s      -> C.stringR s
 
@@ -92,6 +97,7 @@ interpretCoterm _G _D = \case
   MuL b            -> C.µL (\ t -> interpretCommand (t:_G) _D b)
   LamL a k         -> C.lamL (interpretTerm _G _D a) (interpretCoterm _G _D k)
   SumL l r         -> C.sumL (interpretCoterm _G _D l) (interpretCoterm _G _D r)
+  UnitL            -> C.unitL
   PrdL1 c          -> C.prdL1 (interpretCoterm _G _D c)
   PrdL2 c          -> C.prdL2 (interpretCoterm _G _D c)
 

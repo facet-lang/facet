@@ -30,6 +30,7 @@ instance S.Sequent Print Print Print where
   lamR c = P.braces (fresh (\ u -> fresh (\ v -> P.brackets (anon u <> P.comma P.<+> anon v) P.<+> P.pretty "->" P.<+> c (anon u) (anon v))))
   sumR1 t = P.parens (P.pretty "inl" P.<+> t)
   sumR2 t = P.parens (P.pretty "inr" P.<+> t)
+  unitR = P.parens mempty
   prdR l r = P.tupled [l, r]
   stringR = P.pretty . show
 
@@ -37,6 +38,7 @@ instance S.Sequent Print Print Print where
   µL b = µ̃ <> P.braces (fresh (\ v -> anon v P.<+> P.dot P.<+> b (anon v)))
   lamL a k = a P.<+> P.dot P.<+> k
   sumL l r = P.pretty "case" <> P.braces (commaSep [l, r])
+  unitL = P.pretty "_"
   prdL1 k = P.parens (µ̃ <> P.braces (P.pretty "πl" P.<+> k))
   prdL2 k = P.parens (µ̃ <> P.braces (P.pretty "πr" P.<+> k))
 
