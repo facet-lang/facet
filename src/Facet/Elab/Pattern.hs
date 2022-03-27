@@ -67,8 +67,8 @@ match o heads = forOf (traversed.patterns_) heads (\case
 
 data Ctx j t
   = Nil
-  | forall i . Bind (Ctx i t) (i ~> j) (j t)
+  | forall i . Bind (Ctx i t) (i ~> j) Type (j t)
 
 skip :: Ctx i t -> (i ~> j) -> Ctx j t
-skip Nil _                = Nil
-skip (Bind ctx wk1 t) wk2 = Bind ctx (wk2 . wk1) (wk2 t)
+skip Nil _                    = Nil
+skip (Bind ctx wk1 ty tm) wk2 = Bind ctx (wk2 . wk1) ty (wk2 tm)
