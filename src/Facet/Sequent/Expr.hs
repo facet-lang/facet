@@ -78,6 +78,8 @@ covar :: Index -> Coterm
 covar = Covar . Free
 
 
+-- Interpreters
+
 interpretTerm :: C.Sequent t c d => [t] -> [c] -> Term -> t
 interpretTerm _G _D = \case
   Var (Free n)   -> _G `index` n
