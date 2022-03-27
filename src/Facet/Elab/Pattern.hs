@@ -37,14 +37,14 @@ instantiateHead p              = p
 
 compileClauses :: (Has Empty sig m, SQ.Sequent term coterm command, Applicative i) => Ctx i term -> Type -> [Clause term] -> m (i term)
 compileClauses ctx (_A :-> _T) heads = SQ.lamRA $ \ wk v k -> case _A of
-  Opaque    -> (match (_Var._Nothing.to (const [])) heads >>= compileClauses (skip ctx wk) _T) SQ..||. pure k
-  _ :-> _   -> (match (_Var._Nothing.to (const [])) heads >>= compileClauses (skip ctx wk) _T) SQ..||. pure k
-  One       -> (match (_Unit.to (const [])) heads >>= compileClauses (skip ctx wk) _T) SQ..||. pure k
-  _A :* _B  -> match (getUnion (Union (_Pair.to (\ (p, q) -> [p, q])) <> Union (_Var._Nothing.to (const [Var Nothing, Var Nothing])))) heads >>= \ heads' ->
+  Opaque   -> (match (_Var._Nothing.to (const [])) heads >>= compileClauses (skip ctx wk) _T) SQ..||. pure k
+  _ :-> _  -> (match (_Var._Nothing.to (const [])) heads >>= compileClauses (skip ctx wk) _T) SQ..||. pure k
+  One      -> (match (_Unit.to (const [])) heads >>= compileClauses (skip ctx wk) _T) SQ..||. pure k
+  _A :* _B -> match (getUnion (Union (_Pair.to (\ (p, q) -> [p, q])) <> Union (_Var._Nothing.to (const [Var Nothing, Var Nothing])))) heads >>= \ heads' ->
     SQ.letA (SQ.µRA (\ wk k -> pure (wk v)       SQ..||. SQ.prdL1A (pure k))) (\ wkA _ ->
     SQ.letA (SQ.µRA (\ wk k -> pure (wk (wkA v)) SQ..||. SQ.prdL2A (pure k))) (\ wkB _ ->
       compileClauses (skip ctx (wkB . wkA . wk)) _T heads' SQ..||. pure (wkB (wkA k))))
-  _A :+ _B  -> do
+  _A :+ _B -> do
     (headsL, headsR) <- fold <$> for heads (\case
       Clause (p:ps) b -> case instantiateHead p of
         InL p       -> pure ([Clause (p:ps) b], [])
