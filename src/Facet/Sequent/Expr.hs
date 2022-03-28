@@ -5,6 +5,17 @@ module Facet.Sequent.Expr
 , Coterm(..)
   -- * Commands
 , Command(..)
+  -- ** Smart constructors
+, varA
+, µRA
+, lamRA
+, covarA
+, µLA
+, sumLA
+, prdL1A
+, prdL2A
+, (.||.)
+, letA
   -- * Interpretation
 , interpretTerm
 , interpretCoterm
@@ -76,6 +87,53 @@ var = Var . Free
 
 covar :: Index -> Coterm
 covar = Covar . Free
+
+
+-- Smart constructors
+
+varA :: Applicative m => Var Index -> m Term
+varA = pure . Var
+
+µRA :: Functor m => m Command -> m Term
+µRA = fmap MuR
+
+lamRA :: Functor m => m Command -> m Term
+lamRA = fmap LamR
+
+
+covarA :: Applicative m => Var Index -> m Coterm
+covarA = pure . Covar
+
+µLA :: Functor m => m Command -> m Coterm
+µLA = fmap MuL
+
+sumLA
+  :: Applicative m
+  => m Coterm
+  -> m Coterm
+  -> m Coterm
+sumLA = liftA2 SumL
+
+prdL1A
+  :: Applicative m
+  => m Coterm
+  -> m Coterm
+prdL1A = fmap PrdL1
+
+prdL2A
+  :: Applicative m
+  => m Coterm
+  -> m Coterm
+prdL2A = fmap PrdL2
+
+
+(.||.) :: Applicative m => m Term -> m Coterm -> m Command
+(.||.) = liftA2 (:|:)
+
+infix 1 .||.
+
+letA :: Applicative m => m Term -> m Command -> m Command
+letA = liftA2 Let
 
 
 -- Interpreters
