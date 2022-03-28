@@ -36,10 +36,10 @@ import           GHC.Stack
 -- Unification
 
 -- FIXME: we don’t get good source references during unification
-unify :: (HasCallStack, Has (Throw ErrReason) sig m) => Exp Type -> Act Type -> Elab m Type
+unify :: (HasCallStack, Has (Reader ElabContext) sig m, Has (State (Subst Type)) sig m, Has (Throw ErrReason) sig m, Has (Writer Usage) sig m) => Exp Type -> Act Type -> m Type
 unify t1 t2 = runUnify t1 t2 (unifyType (getExp t1) (getAct t2))
 
-runUnify :: Has (Throw ErrReason) sig m => Exp Type -> Act Type -> ThrowC ErrReason (WithCallStack UnifyErrReason) (Elab m) a -> Elab m a
+runUnify :: Has (Throw ErrReason) sig m => Exp Type -> Act Type -> ThrowC ErrReason (WithCallStack UnifyErrReason) m a -> m a
 runUnify t1 t2 = runThrow (withCallStack (\ r -> throwError (UnifyType r (Right <$> t1) t2)))
 
 runUnifyMaybe :: Applicative m => ErrorC (WithCallStack UnifyErrReason) m a -> m (Maybe a)

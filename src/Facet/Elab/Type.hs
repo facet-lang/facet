@@ -30,14 +30,14 @@ import qualified Facet.Surface.Type.Expr as S
 import           Facet.Syntax as S hiding (context_)
 import qualified Facet.Type.Expr as TX
 
-tvar :: (Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason) sig m) => QName -> Elab m (TX.Type :==> Kind)
+tvar :: (Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason) sig m) => QName -> m (TX.Type :==> Kind)
 tvar n = views context_ (lookupInContext n) >>= \case
   [(n', Left _K)] -> pure (TX.Var (Free (Right n')) :==> _K)
   _               -> resolveQ n >>= \case
     q :=: DSubmodule _ _K -> pure $ TX.Var (Global q) :==> _K
     _                     -> freeVariable n
 
-ivar :: (Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason) sig m) => QName -> Elab m (RName :==> Kind)
+ivar :: (Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason) sig m) => QName -> m (RName :==> Kind)
 ivar n = resolveQ n >>= \case
     q :=: DSubmodule (SInterface _) _K -> pure $ q :==> _K
     _                                  -> freeVariable n
@@ -47,19 +47,19 @@ _String :: Applicative m => m (TX.Type :==> Kind)
 _String = pure $ TX.String :==> KType
 
 
-forAll :: Has (Throw ErrReason) sig m => Name ::: Kind -> Elab m (TX.Type :==> Kind) -> Elab m (TX.Type :==> Kind)
+forAll :: (Has (Reader ElabContext) sig m, Has (Throw ErrReason) sig m) => Name ::: Kind -> m (TX.Type :==> Kind) -> m (TX.Type :==> Kind)
 forAll (n ::: t) b = do
   b' <- n :==> t ||- switch b <==: KType
   pure $ TX.ForAll n t b' :==> KType
 
-arrow :: Has (Throw ErrReason) sig m => (a -> b -> c) -> Elab m (a :==> Kind) -> Elab m (b :==> Kind) -> Elab m (c :==> Kind)
+arrow :: (Has (Reader ElabContext) sig m, Has (Throw ErrReason) sig m) => (a -> b -> c) -> m (a :==> Kind) -> m (b :==> Kind) -> m (c :==> Kind)
 arrow mk a b = do
   a' <- switch a <==: KType
   b' <- switch b <==: KType
   pure $ mk a' b' :==> KType
 
 
-app :: Has (Throw ErrReason) sig m => (a -> b -> c) -> Elab m (a :==> Kind) -> Elab m (b :==> Kind) -> Elab m (c :==> Kind)
+app :: (Has (Reader ElabContext) sig m, Has (Throw ErrReason) sig m) => (a -> b -> c) -> m (a :==> Kind) -> m (b :==> Kind) -> m (c :==> Kind)
 app mk f a = do
   f' :==> _F <- f
   (_, _A, _B) <- assertTypeConstructor _F
@@ -68,7 +68,7 @@ app mk f a = do
   pure $ mk f' a' :==> _B
 
 
-comp :: Has (Throw ErrReason) sig m => [Elab m (Interface TX.Type :==> Kind)] -> Elab m (TX.Type :==> Kind) -> Elab m (TX.Type :==> Kind)
+comp :: (Has (Reader ElabContext) sig m, Has (Throw ErrReason) sig m) => [m (Interface TX.Type :==> Kind)] -> m (TX.Type :==> Kind) -> m (TX.Type :==> Kind)
 comp s t = do
   s' <- traverse ((<==: KInterface) . switch) s
   -- FIXME: polarize types and check that this is a value type being returned
@@ -76,7 +76,7 @@ comp s t = do
   pure $ TX.Comp (fromInterfaces s') t' :==> KType
 
 
-synthType :: (Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason) sig m) => S.Ann S.Type -> Elab m (TX.Type :==> Kind)
+synthType :: (Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason) sig m) => S.Ann S.Type -> m (TX.Type :==> Kind)
 synthType (S.Ann s _ e) = pushSpan s $ case e of
   S.TVar n          -> tvar n
   S.TString         -> Facet.Elab.Type._String
@@ -89,7 +89,7 @@ synthType (S.Ann s _ e) = pushSpan s $ case e of
     S.Zero -> zero
     S.One  -> one
 
-synthInterface :: (Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason) sig m) => S.Ann (S.Interface (S.Ann S.Type)) -> Elab m (Interface TX.Type :==> Kind)
+synthInterface :: (Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason) sig m) => S.Ann (S.Interface (S.Ann S.Type)) -> m (Interface TX.Type :==> Kind)
 synthInterface (S.Ann s _ (S.Interface h sp)) = pushSpan s $ do
   -- FIXME: check that the application actually result in an Interface
   h' :==> _ <- ivar h

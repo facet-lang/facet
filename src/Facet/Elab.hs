@@ -108,7 +108,7 @@ meta :: Has (State (Subst Type)) sig m => Kind -> m Meta
 meta _T = state (declareMeta @Type)
 
 
-instantiate :: Algebra sig m => (a -> TX.Type -> a) -> a ::: Type -> Elab m (a ::: Type)
+instantiate :: Has (State (Subst Type)) sig m => (a -> TX.Type -> a) -> a ::: Type -> m (a ::: Type)
 instantiate inst = go
   where
   go (e ::: _T) = case _T of
