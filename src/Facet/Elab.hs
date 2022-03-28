@@ -41,6 +41,7 @@ module Facet.Elab
 , warn
   -- * Unification
 , StaticContext(..)
+, module_
 , ElabContext(..)
 , context_
 , sig_
@@ -345,6 +346,9 @@ data StaticContext = StaticContext
   , module' :: Module
   , source  :: Source
   }
+
+module_ :: Lens' StaticContext Module
+module_ = lens module' (\ s module' -> s{ module' })
 
 data ElabContext = ElabContext
   { context :: Context
