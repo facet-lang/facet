@@ -24,8 +24,6 @@ module Facet.Elab
 , UnifyErrReason(..)
 , _Mismatch
 , _Occurs
-, err
-, makeErr
 , mismatchTypes
 , mismatchKinds
 , couldNotUnifyKinds
@@ -63,7 +61,7 @@ import           Control.Carrier.Reader
 import           Control.Carrier.State.Church
 import           Control.Carrier.Writer.Church
 import           Control.Effect.Choose
-import           Control.Monad (unless, (<=<))
+import           Control.Monad (unless)
 import           Data.Foldable (for_)
 import           Facet.Context hiding (empty)
 import qualified Facet.Context as Context (empty)
@@ -263,40 +261,29 @@ applySubst ctx subst r = case r of
   roundtrip = apply subst (toEnv ctx)
 
 
-err :: Has (Throw ErrReason) sig m => ErrReason -> m a
-err = throwError <=< makeErr
-
-makeErr :: Has (Throw ErrReason) sig m => ErrReason -> m ErrReason
-makeErr = pure
--- makeErr reason = do
---   StaticContext{ source } <- ask
---   ElabContext{ context, sig, spans } <- ask
---   subst <- get
---   pure $ Err (maybe source (slice source) (peek spans)) (applySubst context subst reason) context subst sig GHC.Stack.callStack
-
 mismatchTypes :: Has (Throw ErrReason) sig m => Exp (Either String Type) -> Act Type -> m a
-mismatchTypes exp act = withFrozenCallStack $ err $ UnifyType Mismatch exp act
+mismatchTypes exp act = withFrozenCallStack $ throwError $ UnifyType Mismatch exp act
 
 mismatchKinds :: Has (Throw ErrReason) sig m => Exp (Either String Kind) -> Act Kind -> m a
-mismatchKinds exp act = withFrozenCallStack $ err $ UnifyKind exp act
+mismatchKinds exp act = withFrozenCallStack $ throwError $ UnifyKind exp act
 
 couldNotUnifyKinds :: Has (Throw ErrReason) sig m => Exp Kind -> Act Kind -> m a
 couldNotUnifyKinds t1 t2 = withFrozenCallStack $ mismatchKinds (Right <$> t1) t2
 
 couldNotSynthesize :: Has (Throw ErrReason) sig m => m a
-couldNotSynthesize = withFrozenCallStack $ err CouldNotSynthesize
+couldNotSynthesize = withFrozenCallStack $ throwError CouldNotSynthesize
 
 resourceMismatch :: Has (Throw ErrReason) sig m => Name -> Quantity -> Quantity -> m a
-resourceMismatch n exp act = withFrozenCallStack $ err $ ResourceMismatch n exp act
+resourceMismatch n exp act = withFrozenCallStack $ throwError $ ResourceMismatch n exp act
 
 freeVariable :: Has (Throw ErrReason) sig m => QName -> m a
-freeVariable n = withFrozenCallStack $ err $ FreeVariable n
+freeVariable n = withFrozenCallStack $ throwError $ FreeVariable n
 
 ambiguousName :: Has (Throw ErrReason) sig m => QName -> [RName] -> m a
-ambiguousName n qs = withFrozenCallStack $ err $ AmbiguousName n qs
+ambiguousName n qs = withFrozenCallStack $ throwError $ AmbiguousName n qs
 
 missingInterface :: Has (Throw ErrReason) sig m => Interface Type -> m a
-missingInterface i = withFrozenCallStack $ err $ MissingInterface i
+missingInterface i = withFrozenCallStack $ throwError $ MissingInterface i
 
 
 newtype ErrC m a = ErrC { runErr :: m a }

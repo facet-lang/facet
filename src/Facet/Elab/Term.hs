@@ -146,7 +146,7 @@ varS n = views context_ (lookupInContext n) >>= \case
 
 
 hole :: Has (Throw ErrReason) sig m => Name -> Type <==: Elab m a
-hole n = Check $ \ _T -> withFrozenCallStack $ err $ Hole n _T
+hole n = Check $ \ _T -> withFrozenCallStack $ throwError $ Hole n _T
 
 
 tlam :: Has (Throw ErrReason) sig m => Type <==: Elab m Term -> Type <==: Elab m Term
