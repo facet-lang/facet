@@ -401,7 +401,7 @@ letrec getter key projection initial final = do
 assertQuantifier :: Has (Throw ErrReason) sig m => Type -> Elab m (Name, Kind, Type -> Type)
 assertQuantifier = assertMatch mismatchTypes _ForAll "{_} -> _"
 
--- | Expect a tacit (non-variable-binding) lamction type.
+-- | Expect a tacit (non-variable-binding) function type.
 assertTacitFunction :: Has (Throw ErrReason) sig m => Type -> Elab m (Maybe Name, Quantity, Type, Type)
 assertTacitFunction = assertMatch mismatchTypes _Arrow "_ -> _"
 
