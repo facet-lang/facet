@@ -124,7 +124,7 @@ globalS (q ::: _T) = do
 -- FIXME: do we need to instantiate here to deal with rank-n applications?
 -- FIXME: effect ops not in the sig are reported as not in scope
 -- FIXME: effect ops in the sig are available whether or not they’re in scope
-var :: Has (Throw ErrReason) sig m => QName -> Elab m (Term :==> Type)
+var :: (Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason) sig m) => QName -> Elab m (Term :==> Type)
 var n = views context_ (lookupInContext n) >>= \case
   [(n', Right (q, _T))] -> use n' q $> (Var (Free n') :==> _T)
   _                     -> resolveQ n >>= \case
@@ -134,7 +134,7 @@ var n = views context_ (lookupInContext n) >>= \case
 -- FIXME: do we need to instantiate here to deal with rank-n applications?
 -- FIXME: effect ops not in the sig are reported as not in scope
 -- FIXME: effect ops in the sig are available whether or not they’re in scope
-varS :: ( Has (Throw ErrReason) sig m, SQ.Sequent t c d, Applicative i) =>QName -> Elab m (i t :==> Type)
+varS :: (Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason) sig m, SQ.Sequent t c d, Applicative i) =>QName -> Elab m (i t :==> Type)
 varS n = views context_ (lookupInContext n) >>= \case
   [(n', Right (q, _T))] -> do
     use n' q
@@ -197,10 +197,11 @@ let' p a b = Check $ \ _B -> do
   pure $ Let p' a' b'
 
 
-comp :: Has (Throw ErrReason) sig m => Type <==: Elab m Term -> Type <==: Elab m Term
+comp :: (Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason) sig m) => Type <==: Elab m Term -> Type <==: Elab m Term
 comp b = Check $ \ _T -> do
   (sig, _B) <- assertComp _T
-  StaticContext{ graph, module' } <- ask
+  graph <- ask
+  module' <- ask
   let interfacePattern :: Has (Throw ErrReason) sig m => Interface Type -> Elab m (RName :=: (Name :==> Type))
       interfacePattern (Interface n _) = maybe (freeVariable (toQ n)) (\ (n' :=: _T) -> pure ((n .:. n') :=: (n' :==> _T))) (listToMaybe (scopeToList . tm =<< unDInterface . def =<< lookupQ graph module' (toQ n)))
   p' <- traverse interfacePattern (interfaces sig)
@@ -221,7 +222,7 @@ varP n = Bind $ \ _A k -> k (PVar (n :==> wrap _A))
     T.Comp sig _A -> T.Arrow Nothing Many (T.Ne (Global (NE.FromList ["Data", "Unit"] :.: U "Unit")) Nil) (T.Comp sig _A)
     _T            -> _T
 
-conP :: Has (Throw ErrReason) sig m => QName -> [Bind m (Pattern (Name :==> Type))] -> Bind m (Pattern (Name :==> Type))
+conP :: (Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason) sig m) => QName -> [Bind m (Pattern (Name :==> Type))] -> Bind m (Pattern (Name :==> Type))
 conP n fs = Bind $ \ _A k -> do
   n' :=: _ ::: _T <- resolveC n
   _T' <- maybe (pure _T) (foldl' (\ _T _A -> do t <- _T ; (_, _, b) <- assertQuantifier t ; pure (b _A)) (pure _T) . snd) (unNeutral _A)
@@ -245,7 +246,7 @@ allP n = Bind $ \ _A k -> do
 
 -- Expression elaboration
 
-synthExpr :: (HasCallStack, Has (Throw ErrReason :+: Write Warn) sig m) => S.Ann S.Expr -> Elab m (Term :==> Type)
+synthExpr :: (HasCallStack, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason :+: Write Warn) sig m) => S.Ann S.Expr -> Elab m (Term :==> Type)
 synthExpr = let ?callStack = popCallStack GHC.Stack.callStack in withSpan $ \case
   S.Var n    -> var n
   S.App f a  -> synthApp f a
@@ -255,13 +256,13 @@ synthExpr = let ?callStack = popCallStack GHC.Stack.callStack in withSpan $ \cas
   S.Lam{}    -> nope
   where
   nope = couldNotSynthesize
-  synthApp :: Has (Throw ErrReason :+: Write Warn) sig m => S.Ann S.Expr -> S.Ann S.Expr -> Elab m (Term :==> Type)
+  synthApp :: (Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason :+: Write Warn) sig m) => S.Ann S.Expr -> S.Ann S.Expr -> Elab m (Term :==> Type)
   synthApp f a = app App (synthExpr f) (checkExpr a)
-  synthAs :: (HasCallStack, Has (Throw ErrReason :+: Write Warn) sig m) => S.Ann S.Expr -> S.Ann S.Type -> Elab m (Term :==> Type)
+  synthAs :: (HasCallStack, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason :+: Write Warn) sig m) => S.Ann S.Expr -> S.Ann S.Type -> Elab m (Term :==> Type)
   synthAs t _T = as (checkExpr t ::: do { _T :==> _K <- synthType _T ; (:==> _K) <$> evalTExpr _T })
 
 
-checkExpr :: (HasCallStack, Has (Throw ErrReason :+: Write Warn) sig m) => S.Ann S.Expr -> Type <==: Elab m Term
+checkExpr :: (HasCallStack, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason :+: Write Warn) sig m) => S.Ann S.Expr -> Type <==: Elab m Term
 checkExpr expr = let ?callStack = popCallStack GHC.Stack.callStack in withSpanC expr $ \case
   S.Hole n   -> hole n
   S.Lam cs   -> checkLam cs
@@ -270,17 +271,17 @@ checkExpr expr = let ?callStack = popCallStack GHC.Stack.callStack in withSpanC 
   S.As{}     -> switch (synthExpr expr)
   S.String{} -> switch (synthExpr expr)
 
-checkLam :: (HasCallStack, Has (Throw ErrReason :+: Write Warn) sig m) => [S.Clause] -> Type <==: Elab m Term
+checkLam :: (HasCallStack, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason :+: Write Warn) sig m) => [S.Clause] -> Type <==: Elab m Term
 checkLam cs = lam (snd vs)
   where
-  vs :: Has (Throw ErrReason :+: Write Warn) sig m => ([QName :=: (Type <==: Elab m Term)], [(Bind m (Pattern (Name :==> Type)), Type <==: Elab m Term)])
+  vs :: (Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason :+: Write Warn) sig m) => ([QName :=: (Type <==: Elab m Term)], [(Bind m (Pattern (Name :==> Type)), Type <==: Elab m Term)])
   vs = partitionEithers (map (\ (S.Clause (S.Ann _ _ p) b) -> case p of
     S.PVal p                          -> Right (bindPattern p, checkExpr b)
     S.PEff (S.Ann s _ (S.POp n fs k)) -> Left $ n :=: Check (\ _T -> pushSpan s (foldr (lam1 . bindPattern) (checkExpr b) (fromList fs:>k) <==: _T))) cs)
 
 
 -- FIXME: check for unique variable names
-bindPattern :: (HasCallStack, Has (Throw ErrReason :+: Write Warn) sig m) => S.Ann S.ValPattern -> Bind m (Pattern (Name :==> Type))
+bindPattern :: (HasCallStack, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason :+: Write Warn) sig m) => S.Ann S.ValPattern -> Bind m (Pattern (Name :==> Type))
 bindPattern = withSpanB $ \case
   S.PWildcard -> wildcardP
   S.PVar n    -> varP n
@@ -318,7 +319,7 @@ patternForArgType = \case
 -- Declarations
 
 elabDataDef
-  :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source :+: Throw ErrReason :+: Write Warn) sig m)
+  :: (HasCallStack, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason :+: Write Warn) sig m)
   => [S.Ann (Name ::: S.Ann S.Type)]
   -> Kind <==: m [Name :=: Def]
 -- FIXME: check that all constructors return the datatype.
@@ -330,7 +331,7 @@ elabDataDef constructors = Check $ \ _K -> do
     pure $ n :=: DTerm (Just con') c_T
 
 elabInterfaceDef
-  :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source :+: Throw ErrReason :+: Write Warn) sig m)
+  :: (HasCallStack, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason :+: Write Warn) sig m)
   => [S.Ann (Name ::: S.Ann S.Type)]
   -> Kind <==: m [Name :=: Type]
 elabInterfaceDef constructors = Check $ \ _K -> do
@@ -340,7 +341,7 @@ elabInterfaceDef constructors = Check $ \ _K -> do
 
 -- FIXME: add a parameter for the effect signature.
 elabTermDef
-  :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source :+: Throw ErrReason :+: Write Warn) sig m)
+  :: (HasCallStack, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason :+: Write Warn) sig m)
   => S.Ann S.Expr
   -> Type <==: m Term
 elabTermDef expr@(S.Ann s _ _) = Check $ \ _T -> do

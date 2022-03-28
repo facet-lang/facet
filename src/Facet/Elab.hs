@@ -40,8 +40,6 @@ module Facet.Elab
 , WarnReason(..)
 , warn
   -- * Unification
-, StaticContext(..)
-, module_
 , ElabContext(..)
 , context_
 , sig_
@@ -122,19 +120,19 @@ instantiate inst = go
 
 
 resolveWith
-  :: (Has (Reader ElabContext) sig m, Has (Reader StaticContext) sig m, Has (Throw ErrReason) sig m)
+  :: (Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason) sig m)
   => (forall sig m . Has (Choose :+: Empty) sig m => Name -> Module -> m (RName :=: d))
   -> QName
   -> m (RName :=: d)
-resolveWith lookup n = asks (\ StaticContext{ module', graph } -> lookupWith lookup graph module' n) >>= \case
+resolveWith lookup n = ask >>= \ graph -> asks (\ module' -> lookupWith lookup graph module' n) >>= \case
   []  -> freeVariable n
   [v] -> pure v
   ds  -> ambiguousName n (map nm ds)
 
-resolveC :: (Has (Reader ElabContext) sig m, Has (Reader StaticContext) sig m, Has (Throw ErrReason) sig m) => QName -> m (RName :=: Maybe Term ::: Type)
+resolveC :: (Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason) sig m) => QName -> m (RName :=: Maybe Term ::: Type)
 resolveC = resolveWith lookupC
 
-resolveQ :: (Has (Reader ElabContext) sig m, Has (Reader StaticContext) sig m, Has (Throw ErrReason) sig m) => QName -> m (RName :=: Def)
+resolveQ :: (Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason) sig m) => QName -> m (RName :=: Def)
 resolveQ = resolveWith lookupD
 
 lookupInContext :: Has (Choose :+: Empty) sig m => QName -> Context -> m (LName Index, Either Kind (Quantity, Type))
@@ -322,9 +320,9 @@ data WarnReason
   | RedundantVariable Name
 
 
-warn :: Has (Write Warn) sig m => WarnReason -> Elab m ()
+warn :: (Has (Reader Source) sig m, Has (Write Warn) sig m) => WarnReason -> Elab m ()
 warn reason = do
-  StaticContext{ source } <- ask
+  source <- ask
   ElabContext{ spans } <- ask
   write $ Warn (maybe source (slice source) (peek spans)) reason
 
@@ -339,16 +337,6 @@ assertFunction = assertMatch mismatchTypes _Arrow "_ -> _"
 
 
 -- Unification
-
--- | Context which doesn’t change during elaboration of a single term.
-data StaticContext = StaticContext
-  { graph   :: Graph
-  , module' :: Module
-  , source  :: Source
-  }
-
-module_ :: Lens' StaticContext Module
-module_ = lens module' (\ s module' -> s{ module' })
 
 data ElabContext = ElabContext
   { context :: Context
@@ -368,23 +356,21 @@ spans_ = lens spans (\ e spans -> e{ spans })
 
 -- Machinery
 
-newtype Elab m a = Elab { runElab :: ReaderC ElabContext (ReaderC StaticContext (WriterC Usage (StateC (Subst Type) m))) a }
-  deriving (Algebra (Reader ElabContext :+: Reader StaticContext :+: Writer Usage :+: State (Subst Type) :+: sig), Applicative, Functor, Monad)
+newtype Elab m a = Elab { runElab :: ReaderC ElabContext (WriterC Usage (StateC (Subst Type) m)) a }
+  deriving (Algebra (Reader ElabContext :+: Writer Usage :+: State (Subst Type) :+: sig), Applicative, Functor, Monad)
 
-elabWith :: Has (Reader Graph :+: Reader Module :+: Reader Source) sig m => (Subst Type -> a -> m b) -> Elab m a -> m b
+elabWith :: (Subst Type -> a -> m b) -> Elab m a -> m b
 elabWith k m = runState k mempty . runWriter (const pure) $ do
-  (graph, module', source) <- (,,) <$> ask <*> ask <*> ask
-  let stat = StaticContext{ graph, module', source }
-      ctx  = ElabContext{ context = Context.empty, sig = mempty, spans = Nil }
-  runReader stat . runReader ctx . runElab $ m
+  let ctx  = ElabContext{ context = Context.empty, sig = mempty, spans = Nil }
+  runReader ctx . runElab $ m
 
-elabKind :: Has (Reader Graph :+: Reader Module :+: Reader Source) sig m => Elab m Kind -> m Kind
+elabKind :: Applicative m => Elab m Kind -> m Kind
 elabKind = elabWith (const pure)
 
-elabType :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source) sig m) => Elab m TX.Type -> m Type
+elabType :: (HasCallStack, Applicative m) => Elab m TX.Type -> m Type
 elabType = elabWith (\ subst t -> pure (TN.eval subst Env.empty t))
 
-elabTerm :: Has (Reader Graph :+: Reader Module :+: Reader Source) sig m => Elab m Term -> m Term
+elabTerm :: Applicative m => Elab m Term -> m Term
 elabTerm = elabWith (const pure)
 
 elabSynthTerm :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source) sig m) => Elab m (Term :==> Type) -> m (Term :==> Type)

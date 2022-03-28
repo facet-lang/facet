@@ -18,6 +18,7 @@ import           Data.Foldable (foldl')
 import           Facet.Elab
 import           Facet.Functor.Check
 import           Facet.Functor.Synth
+import           Facet.Graph (Graph)
 import           Facet.Interface
 import           Facet.Kind
 import           Facet.Lens (views)
@@ -29,14 +30,14 @@ import qualified Facet.Surface.Type.Expr as S
 import           Facet.Syntax as S hiding (context_)
 import qualified Facet.Type.Expr as TX
 
-tvar :: Has (Throw ErrReason) sig m => QName -> Elab m (TX.Type :==> Kind)
+tvar :: (Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason) sig m) => QName -> Elab m (TX.Type :==> Kind)
 tvar n = views context_ (lookupInContext n) >>= \case
   [(n', Left _K)] -> pure (TX.Var (Free (Right n')) :==> _K)
   _               -> resolveQ n >>= \case
     q :=: DSubmodule _ _K -> pure $ TX.Var (Global q) :==> _K
     _                     -> freeVariable n
 
-ivar :: Has (Throw ErrReason) sig m => QName -> Elab m (RName :==> Kind)
+ivar :: (Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason) sig m) => QName -> Elab m (RName :==> Kind)
 ivar n = resolveQ n >>= \case
     q :=: DSubmodule (SInterface _) _K -> pure $ q :==> _K
     _                                  -> freeVariable n
@@ -75,7 +76,7 @@ comp s t = do
   pure $ TX.Comp (fromInterfaces s') t' :==> KType
 
 
-synthType :: Has (Throw ErrReason) sig m => S.Ann S.Type -> Elab m (TX.Type :==> Kind)
+synthType :: (Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason) sig m) => S.Ann S.Type -> Elab m (TX.Type :==> Kind)
 synthType (S.Ann s _ e) = pushSpan s $ case e of
   S.TVar n          -> tvar n
   S.TString         -> Facet.Elab.Type._String
@@ -88,7 +89,7 @@ synthType (S.Ann s _ e) = pushSpan s $ case e of
     S.Zero -> zero
     S.One  -> one
 
-synthInterface :: Has (Throw ErrReason) sig m => S.Ann (S.Interface (S.Ann S.Type)) -> Elab m (Interface TX.Type :==> Kind)
+synthInterface :: (Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason) sig m) => S.Ann (S.Interface (S.Ann S.Type)) -> Elab m (Interface TX.Type :==> Kind)
 synthInterface (S.Ann s _ (S.Interface h sp)) = pushSpan s $ do
   -- FIXME: check that the application actually result in an Interface
   h' :==> _ <- ivar h
