@@ -398,15 +398,15 @@ letrec getter key projection initial final = do
 
 -- Errors
 
-assertQuantifier :: Has (Throw ErrReason) sig m => Type -> Elab m (Name, Kind, Type -> Type)
+assertQuantifier :: Has (Throw ErrReason) sig m => Type -> m (Name, Kind, Type -> Type)
 assertQuantifier = assertMatch mismatchTypes _ForAll "{_} -> _"
 
 -- | Expect a tacit (non-variable-binding) function type.
-assertTacitFunction :: Has (Throw ErrReason) sig m => Type -> Elab m (Maybe Name, Quantity, Type, Type)
+assertTacitFunction :: Has (Throw ErrReason) sig m => Type -> m (Maybe Name, Quantity, Type, Type)
 assertTacitFunction = assertMatch mismatchTypes _Arrow "_ -> _"
 
 -- | Expect a computation type with effects.
-assertComp :: Has (Throw ErrReason) sig m => Type -> Elab m (Signature Type, Type)
+assertComp :: Has (Throw ErrReason) sig m => Type -> m (Signature Type, Type)
 assertComp = assertMatch mismatchTypes _Comp "[_] _"
 
 

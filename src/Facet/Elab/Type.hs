@@ -99,7 +99,7 @@ synthInterface (S.Ann s _ (S.Interface h sp)) = pushSpan s $ do
 
 -- Assertions
 
-assertTypeConstructor :: Has (Throw ErrReason) sig m => Kind -> Elab m (Maybe Name, Kind, Kind)
+assertTypeConstructor :: Has (Throw ErrReason) sig m => Kind -> m (Maybe Name, Kind, Kind)
 assertTypeConstructor = assertMatch mismatchKinds _KArrow "_ -> _"
 
 

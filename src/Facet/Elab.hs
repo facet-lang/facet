@@ -324,7 +324,7 @@ warn reason = do
 assertMatch :: Applicative m => (Exp (Either String b) -> Act s -> m a) -> Prism' s a -> String -> s -> m a
 assertMatch mismatch pat exp _T = maybe (mismatch (Exp (Left exp)) (Act _T)) pure (_T ^? pat)
 
-assertFunction :: Has (Throw ErrReason) sig m => Type -> Elab m (Maybe Name, Quantity, Type, Type)
+assertFunction :: Has (Throw ErrReason) sig m => Type -> m (Maybe Name, Quantity, Type, Type)
 assertFunction = assertMatch mismatchTypes _Arrow "_ -> _"
 
 
