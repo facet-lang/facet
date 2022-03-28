@@ -33,6 +33,7 @@ module Facet.Elab
 , missingInterface
 , assertMatch
 , assertFunction
+, ErrC(..)
   -- * Warnings
 , Warn(..)
 , WarnReason(..)
@@ -320,7 +321,7 @@ warn reason = do
 
 -- Patterns
 
-assertMatch :: (Exp (Either String b) -> Act s -> Elab m a) -> Prism' s a -> String -> s -> Elab m a
+assertMatch :: Applicative m => (Exp (Either String b) -> Act s -> m a) -> Prism' s a -> String -> s -> m a
 assertMatch mismatch pat exp _T = maybe (mismatch (Exp (Left exp)) (Act _T)) pure (_T ^? pat)
 
 assertFunction :: Has (Throw ErrReason) sig m => Type -> Elab m (Maybe Name, Quantity, Type, Type)
