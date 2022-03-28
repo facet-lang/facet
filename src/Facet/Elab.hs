@@ -16,7 +16,7 @@ module Facet.Elab
 , (||-)
   -- * Errors
 , pushSpan
-, Err(..)
+-- , Err(..)
 , ErrReason(..)
 , _FreeVariable
 , _AmbiguousName
@@ -121,7 +121,7 @@ instantiate inst = go
 
 
 resolveWith
-  :: (HasCallStack, Has (Reader ElabContext) sig m, Has (Reader StaticContext) sig m, Has (State (Subst Type)) sig m, Has (Throw Err) sig m)
+  :: (Has (Reader ElabContext) sig m, Has (Reader StaticContext) sig m, Has (Throw ErrReason) sig m)
   => (forall sig m . Has (Choose :+: Empty) sig m => Name -> Module -> m (RName :=: d))
   -> QName
   -> m (RName :=: d)
@@ -130,10 +130,10 @@ resolveWith lookup n = asks (\ StaticContext{ module', graph } -> lookupWith loo
   [v] -> pure v
   ds  -> ambiguousName n (map nm ds)
 
-resolveC :: (HasCallStack, Has (Reader ElabContext) sig m, Has (Reader StaticContext) sig m, Has (State (Subst Type)) sig m, Has (Throw Err) sig m) => QName -> m (RName :=: Maybe Term ::: Type)
+resolveC :: (Has (Reader ElabContext) sig m, Has (Reader StaticContext) sig m, Has (Throw ErrReason) sig m) => QName -> m (RName :=: Maybe Term ::: Type)
 resolveC = resolveWith lookupC
 
-resolveQ :: (HasCallStack, Has (Reader ElabContext) sig m, Has (Reader StaticContext) sig m, Has (State (Subst Type)) sig m, Has (Throw Err) sig m) => QName -> m (RName :=: Def)
+resolveQ :: (Has (Reader ElabContext) sig m, Has (Reader StaticContext) sig m, Has (Throw ErrReason) sig m) => QName -> m (RName :=: Def)
 resolveQ = resolveWith lookupD
 
 lookupInContext :: Has (Choose :+: Empty) sig m => QName -> Context -> m (LName Index, Either Kind (Quantity, Type))
@@ -153,7 +153,7 @@ lookupInSig (m :. n) mod graph = foldMapC $ foldMapC (\ (Interface q@(m':.:_) _)
   interfaceScope (_ :=: d) = case d of { DSubmodule (SInterface defs) _K -> pure defs ; _ -> empty }
 
 
-(|-) :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err :+: Writer Usage) sig m) => (Quantity, Pattern (Name :==> Type)) -> m a -> m a
+(|-) :: Has (Reader ElabContext :+: Reader StaticContext :+: Throw ErrReason :+: Writer Usage) sig m => (Quantity, Pattern (Name :==> Type)) -> m a -> m a
 (q, p) |- b = do
   sigma <- asks scale
   d <- depth
@@ -198,14 +198,14 @@ pushSpan :: Has (Reader ElabContext) sig m => Span -> m a -> m a
 pushSpan = locally spans_ . flip (:>)
 
 
-data Err = Err
-  { source    :: Source
-  , reason    :: ErrReason
-  , context   :: Context
-  , subst     :: Subst Type
-  , sig       :: [Signature Type]
-  , callStack :: CallStack
-  }
+-- data Err = Err
+--   { source    :: Source
+--   , reason    :: ErrReason
+--   , context   :: Context
+--   , subst     :: Subst Type
+--   , sig       :: [Signature Type]
+--   , callStack :: CallStack
+--   }
 
 -- FIXME: not all of these need contexts/metacontexts.
 data ErrReason
@@ -249,61 +249,62 @@ _Occurs = prism' (uncurry Occurs) (\case
   Occurs v c -> Just (v, c)
   _          -> Nothing)
 
-applySubst :: Context -> Subst Type -> ErrReason -> ErrReason
-applySubst ctx subst r = case r of
-  FreeVariable{}       -> r
-  AmbiguousName{}      -> r
-  CouldNotSynthesize{} -> r
-  ResourceMismatch{}   -> r
-  -- NB: not substituting in @r@ because we want to retain the cyclic occurrence (and finitely)
-  UnifyType r exp act  -> UnifyType r (fmap roundtrip <$> exp) (roundtrip <$> act)
-  UnifyKind{}          -> r
-  Hole n t             -> Hole n (roundtrip t)
-  Invariant{}          -> r
-  MissingInterface i   -> MissingInterface (roundtrip <$> i)
-  where
-  roundtrip = apply subst (toEnv ctx)
+-- applySubst :: Context -> Subst Type -> ErrReason -> ErrReason
+-- applySubst ctx subst r = case r of
+--   FreeVariable{}       -> r
+--   AmbiguousName{}      -> r
+--   CouldNotSynthesize{} -> r
+--   ResourceMismatch{}   -> r
+--   -- NB: not substituting in @r@ because we want to retain the cyclic occurrence (and finitely)
+--   UnifyType r exp act  -> UnifyType r (fmap roundtrip <$> exp) (roundtrip <$> act)
+--   UnifyKind{}          -> r
+--   Hole n t             -> Hole n (roundtrip t)
+--   Invariant{}          -> r
+--   MissingInterface i   -> MissingInterface (roundtrip <$> i)
+--   where
+--   roundtrip = apply subst (toEnv ctx)
 
 
-err :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err) sig m) => ErrReason -> m a
+err :: Has (Throw ErrReason) sig m => ErrReason -> m a
 err = throwError <=< makeErr
 
-makeErr :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err) sig m) => ErrReason -> m Err
-makeErr reason = do
-  StaticContext{ source } <- ask
-  ElabContext{ context, sig, spans } <- ask
-  subst <- get
-  pure $ Err (maybe source (slice source) (peek spans)) (applySubst context subst reason) context subst sig GHC.Stack.callStack
+makeErr :: Has (Throw ErrReason) sig m => ErrReason -> m ErrReason
+makeErr = pure
+-- makeErr reason = do
+--   StaticContext{ source } <- ask
+--   ElabContext{ context, sig, spans } <- ask
+--   subst <- get
+--   pure $ Err (maybe source (slice source) (peek spans)) (applySubst context subst reason) context subst sig GHC.Stack.callStack
 
-mismatchTypes :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err) sig m) => Exp (Either String Type) -> Act Type -> m a
+mismatchTypes :: Has (Throw ErrReason) sig m => Exp (Either String Type) -> Act Type -> m a
 mismatchTypes exp act = withFrozenCallStack $ err $ UnifyType Mismatch exp act
 
-mismatchKinds :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err) sig m) => Exp (Either String Kind) -> Act Kind -> m a
+mismatchKinds :: Has (Throw ErrReason) sig m => Exp (Either String Kind) -> Act Kind -> m a
 mismatchKinds exp act = withFrozenCallStack $ err $ UnifyKind exp act
 
-couldNotUnifyKinds :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err) sig m) => Exp Kind -> Act Kind -> m a
+couldNotUnifyKinds :: Has (Throw ErrReason) sig m => Exp Kind -> Act Kind -> m a
 couldNotUnifyKinds t1 t2 = withFrozenCallStack $ mismatchKinds (Right <$> t1) t2
 
-couldNotSynthesize :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err) sig m) => m a
+couldNotSynthesize :: Has (Throw ErrReason) sig m => m a
 couldNotSynthesize = withFrozenCallStack $ err CouldNotSynthesize
 
-resourceMismatch :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err) sig m) => Name -> Quantity -> Quantity -> m a
+resourceMismatch :: Has (Throw ErrReason) sig m => Name -> Quantity -> Quantity -> m a
 resourceMismatch n exp act = withFrozenCallStack $ err $ ResourceMismatch n exp act
 
-freeVariable :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err) sig m) => QName -> m a
+freeVariable :: Has (Throw ErrReason) sig m => QName -> m a
 freeVariable n = withFrozenCallStack $ err $ FreeVariable n
 
-ambiguousName :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err) sig m) => QName -> [RName] -> m a
+ambiguousName :: Has (Throw ErrReason) sig m => QName -> [RName] -> m a
 ambiguousName n qs = withFrozenCallStack $ err $ AmbiguousName n qs
 
-missingInterface :: (HasCallStack, Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err) sig m) => Interface Type -> m a
+missingInterface :: Has (Throw ErrReason) sig m => Interface Type -> m a
 missingInterface i = withFrozenCallStack $ err $ MissingInterface i
 
 
 newtype ErrC m a = ErrC { runErr :: m a }
   deriving (Applicative, Functor, Monad)
 
-instance Has (Reader ElabContext :+: Reader StaticContext :+: State (Subst Type) :+: Throw Err) sig m => Algebra (Throw ErrReason :+: sig) (ErrC m) where
+instance Has (Throw ErrReason) sig m => Algebra (Throw ErrReason :+: sig) (ErrC m) where
   alg hdl sig ctx = case sig of
     L (Throw e) -> err e
     R other     -> ErrC (alg (runErr . hdl) other ctx)
@@ -333,7 +334,7 @@ warn reason = do
 assertMatch :: (Exp (Either String b) -> Act s -> Elab m a) -> Prism' s a -> String -> s -> Elab m a
 assertMatch mismatch pat exp _T = maybe (mismatch (Exp (Left exp)) (Act _T)) pure (_T ^? pat)
 
-assertFunction :: (HasCallStack, Has (Throw Err) sig m) => Type -> Elab m (Maybe Name, Quantity, Type, Type)
+assertFunction :: Has (Throw ErrReason) sig m => Type -> Elab m (Maybe Name, Quantity, Type, Type)
 assertFunction = assertMatch mismatchTypes _Arrow "_ -> _"
 
 
