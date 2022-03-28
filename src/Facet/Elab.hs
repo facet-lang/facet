@@ -16,7 +16,7 @@ module Facet.Elab
 , (||-)
   -- * Errors
 , pushSpan
--- , Err(..)
+, Err(..)
 , ErrReason(..)
 , _FreeVariable
 , _AmbiguousName
@@ -196,14 +196,14 @@ pushSpan :: Has (Reader ElabContext) sig m => Span -> m a -> m a
 pushSpan = locally spans_ . flip (:>)
 
 
--- data Err = Err
---   { source    :: Source
---   , reason    :: ErrReason
---   , context   :: Context
---   , subst     :: Subst Type
---   , sig       :: [Signature Type]
---   , callStack :: CallStack
---   }
+data Err = Err
+  { source    :: Source
+  , reason    :: ErrReason
+  , context   :: Context
+  , subst     :: Subst Type
+  , sig       :: [Signature Type]
+  , callStack :: CallStack
+  }
 
 -- FIXME: not all of these need contexts/metacontexts.
 data ErrReason
