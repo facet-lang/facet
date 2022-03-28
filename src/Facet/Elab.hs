@@ -247,20 +247,20 @@ _Occurs = prism' (uncurry Occurs) (\case
   Occurs v c -> Just (v, c)
   _          -> Nothing)
 
--- applySubst :: Context -> Subst Type -> ErrReason -> ErrReason
--- applySubst ctx subst r = case r of
---   FreeVariable{}       -> r
---   AmbiguousName{}      -> r
---   CouldNotSynthesize{} -> r
---   ResourceMismatch{}   -> r
---   -- NB: not substituting in @r@ because we want to retain the cyclic occurrence (and finitely)
---   UnifyType r exp act  -> UnifyType r (fmap roundtrip <$> exp) (roundtrip <$> act)
---   UnifyKind{}          -> r
---   Hole n t             -> Hole n (roundtrip t)
---   Invariant{}          -> r
---   MissingInterface i   -> MissingInterface (roundtrip <$> i)
---   where
---   roundtrip = apply subst (toEnv ctx)
+applySubst :: Context -> Subst Type -> ErrReason -> ErrReason
+applySubst ctx subst r = case r of
+  FreeVariable{}       -> r
+  AmbiguousName{}      -> r
+  CouldNotSynthesize{} -> r
+  ResourceMismatch{}   -> r
+  -- NB: not substituting in @r@ because we want to retain the cyclic occurrence (and finitely)
+  UnifyType r exp act  -> UnifyType r (fmap roundtrip <$> exp) (roundtrip <$> act)
+  UnifyKind{}          -> r
+  Hole n t             -> Hole n (roundtrip t)
+  Invariant{}          -> r
+  MissingInterface i   -> MissingInterface (roundtrip <$> i)
+  where
+  roundtrip = apply subst (toEnv ctx)
 
 
 err :: Has (Throw ErrReason) sig m => ErrReason -> m a
@@ -302,9 +302,13 @@ missingInterface i = withFrozenCallStack $ err $ MissingInterface i
 newtype ErrC m a = ErrC { runErr :: m a }
   deriving (Applicative, Functor, Monad)
 
-instance Has (Throw ErrReason) sig m => Algebra (Throw ErrReason :+: sig) (ErrC m) where
+instance (Has (Reader ElabContext) sig m, Has (Reader Source) sig m, Has (State (Subst Type)) sig m, Has (Throw Err) sig m) => Algebra (Throw ErrReason :+: sig) (ErrC m) where
   alg hdl sig ctx = case sig of
-    L (Throw e) -> err e
+    L (Throw reason) -> do
+      source <- ask
+      ElabContext{ context, sig, spans } <- ask
+      subst <- get
+      throwError $ Err (maybe source (slice source) (peek spans)) (applySubst context subst reason) context subst sig GHC.Stack.callStack
     R other     -> ErrC (alg (runErr . hdl) other ctx)
 
 
