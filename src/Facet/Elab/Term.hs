@@ -319,33 +319,33 @@ patternForArgType = \case
 -- Declarations
 
 elabDataDef
-  :: (HasCallStack, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason :+: Write Warn) sig m)
+  :: (HasCallStack, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Reader Source) sig m, Has (Throw Err) sig m, Has (Write Warn) sig m)
   => [S.Ann (Name ::: S.Ann S.Type)]
   -> Kind <==: m [Name :=: Def]
 -- FIXME: check that all constructors return the datatype.
 elabDataDef constructors = Check $ \ _K -> do
   mname <- view name_
   for constructors $ \ (S.Ann _ _ (n ::: t)) -> do
-    c_T <- elabType $ abstractType (Type.switch (synthType t) <==: KType) _K
-    con' <- elabTerm $ check (abstractTerm (const (Con (mname :.: n) . toList)) ::: c_T)
+    c_T <- elabType $ runErr $ abstractType (Type.switch (synthType t) <==: KType) _K
+    con' <- elabTerm $ runErr $ check (abstractTerm (const (Con (mname :.: n) . toList)) ::: c_T)
     pure $ n :=: DTerm (Just con') c_T
 
 elabInterfaceDef
-  :: (HasCallStack, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason :+: Write Warn) sig m)
+  :: (HasCallStack, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Reader Source) sig m, Has (Throw Err) sig m)
   => [S.Ann (Name ::: S.Ann S.Type)]
   -> Kind <==: m [Name :=: Type]
 elabInterfaceDef constructors = Check $ \ _K -> do
   for constructors $ \ (S.Ann _ _ (n ::: t)) -> do
-    _K' <- elabType $ abstractType (Type.switch (synthType t) <==: KType) _K
+    _K' <- elabType $ runErr $ abstractType (Type.switch (synthType t) <==: KType) _K
     pure $ n :=: _K'
 
 -- FIXME: add a parameter for the effect signature.
 elabTermDef
-  :: (HasCallStack, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason :+: Write Warn) sig m)
+  :: (HasCallStack, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Reader Source) sig m, Has (Throw Err) sig m, Has (Write Warn) sig m)
   => S.Ann S.Expr
   -> Type <==: m Term
 elabTermDef expr@(S.Ann s _ _) = Check $ \ _T -> do
-  elabTerm $ pushSpan s $ check (go (checkExpr expr) ::: _T)
+  elabTerm $ runErr $ pushSpan s $ check (go (checkExpr expr) ::: _T)
   where
   go k = Check $ \ _T -> case _T of
     T.ForAll{}               -> check (tlam (go k) ::: _T)
@@ -359,7 +359,7 @@ elabTermDef expr@(S.Ann s _ _) = Check $ \ _T -> do
 -- Modules
 
 elabModule
-  :: (HasCallStack, Has (Reader Graph :+: Reader Source :+: Throw ErrReason :+: Write Warn) sig m)
+  :: (HasCallStack, Has (Reader Graph) sig m, Has (Reader Source) sig m, Has (Throw Err) sig m, Has (Write Warn) sig m)
   => S.Ann S.Module
   -> m Module
 elabModule (S.Ann _ _ (S.Module mname is os ds)) = execState (Module mname [] os (Scope mempty)) $ do
@@ -381,7 +381,7 @@ elabModule (S.Ann _ _ (S.Module mname is os ds)) = execState (Module mname [] os
       S.InterfaceDef os _K -> Nothing <$ elabScope dname _SInterface _K (elabInterfaceDef os) (pure . scopeFromList)
 
       S.TermDef t tele -> do
-        _T <- runModule $ elabType $ Type.switch (synthType tele) <==: KType
+        _T <- runModule $ elabType $ runErr $ Type.switch (synthType tele) <==: KType
         scope_.decls_.at dname .= Just (DTerm Nothing _T)
         pure (Just (dname, t, _T))
 

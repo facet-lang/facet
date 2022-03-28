@@ -4,50 +4,60 @@ module Facet.Notice.Elab
 , rethrowElabWarnings
 ) where
 
+import           Data.Foldable (foldl')
 import           Data.Semigroup (stimes)
 import qualified Facet.Carrier.Throw.Inject as L
 import qualified Facet.Carrier.Write.Inject as L
+import           Facet.Context (elems, toEnv)
+import qualified Facet.Context as C
 import           Facet.Elab as Elab
 import qualified Facet.Env as Env
+import           Facet.Functor.Synth
+import           Facet.Interface (interfaces)
+import           Facet.Name
 import           Facet.Notice as Notice hiding (level)
+import           Facet.Pattern
 import           Facet.Pretty
 import           Facet.Print as Print
-import           Facet.Semiring (Few(..))
+import           Facet.Semiring (Few(..), one, zero)
+import           Facet.Snoc
 import           Facet.Style
+import           Facet.Subst (metas)
 import           Facet.Syntax hiding (ann)
-import           Facet.Type.Norm (metavar)
+import           Facet.Type.Norm (apply, free, metavar)
+import           GHC.Stack (prettyCallStack)
 import           Prelude hiding (print, unlines)
 import           Silkscreen
 
 -- Elaboration
 
-rethrowElabErrors :: Applicative m => Options Print -> L.ThrowC (Notice (Doc Style)) ErrReason m a -> m a
+rethrowElabErrors :: Applicative m => Options Print -> L.ThrowC (Notice (Doc Style)) Err m a -> m a
 rethrowElabErrors opts = L.runThrow (pure . rethrow)
   where
-  rethrow reason = Notice.Notice (Just Error) [] (printErrReason opts mempty reason) []
-    -- [ nest 2 (pretty "Context" <\> concatWith (<\>) ctx)
-    -- , nest 2 (pretty "Metacontext" <\> concatWith (<\>) subst')
-    -- , nest 2 (pretty "Provided interfaces" <\> concatWith (<\>) sig')
-    -- , pretty (prettyCallStack callStack)
-    -- ]
+  rethrow Err{ callStack, context, reason, sig, subst } = Notice.Notice (Just Error) [] (printErrReason opts mempty reason)
+    [ nest 2 (pretty "Context" <\> concatWith (<\>) ctx)
+    , nest 2 (pretty "Metacontext" <\> concatWith (<\>) subst')
+    , nest 2 (pretty "Provided interfaces" <\> concatWith (<\>) sig')
+    , pretty (prettyCallStack callStack)
+    ]
     where
-    -- (_, _, printCtx, ctx) = foldl' combine (0, Env.empty, Env.empty, Nil) (elems context)
-    -- subst' = map (\ (m :=: v) -> getPrint (Print.meta m <+> pretty '=' <+> maybe (pretty '?') (print opts printCtx) v)) (metas subst)
-    -- sig' = getPrint . print opts printCtx . fmap (apply subst (toEnv context)) <$> (interfaces =<< sig)
-    -- combine (d, env, prints, ctx) (C.Kind (n :==> _K)) =
-    --   ( succ d
-    --   , env Env.|> PVar (n :=: free (LName d n))
-    --   , prints Env.|> PVar (n :=: intro n d)
-    --   , ctx :> getPrint (print opts prints (ann (intro n d ::: print opts prints _K))) )
-    -- combine (d, env, prints, ctx) (C.Type m _ p) =
-    --   ( succ d
-    --   , env Env.|> ((\ (n :==> _T) -> n :=: free (LName d n)) <$> p)
-    --   , prints Env.|> ((\ (n :==> _) -> n :=: intro n d) <$> p)
-    --   , ctx :> getPrint (print opts prints ((\ (n :==> _T) -> ann (intro n d ::: mult m (print opts prints (apply subst env _T)))) <$> p)) )
-  -- mult m
-  --   | m == zero = (pretty "0" <+>)
-  --   | m == one  = (pretty "1" <+>)
-  --   | otherwise = id
+    (_, _, printCtx, ctx) = foldl' combine (0, Env.empty, Env.empty, Nil) (elems context)
+    subst' = map (\ (m :=: v) -> getPrint (Print.meta m <+> pretty '=' <+> maybe (pretty '?') (print opts printCtx) v)) (metas subst)
+    sig' = getPrint . print opts printCtx . fmap (apply subst (toEnv context)) <$> (interfaces =<< sig)
+    combine (d, env, prints, ctx) (C.Kind (n :==> _K)) =
+      ( succ d
+      , env Env.|> PVar (n :=: free (LName d n))
+      , prints Env.|> PVar (n :=: intro n d)
+      , ctx :> getPrint (print opts prints (ann (intro n d ::: print opts prints _K))) )
+    combine (d, env, prints, ctx) (C.Type m _ p) =
+      ( succ d
+      , env Env.|> ((\ (n :==> _T) -> n :=: free (LName d n)) <$> p)
+      , prints Env.|> ((\ (n :==> _) -> n :=: intro n d) <$> p)
+      , ctx :> getPrint (print opts prints ((\ (n :==> _T) -> ann (intro n d ::: mult m (print opts prints (apply subst env _T)))) <$> p)) )
+  mult m
+    | m == zero = (pretty "0" <+>)
+    | m == one  = (pretty "1" <+>)
+    | otherwise = id
 
 
 printErrReason :: Options Print -> Env.Env Print -> ErrReason -> Doc Style
