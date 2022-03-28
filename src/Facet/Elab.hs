@@ -344,7 +344,6 @@ data StaticContext = StaticContext
   { graph   :: Graph
   , module' :: Module
   , source  :: Source
-  , scale   :: Quantity
   }
 
 data ElabContext = ElabContext
@@ -368,24 +367,24 @@ spans_ = lens spans (\ e spans -> e{ spans })
 newtype Elab m a = Elab { runElab :: ReaderC ElabContext (ReaderC StaticContext (WriterC Usage (StateC (Subst Type) m))) a }
   deriving (Algebra (Reader ElabContext :+: Reader StaticContext :+: Writer Usage :+: State (Subst Type) :+: sig), Applicative, Functor, Monad)
 
-elabWith :: Has (Reader Graph :+: Reader Module :+: Reader Source) sig m => Quantity -> (Subst Type -> a -> m b) -> Elab m a -> m b
-elabWith scale k m = runState k mempty . runWriter (const pure) $ do
+elabWith :: Has (Reader Graph :+: Reader Module :+: Reader Source) sig m => (Subst Type -> a -> m b) -> Elab m a -> m b
+elabWith k m = runState k mempty . runWriter (const pure) $ do
   (graph, module', source) <- (,,) <$> ask <*> ask <*> ask
-  let stat = StaticContext{ graph, module', source, scale }
+  let stat = StaticContext{ graph, module', source }
       ctx  = ElabContext{ context = Context.empty, sig = mempty, spans = Nil }
   runReader stat . runReader ctx . runElab $ m
 
 elabKind :: Has (Reader Graph :+: Reader Module :+: Reader Source) sig m => Elab m Kind -> m Kind
-elabKind = elabWith zero (const pure)
+elabKind = elabWith (const pure)
 
 elabType :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source) sig m) => Elab m TX.Type -> m Type
-elabType = elabWith zero (\ subst t -> pure (TN.eval subst Env.empty t))
+elabType = elabWith (\ subst t -> pure (TN.eval subst Env.empty t))
 
 elabTerm :: Has (Reader Graph :+: Reader Module :+: Reader Source) sig m => Elab m Term -> m Term
-elabTerm = elabWith one (const pure)
+elabTerm = elabWith (const pure)
 
 elabSynthTerm :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source) sig m) => Elab m (Term :==> Type) -> m (Term :==> Type)
-elabSynthTerm = elabWith one (\ subst (e :==> _T) -> pure (e :==> TN.eval subst Env.empty (runQuoter 0 (quote _T))))
+elabSynthTerm = elabWith (\ subst (e :==> _T) -> pure (e :==> TN.eval subst Env.empty (runQuoter 0 (quote _T))))
 
 elabSynthType :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source) sig m) => Elab m (TX.Type :==> Kind) -> m (Type :==> Kind)
-elabSynthType = elabWith zero (\ subst (_T :==> _K) -> pure (TN.eval subst Env.empty _T :==> _K))
+elabSynthType = elabWith (\ subst (_T :==> _K) -> pure (TN.eval subst Env.empty _T :==> _K))
