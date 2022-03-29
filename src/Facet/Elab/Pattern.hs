@@ -8,6 +8,7 @@ module Facet.Elab.Pattern
 , Column(..)
 , RowIndex
 , singleton
+, fromList
 ) where
 
 import           Control.Effect.Empty
@@ -79,3 +80,6 @@ type RowIndex = Int
 
 singleton :: RowIndex -> a -> Column a
 singleton row a = Column (replicate (row - 1) [] <> [[a]])
+
+fromList :: [a] -> Column a
+fromList = Column . map pure
