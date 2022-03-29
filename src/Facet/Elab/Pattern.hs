@@ -5,6 +5,7 @@ module Facet.Elab.Pattern
 , patterns_
   -- * Coverage judgement
 , compileClauses
+, Column(..)
 ) where
 
 import           Control.Effect.Empty
