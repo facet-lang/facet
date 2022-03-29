@@ -6,6 +6,8 @@ module Facet.Elab.Pattern
   -- * Coverage judgement
 , compileClauses
 , Column(..)
+, RowIndex
+, singleton
 ) where
 
 import           Control.Effect.Empty
@@ -72,3 +74,8 @@ newtype Column a = Column { getColumn :: [[a]] }
 
 instance Semigroup a => Semigroup (Column a) where
   as <> bs = Column (alignWith (these id id (<>)) (getColumn as) (getColumn bs))
+
+type RowIndex = Int
+
+singleton :: RowIndex -> a -> Column a
+singleton row a = Column (replicate (row - 1) [] <> [[a]])
