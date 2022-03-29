@@ -10,6 +10,8 @@ module Facet.Elab.Pattern
 import           Control.Effect.Empty
 import           Data.Foldable (fold)
 import           Data.Monoid (First(..))
+import           Data.Semialign (alignWith)
+import           Data.These (these)
 import           Data.Traversable (for)
 import           Facet.Name
 import qualified Facet.Sequent.Expr as X
@@ -63,3 +65,9 @@ match :: Has Empty sig m => Fold (Pattern Name) [Pattern Name] -> [Clause X.Term
 match o heads = forOf (traversed.patterns_) heads (\case
   p:ps | Just prefix <- preview o (instantiateHead p) -> pure (prefix <> ps)
   _                                                   -> empty)
+
+
+newtype Column a = Column { getColumn :: [[a]] }
+
+instance Semigroup a => Semigroup (Column a) where
+  as <> bs = Column (alignWith (these id id (<>)) (getColumn as) (getColumn bs))
