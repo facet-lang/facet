@@ -73,7 +73,7 @@ match o heads = forOf (traversed.patterns_) heads (\case
 newtype Column a = Column { getColumn :: IntMap.IntMap a }
 
 instance Semigroup a => Semigroup (Column a) where
-  as <> bs = Column (IntMap.unionWith (<>) (getColumn bs) (getColumn as))
+  as <> bs = Column (IntMap.unionWith (<>) (getColumn as) (getColumn bs))
 
 type RowIndex = Int
 
