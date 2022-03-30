@@ -15,8 +15,6 @@ import           Control.Effect.Empty
 import           Data.Foldable (fold)
 import qualified Data.IntMap as IntMap
 import           Data.Monoid (First(..))
-import           Data.Semialign (alignWith)
-import           Data.These (these)
 import           Data.Traversable (for)
 import           Facet.Name
 import qualified Facet.Sequent.Expr as X
@@ -75,7 +73,7 @@ match o heads = forOf (traversed.patterns_) heads (\case
 newtype Column a = Column { getColumn :: IntMap.IntMap a }
 
 instance Semigroup a => Semigroup (Column a) where
-  as <> bs = Column (alignWith (these id id (<>)) (getColumn as) (getColumn bs))
+  as <> bs = Column (IntMap.unionWith (<>) (getColumn bs) (getColumn as))
 
 type RowIndex = Int
 
