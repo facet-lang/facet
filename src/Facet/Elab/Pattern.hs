@@ -43,6 +43,8 @@ instantiateHead p              = p
 
 compileClauses :: Has Empty sig m => [X.Term] -> Type -> [Clause X.Term] -> m X.Term
 compileClauses ctx (_A :-> _T) heads = X.lamRA $ case _A of
+  -- FIXME: look variables up in @ctx@ instead of hard-coding de Bruijn indices
+  -- FIXME: make gensyms practical à la /I Am Not a Number, I Am a Free Variable/
   Opaque   -> (match (_Var._Nothing.to (const [])) heads >>= compileClauses ctx _T) X..||. X.covarA (Free 0)
   _ :-> _  -> (match (_Var._Nothing.to (const [])) heads >>= compileClauses ctx _T) X..||. X.covarA (Free 0)
   One      -> (match (_Unit.to (const [])) heads >>= compileClauses ctx _T) X..||. X.covarA (Free 0)
@@ -59,6 +61,8 @@ compileClauses ctx (_A :-> _T) heads = X.lamRA $ case _A of
         _           -> empty
       _    -> empty)
     X.varA (Free 1) X..||. X.sumLA
+      -- FIXME: n-ary sums
+      -- FIXME: don't create extra lambdas for the recursive calls
       (X.µLA (compileClauses ctx (_A :-> _T) (heads' `at` 0) X..||. X.covarA (Free 0)))
       (X.µLA (compileClauses ctx (_B :-> _T) (heads' `at` 1) X..||. X.covarA (Free 0)))
 compileClauses _ _T heads
