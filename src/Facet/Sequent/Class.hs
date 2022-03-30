@@ -113,7 +113,7 @@ sumLA
   => m (i c)
   -> m (i c)
   -> m (i c)
-sumLA l r = liftA2 sumL <$> l <*> r
+sumLA = liftA2 (liftA2 sumL)
 
 -- sumLA
 --   :: (Sequent t c d, Applicative i, Applicative m)
