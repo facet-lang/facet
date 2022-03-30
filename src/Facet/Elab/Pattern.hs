@@ -9,6 +9,7 @@ module Facet.Elab.Pattern
 , RowIndex
 , singleton
 , fromList
+, at
 ) where
 
 import           Control.Effect.Empty
@@ -84,3 +85,6 @@ singleton row a = Column (IntMap.singleton row a)
 -- | Construct a dense 'Column' from a list of values.
 fromList :: [a] -> Column a
 fromList = Column . IntMap.fromList . zipWith (\ a b -> (a, b)) [0..]
+
+at :: Column a -> RowIndex -> a
+at (Column m) i = m IntMap.! i
