@@ -13,6 +13,7 @@ module Facet.Elab.Pattern
 
 import           Control.Effect.Empty
 import           Data.Foldable (fold)
+import qualified Data.IntMap as IntMap
 import           Data.Monoid (First(..))
 import           Data.Semialign (alignWith)
 import           Data.These (these)
@@ -71,7 +72,7 @@ match o heads = forOf (traversed.patterns_) heads (\case
   _                                                   -> empty)
 
 
-newtype Column a = Column { getColumn :: [[a]] }
+newtype Column a = Column { getColumn :: IntMap.IntMap [a] }
 
 instance Semigroup a => Semigroup (Column a) where
   as <> bs = Column (alignWith (these id id (<>)) (getColumn as) (getColumn bs))
@@ -80,8 +81,8 @@ type RowIndex = Int
 
 -- | Construct a sparse 'Column' from a single value.
 singleton :: RowIndex -> a -> Column a
-singleton row a = Column (replicate (row - 1) [] <> [[a]])
+singleton row a = Column (IntMap.singleton row [a])
 
 -- | Construct a dense 'Column' from a list of values.
 fromList :: [a] -> Column a
-fromList = Column . map pure
+fromList = Column . IntMap.fromList . zipWith (\ a b -> (a, [b])) [0..]
