@@ -76,6 +76,9 @@ newtype Column a = Column { getColumn :: IntMap.IntMap a }
 instance Semigroup a => Semigroup (Column a) where
   as <> bs = Column (IntMap.unionWith (<>) (getColumn as) (getColumn bs))
 
+instance Monoid a => Monoid (Column a) where
+  mempty = Column mempty
+
 type RowIndex = Int
 
 -- | Construct a sparse 'Column' from a single value.
