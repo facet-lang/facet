@@ -59,8 +59,8 @@ compileClauses ctx (_A :-> _T) heads = X.lamRA $ case _A of
         _           -> empty
       _    -> empty)
     X.varA (Free 1) X..||. X.sumLA
-      (X.µLA (compileClauses ctx _T (heads' `at` 0) X..||. X.covarA (Free 0)))
-      (X.µLA (compileClauses ctx _T (heads' `at` 1) X..||. X.covarA (Free 0)))
+      (X.µLA (compileClauses ctx (_A :-> _T) (heads' `at` 0) X..||. X.covarA (Free 0)))
+      (X.µLA (compileClauses ctx (_B :-> _T) (heads' `at` 1) X..||. X.covarA (Free 0)))
 compileClauses _ _T heads
   | Just (Clause [] b) <- getFirst (foldMap (First . Just) heads) = pure b
   | otherwise                                                     = empty
