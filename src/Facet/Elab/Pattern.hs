@@ -1,5 +1,3 @@
-{-# LANGUAGE ExistentialQuantification #-}
-{-# LANGUAGE UndecidableInstances #-}
 module Facet.Elab.Pattern
 ( Clause(..)
 , patterns_
