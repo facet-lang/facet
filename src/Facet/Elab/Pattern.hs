@@ -78,8 +78,10 @@ instance Semigroup a => Semigroup (Column a) where
 
 type RowIndex = Int
 
+-- | Construct a sparse 'Column' from a single value.
 singleton :: RowIndex -> a -> Column a
 singleton row a = Column (replicate (row - 1) [] <> [[a]])
 
+-- | Construct a dense 'Column' from a list of values.
 fromList :: [a] -> Column a
 fromList = Column . map pure
