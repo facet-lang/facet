@@ -51,16 +51,16 @@ compileClauses ctx (_A :-> _T) heads = X.lamRA $ case _A of
     X.letA (X.µRA (X.varA (Free 3) X..||. X.prdL2A (X.covarA (Free 0)))) (
       compileClauses ctx _T heads' X..||. X.covarA (Free 2)))
   _A :+ _B -> do
-    (headsL, headsR) <- fold <$> for heads (\case
+    heads' <- fold <$> for heads (\case
       Clause (p:ps) b -> case instantiateHead p of
-        InL p       -> pure ([Clause (p:ps) b], [])
-        InR p       -> pure ([], [Clause (p:ps) b])
-        Var Nothing -> pure ([Clause (Var Nothing:ps) b], [Clause (Var Nothing:ps) b])
+        InL p       -> pure (singleton 0 [Clause (p:ps) b])
+        InR p       -> pure (singleton 1 [Clause (p:ps) b])
+        Var Nothing -> pure (fromList [[Clause (Var Nothing:ps) b], [Clause (Var Nothing:ps) b]])
         _           -> empty
       _    -> empty)
     X.varA (Free 1) X..||. X.sumLA
-      (X.µLA (compileClauses ctx _T headsL X..||. X.covarA (Free 0)))
-      (X.µLA (compileClauses ctx _T headsR X..||. X.covarA (Free 0)))
+      (X.µLA (compileClauses ctx _T (heads' `at` 0) X..||. X.covarA (Free 0)))
+      (X.µLA (compileClauses ctx _T (heads' `at` 1) X..||. X.covarA (Free 0)))
 compileClauses _ _T heads
   | Just (Clause [] b) <- getFirst (foldMap (First . Just) heads) = pure b
   | otherwise                                                     = empty
