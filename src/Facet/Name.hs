@@ -130,7 +130,7 @@ instance DeBruijn lv ix => DeBruijn (LName lv) (LName ix) where
   toLeveled = fmap . toLeveled
 
 
--- | Declaration names; a choice of expression, constructor, term, or operator names.
+-- | Declaration names; a choice of textual or operator names.
 data Name
   = U Text
   | O Op
