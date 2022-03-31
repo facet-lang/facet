@@ -204,6 +204,10 @@ data AName
 
 infixl 6 ://
 
+instance Semigroup AName where
+  xs <> Root       = xs
+  xs <> (ys :// y) = (xs <> ys) :// y
+
 instance P.Pretty AName where
   pretty = \case
     Root              -> P.pretty '_'
