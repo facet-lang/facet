@@ -21,6 +21,7 @@ module Facet.Name
 , formatOp
 , OpN(..)
 , formatOpN
+, AName(..)
 ) where
 
 import           Data.Foldable (foldl', foldr', toList)
@@ -190,3 +191,10 @@ formatOpN (<+>) pretty place = \case
   PostfixN  ee e        -> foldr' (<+>) (comp e) (map comp ee) where comp e = place <+> pretty e
   InfixN    (m NE.:|mm) -> place <+> foldr' comp (pretty m) mm <+> place where comp s e = pretty s <+> place <+> e
   OutfixN s mm e        -> foldr' comp (pretty e) (s : mm) where comp s e = pretty s <+> place <+> e
+
+
+-- | Agency-generated names à la /I Am Not a Number, I Am a Free Variable/.
+data AName
+  = Root
+  | AName :// (Name, Int)
+  deriving (Eq, Ord, Show)
