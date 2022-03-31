@@ -10,7 +10,8 @@ module Facet.Syntax
 , ty
 , _ty
 , (:=:)(..)
-, nm, def
+, nm
+, def
 , (:@)(..)
 , qty
   -- * Variables
