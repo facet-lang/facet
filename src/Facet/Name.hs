@@ -31,6 +31,7 @@ import qualified Data.List.NonEmpty as NE
 import           Data.String (IsString(..))
 import           Data.Text (Text)
 import qualified Data.Text as T
+import           Facet.Pretty (subscript)
 import           Facet.Snoc
 import           Facet.Snoc.NonEmpty
 import qualified Prettyprinter as P
@@ -198,3 +199,9 @@ data AName
   = Root
   | AName :// (Name, Int)
   deriving (Eq, Ord, Show)
+
+instance P.Pretty AName where
+  pretty = \case
+    Root              -> P.pretty '_'
+    Root   :// (n, i) -> P.pretty n <> if i <= 0 then mempty else subscript i
+    parent :// (n, i) -> P.pretty parent <> "." <> P.pretty n <> if i <= 0 then mempty else subscript i
