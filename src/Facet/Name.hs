@@ -202,6 +202,8 @@ data AName
   | AName :// (Name, Int)
   deriving (Eq, Ord, Show)
 
+infixl 6 ://
+
 instance P.Pretty AName where
   pretty = \case
     Root              -> P.pretty '_'
