@@ -14,6 +14,7 @@ module Facet.Pretty
 , lower
 , upper
 , varFrom
+, digits
   -- * Columnar layout
 , tabulate2
   -- * Rendering
@@ -100,6 +101,14 @@ upper = varFrom ['A'..'Z']
 
 varFrom :: Printer p => String -> Int -> p
 varFrom alpha i = pretty (toAlpha alpha i)
+
+
+digits :: Int -> [Int]
+digits = go []
+  where
+  go ds i
+    | abs i < 10 = i:ds
+    | otherwise  = let (q, r) = i `quotRem` 10 in go (r:ds) q
 
 
 -- Columnar layout
