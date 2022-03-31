@@ -23,6 +23,7 @@ module Facet.Name
 , formatOpN
 , AName(..)
 , (//)
+, anm
 ) where
 
 import           Data.Foldable (foldl', foldr', toList)
@@ -211,3 +212,6 @@ instance P.Pretty AName where
 parent // name = parent :// (name, 0)
 
 infixl 6 //
+
+anm :: Name -> AName
+anm = (Root //)
