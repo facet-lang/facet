@@ -22,6 +22,7 @@ module Facet.Name
 , OpN(..)
 , formatOpN
 , AName(..)
+, (//)
 ) where
 
 import           Data.Foldable (foldl', foldr', toList)
@@ -205,3 +206,8 @@ instance P.Pretty AName where
     Root              -> P.pretty '_'
     Root   :// (n, i) -> P.pretty n <> if i <= 0 then mempty else subscript i
     parent :// (n, i) -> P.pretty parent <> "." <> P.pretty n <> if i <= 0 then mempty else subscript i
+
+(//) :: AName -> Name -> AName
+parent // name = parent :// (name, 0)
+
+infixl 6 //
