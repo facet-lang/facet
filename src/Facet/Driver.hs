@@ -54,7 +54,6 @@ import           Facet.Syntax as S
 import           Fresnel.At (at)
 import           Fresnel.Getter ((^.))
 import           Fresnel.Lens (Lens, Lens', lens)
-import qualified Prettyprinter as P
 import           Silkscreen
 import           System.Directory (findFile)
 import qualified System.FilePath as FP
@@ -171,7 +170,6 @@ resolveName searchPaths name = do
   unpack = \case
     U n -> TS.unpack n
     O o -> formatOp (\ a b -> a <> " " <> b) TS.unpack "_" o
-    G g -> show (P.pretty g)
 
 
 -- Errors
