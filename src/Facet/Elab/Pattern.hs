@@ -39,7 +39,7 @@ instantiateHead (Var (Just _)) = Var Nothing -- FIXME: let-bind any variables fi
 instantiateHead p              = p
 
 
-compileClauses :: Has Empty sig m => AName -> [X.Term] -> Type -> [Clause X.Term] -> m X.Term
+compileClauses :: Has Empty sig m => GName -> [X.Term] -> Type -> [Clause X.Term] -> m X.Term
 compileClauses root ctx (_A :-> _T) heads = X.lamRA $ case _A of
   -- FIXME: look variables up in @ctx@ instead of hard-coding de Bruijn indices
   Opaque   -> (match (_Var._Nothing.to (const [])) heads >>= compileClauses root ctx _T) X..||. X.covarA (Free 0)

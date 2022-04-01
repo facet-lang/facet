@@ -22,7 +22,7 @@ module Facet.Name
 , OpN(..)
 , formatOpN
 , Root(..)
-, AName(..)
+, GName(..)
 , (//)
 , anm
 ) where
@@ -199,7 +199,7 @@ formatOpN (<+>) pretty place = \case
 
 data Root
   = Root
-  | AName :// Text
+  | GName :// Text
   deriving (Eq, Ord, Show)
 
 instance P.Pretty Root where
@@ -208,19 +208,19 @@ instance P.Pretty Root where
     parent :// n -> P.pretty parent <> "." <> P.pretty n
 
 -- | Agency-generated names à la /I Am Not a Number, I Am a Free Variable/.
-data AName = AName Root Name Int
+data GName = GName Root Name Int
   deriving (Eq, Ord, Show)
 
 infixl 6 ://
 
-instance P.Pretty AName where
-  pretty (AName Root   n i) = P.pretty n <> if i <= 0 then mempty else subscript i
-  pretty (AName parent n i) = P.pretty parent <> "." <> P.pretty n <> if i <= 0 then mempty else subscript i
+instance P.Pretty GName where
+  pretty (GName Root   n i) = P.pretty n <> if i <= 0 then mempty else subscript i
+  pretty (GName parent n i) = P.pretty parent <> "." <> P.pretty n <> if i <= 0 then mempty else subscript i
 
-(//) :: Root -> Name -> AName
-parent // name = AName parent name 0
+(//) :: Root -> Name -> GName
+parent // name = GName parent name 0
 
 infixl 6 //
 
-anm :: Name -> AName
+anm :: Name -> GName
 anm = (Root //)
