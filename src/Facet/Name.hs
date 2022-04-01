@@ -138,6 +138,7 @@ instance DeBruijn lv ix => DeBruijn (LName lv) (LName ix) where
 data Name
   = U Text
   | O Op
+  | G AName
   deriving (Eq, Ord, Show)
 
 instance IsString Name where
@@ -147,6 +148,7 @@ instance P.Pretty Name where
   pretty = \case
     U n -> P.pretty n
     O o -> P.pretty o
+    G g -> P.pretty g
 
 
 -- | Associativity of an infix operator.
