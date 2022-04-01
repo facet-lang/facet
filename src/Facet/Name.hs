@@ -21,6 +21,7 @@ module Facet.Name
 , formatOp
 , OpN(..)
 , formatOpN
+, Root(..)
 , AName(..)
 , (//)
 , anm
@@ -196,29 +197,28 @@ formatOpN (<+>) pretty place = \case
   OutfixN s mm e        -> foldr' comp (pretty e) (s : mm) where comp s e = pretty s <+> place <+> e
 
 
--- | Agency-generated names à la /I Am Not a Number, I Am a Free Variable/.
-data AName
+data Root
   = Root
-  | AName :// (Name, Int)
+  | AName :// Text
+  deriving (Eq, Ord, Show)
+
+instance P.Pretty Root where
+  pretty = \case
+    Root         -> P.pretty '_'
+    parent :// n -> P.pretty parent <> "." <> P.pretty n
+
+-- | Agency-generated names à la /I Am Not a Number, I Am a Free Variable/.
+data AName = AName Root Name Int
   deriving (Eq, Ord, Show)
 
 infixl 6 ://
 
-instance Semigroup AName where
-  xs <> Root       = xs
-  xs <> (ys :// y) = (xs <> ys) :// y
-
-instance Monoid AName where
-  mempty = Root
-
 instance P.Pretty AName where
-  pretty = \case
-    Root              -> P.pretty '_'
-    Root   :// (n, i) -> P.pretty n <> if i <= 0 then mempty else subscript i
-    parent :// (n, i) -> P.pretty parent <> "." <> P.pretty n <> if i <= 0 then mempty else subscript i
+  pretty (AName Root   n i) = P.pretty n <> if i <= 0 then mempty else subscript i
+  pretty (AName parent n i) = P.pretty parent <> "." <> P.pretty n <> if i <= 0 then mempty else subscript i
 
-(//) :: AName -> Name -> AName
-parent // name = parent :// (name, 0)
+(//) :: Root -> Name -> AName
+parent // name = AName parent name 0
 
 infixl 6 //
 
