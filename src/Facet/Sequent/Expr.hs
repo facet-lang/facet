@@ -68,16 +68,16 @@ instance C.Sequent (Quoter Term) (Quoter Coterm) (Quoter Command) where
   sumR1 = fmap SumR1
   sumR2 = fmap SumR2
   unitR = pure UnitR
-  prdR l r = PrdR <$> l <*> r
+  prdR = liftA2 PrdR
   stringR = pure . StringR
 
   covar v = Quoter (\ d -> Covar (toIndexed d v))
   µL b = MuL <$> binder (\ d' -> Quoter (\ d -> var (toIndexed d d'))) b
-  lamL a b = LamL <$> a <*> b
-  sumL l r = SumL <$> l <*> r
+  lamL = liftA2 LamL
+  sumL = liftA2 SumL
   unitL = pure UnitL
-  prdL1 b = PrdL1 <$> b
-  prdL2 b = PrdL2 <$> b
+  prdL1 = fmap PrdL1
+  prdL2 = fmap PrdL2
 
   (.|.) = liftA2 (:|:)
   let' t b = Let <$> t <*> binder (\ d' -> Quoter (\ d -> var (toIndexed d d'))) b
