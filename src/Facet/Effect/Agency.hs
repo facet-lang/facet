@@ -13,3 +13,4 @@ data Name = Name Root String Int
 
 data Agency m k where
   Scope :: String -> m a -> Agency m a
+  Fresh :: String -> Agency m Name
