@@ -64,7 +64,7 @@ data Command
 instance C.Sequent (Quoter Term) (Quoter Coterm) (Quoter Command) where
   var v = Quoter (\ d -> Var (toIndexed d v))
   µR b = MuR <$> binder (\ d' -> Quoter (\ d -> covar (toIndexed d d'))) b
-  lamR b = LamR <$> binder (\ d' -> Quoter (\ d -> var (toIndexed d d'))) (\ t -> binder (\ d'' -> Quoter (\ d -> covar (toIndexed d d''))) (b t))
+  lamR b = LamR <$> binder (\ d' -> Quoter (\ d -> var (toIndexed d d'))) (binder (\ d'' -> Quoter (\ d -> covar (toIndexed d d''))) . b)
   sumR1 = fmap SumR1
   sumR2 = fmap SumR2
   unitR = pure UnitR
