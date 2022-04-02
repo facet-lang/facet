@@ -84,8 +84,8 @@ __ = U T.empty
 prettyQName :: Printer a => QName -> a
 prettyQName (ns:|>n) = foldr' (surround dot . pretty) (pretty n) ns
 
-showsModuleName :: (Foldable t, Show a, Show b) => String -> t a -> b -> Int -> ShowS
-showsModuleName c m n p = showParen (p > 9) $ foldl' (.) id (intersperse (showChar '.') (shows <$> toList m)) . showString c . showsPrec 10 n
+showsQName :: (Foldable t, Show a, Show b) => String -> t a -> b -> Int -> ShowS
+showsQName c m n p = showParen (p > 9) $ foldl' (.) id (intersperse (showChar '.') (shows <$> toList m)) . showString c . showsPrec 10 n
 
 
 
@@ -98,7 +98,7 @@ data RName = QName :.: Name
   deriving (Eq, Ord)
 
 instance Show RName where
-  showsPrec p (m :.: n) = showsModuleName ":.:" m n p
+  showsPrec p (m :.: n) = showsQName ":.:" m n p
 
 instance P.Pretty RName where
   pretty (m :.: n) = foldr' (surround dot . pretty) (pretty n) m
