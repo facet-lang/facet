@@ -101,8 +101,8 @@ varA = pure . Var
 lamRA :: Functor m => m Command -> m Term
 lamRA = fmap LamR
 
-lamRA' :: Functor m => Level -> (Term -> Coterm -> m Command) -> m Term
-lamRA' level body = LamR <$> body (var (toIndexed (succ level) level)) (covar (toIndexed (succ level) (succ level)))
+lamRA' :: Applicative m => (QuoterT m Term -> QuoterT m Coterm -> QuoterT m Command) -> QuoterT m Term
+lamRA' body = LamR <$> body (QuoterT (\ level -> pure (var (toIndexed (succ level) level)))) (QuoterT (\ level -> pure (covar (toIndexed (succ level) (succ level)))))
 
 
 covarA :: Applicative m => Var Index -> m Coterm
