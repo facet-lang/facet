@@ -18,5 +18,5 @@ tests :: IO Bool
 tests = checkParallel $$(discover)
 
 prop_quotation_inverse = property $ do
-  let init = ForAll (U "A") KType (Arrow (Just (U "x")) Many (Var (Free (Right (LName 0 (U "A"))))) (Comp mempty (Var (Free (Right (LName 0 (U "A")))))))
+  let init = ForAll (T "A") KType (Arrow (Just (T "x")) Many (Var (Free (Right (LName 0 (T "A"))))) (Comp mempty (Var (Free (Right (LName 0 (T "A")))))))
   runQuoter 0 (quote (eval mempty empty init)) === init

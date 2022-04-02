@@ -64,11 +64,11 @@ kind_ = choice
   , RBracket   <$  char ']' <?> "]"
   , LAngle     <$  char '<' <?> "<"
   , RAngle     <$  char '>' <?> ">"
-  , QIdent     <$> (fmap toQ . (:.:) <$> mname <* dot <*> choice [ U <$> ename, tname ])
+  , QIdent     <$> (fmap toQ . (:.:) <$> mname <* dot <*> choice [ T <$> ename, tname ])
   , MIdent     <$> mname
-  , EIdent . U <$> ename
+  , EIdent . T <$> ename
   , TIdent     <$> tname
-  , HIdent . U <$> ident (char '?') nameChar <?> "hole name"
+  , HIdent . T <$> ident (char '?') nameChar <?> "hole name"
   ]
   where
   mname = fromList <$> sepBy1 tcomp dot <?> "module name"
@@ -77,7 +77,7 @@ kind_ = choice
   dot = char '.' <?> "."
   ecomp = ident (choice [ lower, char '_' ]) nameChar
   tcomp :: CharParsing p => p Name
-  tcomp = U <$> ident (choice [ upper, char '_' ]) nameChar
+  tcomp = T <$> ident (choice [ upper, char '_' ]) nameChar
 
 ident :: CharParsing p => p Char -> p Char -> p Text
 ident i r = fmap pack . (:) <$> i <*> many r

@@ -23,7 +23,7 @@ import Control.Applicative (liftA2)
 import Control.Carrier.Reader
 import Data.Foldable (foldl')
 import Data.Function (on)
-import Facet.Name
+import Facet.Name hiding (T)
 import Facet.Quote
 import Facet.Snoc
 

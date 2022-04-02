@@ -203,7 +203,7 @@ showType e = Action $ do
   outputDocLn (getPrint (ann (Print.print opts mempty e ::: Print.print opts mempty _T)))
 
 showEval e = Action $ do
-  e' :==> _T <- runElab $ Elab.elabSynthTerm $ Elab.runErr $ locally Elab.sig_ (I.singleton (I.Interface (["Effect", "Console"]:.:U "Output") Nil) :) $ Elab.synthExpr e
+  e' :==> _T <- runElab $ Elab.elabSynthTerm $ Elab.runErr $ locally Elab.sig_ (I.singleton (I.Interface (["Effect", "Console"]:.:T "Output") Nil) :) $ Elab.synthExpr e
   e'' <- runElab $ runEvalMain e'
   opts <- get
   outputDocLn (getPrint (ann (Print.print opts mempty e'' ::: Print.print opts mempty _T)))

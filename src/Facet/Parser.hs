@@ -302,7 +302,7 @@ tname :: (Monad p, TokenParsing p) => p N.Name
 tname = ident tnameStyle
 
 dename :: (Monad p, TokenParsing p) => p N.Name
-dename = N.U <$> ident dnameStyle <|> N.O <$> oname
+dename = N.T <$> ident dnameStyle <|> N.O <$> oname
 
 mname :: (Monad p, TokenParsing p) => p N.QName
 mname = token (runUnspaced (fromList <$> sepBy1 comp dot))

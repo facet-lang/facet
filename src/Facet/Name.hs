@@ -78,7 +78,7 @@ newtype Meta = Meta { getMeta :: Int }
 
 
 __ :: Name
-__ = U T.empty
+__ = T T.empty
 
 
 -- | Qualified names, consisting of a module name and declaration name.
@@ -124,16 +124,16 @@ instance DeBruijn lv ix => DeBruijn (LName lv) (LName ix) where
 
 -- | Declaration names; a choice of textual or operator names.
 data Name
-  = U Text
+  = T Text
   | O Op
   deriving (Eq, Ord, Show)
 
 instance IsString Name where
-  fromString = U . fromString
+  fromString = T . fromString
 
 instance P.Pretty Name where
   pretty = \case
-    U n -> P.pretty n
+    T n -> P.pretty n
     O o -> P.pretty o
 
 

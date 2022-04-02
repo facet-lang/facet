@@ -142,7 +142,7 @@ instance Monad m => Quote (Value m) (m Term) where
     VComp p b -> pure . pure $ Comp p b
 
 unit :: Value m
-unit = VCon (NE.FromList ["Data", "Unit"] :.: U "unit") []
+unit = VCon (NE.FromList ["Data", "Unit"] :.: T "unit") []
 
 
 -- Elimination

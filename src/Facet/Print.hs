@@ -219,7 +219,7 @@ instance Printable a => Printable (Pattern a) where
 instance Printable C.Module where
   print opts env (C.Module mname is _ ds) = module_
     mname
-    (qvar (fromList [U (T.pack "Kernel")]:|>U (T.pack "Module")))
+    (qvar (fromList [T (T.pack "Kernel")]:|>T (T.pack "Module")))
     (map (\ (C.Import n) -> import' n) is)
     (map (def . fmap defBody) (C.scopeToList ds))
     where

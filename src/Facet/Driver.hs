@@ -87,7 +87,7 @@ kernel :: Module
 kernel = Module kernelName [] [] $ Scope mempty
   -- FIXME: include things like Type and Interface
   where
-  kernelName = fromList [U (TS.pack "Kernel")]
+  kernelName = fromList [T (TS.pack "Kernel")]
 
 
 -- Module loading
@@ -168,7 +168,7 @@ resolveName searchPaths name = do
   where
   toPath components = foldr1 (FP.</>) (unpack <$> components)
   unpack = \case
-    U n -> TS.unpack n
+    T n -> TS.unpack n
     O o -> formatOp (\ a b -> a <> " " <> b) TS.unpack "_" o
 
 
