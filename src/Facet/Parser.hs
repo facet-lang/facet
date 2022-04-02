@@ -61,7 +61,7 @@ whole p = whiteSpace *> p <* eof
 
 
 makeOperator :: (N.QName, N.Op, N.Assoc) -> Operator (S.Ann S.Expr)
-makeOperator (name, op, assoc) = (op, assoc, nary (N.toQ (name N.:.: N.O op)))
+makeOperator (name, op, assoc) = (op, assoc, nary (name |> N.O op))
   where
   nary name es = foldl' (S.annBinary S.App) (S.Ann (S.ann (head es)) Nil (S.Var name)) es
 
@@ -310,7 +310,7 @@ mname = token (runUnspaced (fromList <$> sepBy1 comp dot))
   comp = ident tnameStyle
 
 qname :: (Has Parser sig p, TokenParsing p) => p N.Name -> p N.QName
-qname name = token (runUnspaced (try (fmap N.toQ . (N.:.:) <$> mname <*> Unspaced name) <|> (Nil :|>) <$> Unspaced name)) <?> "name"
+qname name = token (runUnspaced (try ((|>) <$> mname <*> Unspaced name) <|> (Nil :|>) <$> Unspaced name)) <?> "name"
 
 
 reserved :: HashSet.HashSet String
