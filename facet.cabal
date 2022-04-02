@@ -80,7 +80,6 @@ library
     Facet.Context
     Facet.Diff
     Facet.Driver
-    Facet.Effect.Agency
     Facet.Effect.CallStack
     Facet.Effect.Parser
     Facet.Effect.Profile
