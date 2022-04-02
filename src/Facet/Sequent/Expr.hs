@@ -12,6 +12,7 @@ module Facet.Sequent.Expr
 , lamRA'
 , covarA
 , µLA
+, µLA'
 , sumLA
 , prdL1A
 , prdL2A
@@ -110,6 +111,9 @@ covarA = pure . Covar
 
 µLA :: Functor m => m Command -> m Coterm
 µLA = fmap MuL
+
+µLA' :: Applicative m => (QuoterT m Term -> QuoterT m Command) -> QuoterT m Coterm
+µLA' body = MuL <$> body (QuoterT (\ level -> pure (var (toIndexed (succ level) (succ level)))))
 
 sumLA
   :: Applicative m
