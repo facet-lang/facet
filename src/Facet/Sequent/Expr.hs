@@ -9,10 +9,8 @@ module Facet.Sequent.Expr
 , varA
 , µRA
 , lamRA
-, lamRA'
 , covarA
 , µLA
-, µLA'
 , sumLA
 , prdL1A
 , prdL2A
@@ -63,6 +61,27 @@ data Command
   | Let Term Command
 
 
+instance Applicative m => C.Sequent (QuoterT m Term) (QuoterT m Coterm) (QuoterT m Command) where
+  var inner = QuoterT (\ outer -> pure (Var (toIndexed outer inner)))
+  µR body = MuR <$> binderT (C.covar . Free) body
+  lamR body = LamR <$> binderT (C.var . Free) (binderT (C.covar . Free) . body)
+  sumR1 = fmap SumR1
+  sumR2 = fmap SumR2
+  unitR = pure UnitR
+  prdR = liftA2 PrdR
+  stringR = pure . StringR
+
+  covar inner = QuoterT (\ outer -> pure (Covar (toIndexed outer inner)))
+  µL body = MuL <$> binderT (C.var . Free) body
+  lamL = liftA2 LamL
+  sumL = liftA2 SumL
+  unitL = pure UnitL
+  prdL1 = fmap PrdL1
+  prdL2 = fmap PrdL2
+
+  (.|.) = liftA2 (:|:)
+  let' t b = Let <$> t <*> binderT (C.var . Free) b
+
 instance C.Sequent (Quoter Term) (Quoter Coterm) (Quoter Command) where
   var v = Quoter (\ d -> Var (toIndexed d v))
   µR b = MuR <$> binder (\ d' -> Quoter (\ d -> covar (toIndexed d d'))) b
@@ -102,18 +121,12 @@ varA = pure . Var
 lamRA :: Functor m => m Command -> m Term
 lamRA = fmap LamR
 
-lamRA' :: Applicative m => (QuoterT m Term -> QuoterT m Coterm -> QuoterT m Command) -> QuoterT m Term
-lamRA' body = LamR <$> body (QuoterT (\ level -> pure (var (toIndexed (succ level) level)))) (QuoterT (\ level -> pure (covar (toIndexed (succ level) (succ level)))))
-
 
 covarA :: Applicative m => Var Index -> m Coterm
 covarA = pure . Covar
 
 µLA :: Functor m => m Command -> m Coterm
 µLA = fmap MuL
-
-µLA' :: Applicative m => (QuoterT m Term -> QuoterT m Command) -> QuoterT m Coterm
-µLA' body = MuL <$> body (QuoterT (\ level -> pure (var (toIndexed (succ level) (succ level)))))
 
 sumLA
   :: Applicative m

@@ -17,6 +17,7 @@ import           Data.Monoid (First(..))
 import           Data.Traversable (for)
 import           Facet.Name
 import           Facet.Quote
+import qualified Facet.Sequent.Class as C
 import qualified Facet.Sequent.Expr as X
 import           Facet.Sequent.Pattern
 import           Facet.Sequent.Type
@@ -41,7 +42,7 @@ instantiateHead p              = p
 
 
 compileClauses :: Has Empty sig m => [X.Term] -> Type -> [Clause X.Term] -> QuoterT m X.Term
-compileClauses ctx (_A :-> _T) heads = X.lamRA' $ \ _v _k -> case _A of
+compileClauses ctx (_A :-> _T) heads = C.lamR $ \ v k -> case _A of
   -- FIXME: look variables up in @ctx@ instead of hard-coding de Bruijn indices
   Opaque   -> (match (_Var._Nothing.to (const [])) heads >>= compileClauses ctx _T) X..||. X.covarA (Free 0)
   _ :-> _  -> (match (_Var._Nothing.to (const [])) heads >>= compileClauses ctx _T) X..||. X.covarA (Free 0)
