@@ -8,8 +8,8 @@ module Facet.Name
 , Used(..)
 , Meta(..)
 , __
-, prettyQName
 , QName
+, prettyQName
 , RName(..)
 , (.:.)
 , toQ
@@ -81,16 +81,14 @@ __ :: Name
 __ = U T.empty
 
 
+-- | Qualified names, consisting of a module name and declaration name.
+type QName = NonEmpty Name
+
 prettyQName :: Printer a => QName -> a
 prettyQName (ns:|>n) = foldr' (surround dot . pretty) (pretty n) ns
 
 showsQName :: (Foldable t, Show a, Show b) => String -> t a -> b -> Int -> ShowS
 showsQName c m n p = showParen (p > 9) $ foldl' (.) id (intersperse (showChar '.') (shows <$> toList m)) . showString c . showsPrec 10 n
-
-
-
--- | Qualified names, consisting of a module name and declaration name.
-type QName = NonEmpty Name
 
 
 -- | Resolved names.
