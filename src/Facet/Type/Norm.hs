@@ -61,7 +61,7 @@ instance C.Type Type where
 instance Quote Type TX.Type where
   quote = \case
     String        -> pure TX.String
-    ForAll n t b  -> Quoter (\ d -> TX.ForAll n t (runQuoter (succ d) (quote (b (free (LName (getUsed d) n))))))
+    ForAll n t b  -> Quoter (\ d -> TX.ForAll n t (runQuoter (succ d) (quote (b (free (LName d n))))))
     Arrow n q a b -> TX.Arrow n q <$> quote a <*> quote b
     Comp s t      -> TX.Comp <$> traverseSignature quote s <*> quote t
     Ne n sp       -> foldl' (\ h t -> TX.App <$> h <*> quote t) (Quoter (\ d -> TX.Var (toIndexed d n))) sp

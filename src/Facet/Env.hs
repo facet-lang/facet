@@ -36,5 +36,5 @@ lookup (Env vs) (LName i n) = find (\ (n' :=: v) -> v <$ guard (n == n')) (vs ! 
 index :: HasCallStack => Env v -> LName Index -> v
 index env n = fromMaybe (error ("Env.index: name (" <> show n <> ") not found")) (lookup env n)
 
-level :: Env v -> Used
-level = Used . Level . length . bindings
+level :: Env v -> Level
+level = Level . length . bindings

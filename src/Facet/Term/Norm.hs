@@ -37,7 +37,7 @@ instance Quote Term X.Term where
     Comp p b -> X.Comp p . snd <$> clause (PDict p) b
     where
     clause :: Traversable t => t Name -> (t (Name :=: Term) -> Term) -> Quoter (t Name, X.Term)
-    clause p b = Quoter (\ d -> let (d', p') = mapAccumL (\ d n -> (succ d, n :=: Ne (Free (LName (getUsed d) n)) Nil)) d p in (p, runQuoter d' (quote (b p'))))
+    clause p b = Quoter (\ d -> let (d', p') = mapAccumL (\ d n -> (succ d, n :=: Ne (Free (LName d n)) Nil)) d p in (p, runQuoter d' (quote (b p'))))
 
 norm :: Env Term -> X.Term -> Term
 norm env = \case

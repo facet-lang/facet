@@ -134,7 +134,7 @@ data Value m
 instance Monad m => Quote (Value m) (m Term) where
   quote = \case
     VLam _ cs -> pure . pure $ Lam cs
-    VCont k   -> Quoter (\ d -> runQuoter (succ d) . quote =<< k (VVar (Free (LName (getUsed d) __))))
+    VCont k   -> Quoter (\ d -> runQuoter (succ d) . quote =<< k (VVar (Free (LName d __))))
     VVar v    -> Quoter (\ d -> pure (Var (toIndexed d v)))
     VCon n fs -> fmap (Con n) . sequenceA <$> traverse quote fs
     VString s -> pure . pure $ String s

@@ -16,7 +16,7 @@ module Facet.Quote
 , binderN
 ) where
 
-import Facet.Name (Level, Used(..))
+import Facet.Name (Level)
 
 -- Quotation
 
@@ -75,10 +75,10 @@ instance (Quote v t, Show t) => Show (Quoting t v) where
 -- | 'Quoter' is used to construct first-order representations of syntax directly from higher-order APIs in final tagless style.
 --
 -- This typically requires that quotation keep track of the current de Bruijn level, but this data is typically not recorded in ASTs. 'Quoter' instead constructs a function parameterized by the initial level, and thus passing around the current level as quoting proceeds in exactly the same manner as the reader monad.
-newtype Quoter a = Quoter (Used -> a)
+newtype Quoter a = Quoter (Level -> a)
   deriving (Applicative, Functor, Monad)
 
-runQuoter :: Used -> Quoter a -> a
+runQuoter :: Level -> Quoter a -> a
 runQuoter d (Quoter f) = f d
 
 -- | Build quoted first-order syntax from a higher-order representation.
@@ -86,7 +86,7 @@ binder
   :: (Level -> Quoter a)    -- ^ Constructor for variables in @a@.
   -> (Quoter a -> Quoter b) -- ^ The binder's scope, represented as a Haskell function mapping variables' values to complete terms.
   -> Quoter b               -- ^ A 'Quoter' of the first-order term.
-binder with f = Quoter (\ d -> runQuoter (d + 1) (f (with (getUsed d))))
+binder with f = Quoter (\ d -> runQuoter (d + 1) (f (with d)))
 
 -- | Build quoted first-order syntax from a higher-order representation taking multiple variables.
 binderN
@@ -94,5 +94,5 @@ binderN
   -> (Level -> Quoter a)      -- ^ Constructor for variables in @a@.
   -> ([Quoter a] -> Quoter b) -- ^ The binder's scope, represented as a Haskell function mapping lists of variables' values to complete terms.
   -> Quoter b                 -- ^ A 'Quoter' of the first-order term.
-binderN n with f = Quoter (\ d -> runQuoter (d + n') (f (map (with . getUsed) [0..n'])))
+binderN n with f = Quoter (\ d -> runQuoter (d + n') (f (map with [0..n'])))
   where n' = fromIntegral n

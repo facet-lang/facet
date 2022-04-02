@@ -14,7 +14,7 @@ import qualified Prettyprinter as PP
 import qualified Silkscreen as P
 import qualified Silkscreen.Printer.Rainbow as P
 
-newtype Print = Print { doc :: Options Print -> Used -> P.Rainbow (PP.Doc S.Style) }
+newtype Print = Print { doc :: Options Print -> Level -> P.Rainbow (PP.Doc S.Style) }
   deriving (Monoid, P.Printer, Semigroup)
 
 getPrint :: Options Print -> Print -> PP.Doc S.Style
@@ -45,17 +45,17 @@ instance S.Sequent Print Print Print where
   (.|.) = fmap (P.enclose P.langle P.rangle) . P.surround P.pipe
   let' v b = P.pretty "let" P.<+> withLevel anon P.<+> P.pretty '=' P.<+> v P.<+> P.pretty "in" P.<+> fresh (b . anon)
 
-withLevel :: (Used -> Print) -> Print
+withLevel :: (Level -> Print) -> Print
 withLevel f = Print (\ o d -> doc (f d) o d)
 
 incrLevel :: Print -> Print
 incrLevel p = Print (\ o -> doc p o . succ)
 
-fresh :: (Used -> Print) -> Print
+fresh :: (Level -> Print) -> Print
 fresh f = withLevel (incrLevel . f)
 
-anon :: Used -> Print
-anon = lower . getLevel . getUsed
+anon :: Level -> Print
+anon = lower . getLevel
 
 var :: Var Level -> Print
 var v = case v of

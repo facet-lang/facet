@@ -102,7 +102,7 @@ lamRA :: Functor m => m Command -> m Term
 lamRA = fmap LamR
 
 lamRA' :: Functor m => Level -> (Term -> Coterm -> m Command) -> m Term
-lamRA' level body = LamR <$> body (var (toIndexed (Used (succ level)) level)) (covar (toIndexed (Used (succ level)) (succ level)))
+lamRA' level body = LamR <$> body (var (toIndexed (succ level) level)) (covar (toIndexed (succ level) (succ level)))
 
 
 covarA :: Applicative m => Var Index -> m Coterm

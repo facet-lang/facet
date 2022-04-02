@@ -41,8 +41,8 @@ Context as |> a = Context (as S.:> a)
 
 infixl 5 |>
 
-level :: Context -> Used
-level (Context es) = Used (Level (length es))
+level :: Context -> Level
+level (Context es) = Level (length es)
 
 (!) :: HasCallStack => Context -> Index -> Binding
 Context es' ! Index i' = withFrozenCallStack $ go es' i'
@@ -71,4 +71,4 @@ toEnv c = Env.Env (S.fromList (zipWith toType (toList (elems c)) [0..pred (level
     Type _ _ p      -> (\ b -> proof b :=: bind d (proof b)) <$> p
     Kind (n :==> _) -> PVar (n :=: bind d n)
 
-  bind d b = free (LName (getUsed d) b)
+  bind d b = free (LName d b)

@@ -72,16 +72,16 @@ instance Class.Sequent Term Coterm Command where
 instance Quote Term X.Term where
   quote = \case
     Var v     -> Quoter (\ d -> X.Var (toIndexed d v))
-    MuR b     -> X.MuR <$> quoteBinder (Quoter (Covar . Free . getUsed)) b
-    LamR b    -> X.LamR <$> Quoter (\ d -> runQuoter (d + 2) (quote (b (Var (Free (getUsed d))) (Covar (Free (getUsed (d + 1)))))))
+    MuR b     -> X.MuR <$> quoteBinder (Quoter (Covar . Free)) b
+    LamR b    -> X.LamR <$> Quoter (\ d -> runQuoter (d + 2) (quote (b (Var (Free d)) (Covar (Free (d + 1))))))
     SumR1 t   -> X.SumR1 <$> quote t
     SumR2 t   -> X.SumR2 <$> quote t
     UnitR     -> pure X.UnitR
     PrdR l r  -> X.PrdR <$> quote l <*> quote r
     StringR t -> pure (X.StringR t)
 
-var :: Used -> Term
-var = Var . Free . getUsed
+var :: Level -> Term
+var = Var . Free
 
 
 instance Quote Coterm X.Coterm where
