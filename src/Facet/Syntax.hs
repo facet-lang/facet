@@ -1,5 +1,3 @@
-{-# LANGUAGE PolyKinds #-}
-{-# LANGUAGE StandaloneKindSignatures #-}
 {-# LANGUAGE UndecidableInstances #-}
 module Facet.Syntax
 ( -- * Term containers
@@ -22,8 +20,6 @@ module Facet.Syntax
   -- * Assertion data
 , Exp(..)
 , Act(..)
-  -- * Type-safe constructors
-, T(..)
   -- * Natural transformations
 , type (~>)
   -- * Annotations
@@ -41,7 +37,6 @@ import Data.Bifunctor
 import Data.Bitraversable
 import Data.Function (on)
 import Data.Functor.Classes
-import Data.Kind (Type)
 import Data.Text (Text)
 import Facet.Name
 import Facet.Snoc
@@ -189,13 +184,6 @@ newtype Exp a = Exp { getExp :: a }
 
 newtype Act a = Act { getAct :: a }
   deriving (Functor)
-
-
--- Type-safe constructors
-
-type T :: Type -> forall k . k -> Type
-
-newtype T a b = T { getT :: a }
 
 
 -- Natural transformations
