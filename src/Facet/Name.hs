@@ -17,10 +17,6 @@ module Facet.Name
 , formatOp
 , OpN(..)
 , formatOpN
-, Root(..)
-, GName(..)
-, (//)
-, anm
 ) where
 
 import           Data.Foldable (foldl', foldr')
@@ -29,7 +25,6 @@ import qualified Data.List.NonEmpty as NE
 import           Data.String (IsString(..))
 import           Data.Text (Text)
 import qualified Data.Text as T
-import           Facet.Pretty (subscript)
 import           Facet.Snoc.NonEmpty
 import qualified Prettyprinter as P
 import           Silkscreen
@@ -156,32 +151,3 @@ formatOpN (<+>) pretty place = \case
   PostfixN  ee e        -> foldr' (<+>) (comp e) (map comp ee) where comp e = place <+> pretty e
   InfixN    (m NE.:|mm) -> place <+> foldr' comp (pretty m) mm <+> place where comp s e = pretty s <+> place <+> e
   OutfixN s mm e        -> foldr' comp (pretty e) (s : mm) where comp s e = pretty s <+> place <+> e
-
-
-data Root
-  = Root
-  | GName :// Text
-  deriving (Eq, Ord, Show)
-
-instance P.Pretty Root where
-  pretty = \case
-    Root         -> P.pretty '_'
-    parent :// n -> P.pretty parent <> "." <> P.pretty n
-
--- | Agency-generated names à la /I Am Not a Number, I Am a Free Variable/.
-data GName = GName Root Name Int
-  deriving (Eq, Ord, Show)
-
-infixl 6 ://
-
-instance P.Pretty GName where
-  pretty (GName Root   n i) = P.pretty n <> if i <= 0 then mempty else subscript i
-  pretty (GName parent n i) = P.pretty parent <> "." <> P.pretty n <> if i <= 0 then mempty else subscript i
-
-(//) :: Root -> Name -> GName
-parent // name = GName parent name 0
-
-infixl 6 //
-
-anm :: Name -> GName
-anm = (Root //)
