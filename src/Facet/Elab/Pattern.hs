@@ -40,7 +40,7 @@ instantiateHead p              = p
 
 
 compileClauses :: Has Empty sig m => Level -> [X.Term] -> Type -> [Clause X.Term] -> m X.Term
-compileClauses level ctx (_A :-> _T) heads = X.lamRA $ case _A of
+compileClauses level ctx (_A :-> _T) heads = X.lamRA' level $ \ _v _k -> case _A of
   -- FIXME: look variables up in @ctx@ instead of hard-coding de Bruijn indices
   Opaque   -> (match (_Var._Nothing.to (const [])) heads >>= compileClauses level ctx _T) X..||. X.covarA (Free 0)
   _ :-> _  -> (match (_Var._Nothing.to (const [])) heads >>= compileClauses level ctx _T) X..||. X.covarA (Free 0)
