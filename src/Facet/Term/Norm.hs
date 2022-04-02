@@ -20,11 +20,11 @@ import qualified Facet.Term.Expr as X
 
 data Term
   = String Text
-  | Con RName [Term]
+  | Con QName [Term]
   | Lam [(Pattern Name, Pattern (Name :=: Term) -> Term)]
   | Ne (Var (LName Level)) (Snoc Term)
-  | Dict [RName :=: Term]
-  | Comp [RName :=: Name] (Pattern (Name :=: Term) -> Term)
+  | Dict [QName :=: Term]
+  | Comp [QName :=: Name] (Pattern (Name :=: Term) -> Term)
   deriving (Eq, Ord, Show) via Quoting X.Term Term
 
 instance Quote Term X.Term where

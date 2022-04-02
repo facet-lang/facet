@@ -60,7 +60,7 @@ anon = lower . getLevel . getUsed
 var :: Var Level -> Print
 var v = case v of
   Free l   -> lower (getLevel l)
-  Global n -> P.pretty n
+  Global n -> prettyQName n
 
 commaSep :: [Print] -> Print
 commaSep = P.encloseSep mempty mempty (P.comma <> P.space)

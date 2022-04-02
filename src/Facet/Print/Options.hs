@@ -10,31 +10,32 @@ module Facet.Print.Options
 ) where
 
 import Facet.Name
+import Facet.Snoc.NonEmpty
 import Silkscreen
 
 -- Options
 
 -- FIXME: add an option to control whether shifts are printed
 data Options p = Options
-  { rname         :: RName -> p
+  { qname         :: QName -> p
   , instantiation :: p -> p -> p
   }
 
 verboseOptions :: Printer p => Options p
 verboseOptions = Options
-  { rname         = qualified
+  { qname         = qualified
   , instantiation = printInstantiation
   }
 
 quietOptions :: Printer p => Options p
 quietOptions = Options
-  { rname         = unqualified
+  { qname         = unqualified
   , instantiation = suppressInstantiation
   }
 
-qualified, unqualified :: Printer p => RName -> p
-qualified = pretty
-unqualified (_:.:n) = pretty n
+qualified, unqualified :: Printer p => QName -> p
+qualified = prettyQName
+unqualified (_:|>n) = pretty n
 
 printInstantiation :: Printer p => p -> p -> p
 printInstantiation = (<+>)

@@ -78,7 +78,7 @@ import           Facet.Pattern
 import           Facet.Quote
 import           Facet.Semiring
 import           Facet.Snoc
-import           Facet.Snoc.NonEmpty (NonEmpty(..), toSnoc)
+import           Facet.Snoc.NonEmpty (NonEmpty(..))
 import           Facet.Source (Source, slice)
 import           Facet.Span (Span(..))
 import           Facet.Subst
@@ -119,18 +119,18 @@ instantiate inst = go
 
 resolveWith
   :: (Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason) sig m)
-  => (forall sig m . Has (Choose :+: Empty) sig m => Name -> Module -> m (RName :=: d))
+  => (forall sig m . Has (Choose :+: Empty) sig m => Name -> Module -> m (QName :=: d))
   -> QName
-  -> m (RName :=: d)
+  -> m (QName :=: d)
 resolveWith lookup n = ask >>= \ graph -> asks (\ module' -> lookupWith lookup graph module' n) >>= \case
   []  -> freeVariable n
   [v] -> pure v
   ds  -> ambiguousName n (map nm ds)
 
-resolveC :: (Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason) sig m) => QName -> m (RName :=: Maybe Term ::: Type)
+resolveC :: (Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason) sig m) => QName -> m (QName :=: Maybe Term ::: Type)
 resolveC = resolveWith lookupC
 
-resolveQ :: (Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason) sig m) => QName -> m (RName :=: Def)
+resolveQ :: (Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason) sig m) => QName -> m (QName :=: Def)
 resolveQ = resolveWith lookupD
 
 lookupInContext :: Has (Choose :+: Empty) sig m => QName -> Context -> m (LName Index, Either Kind (Quantity, Type))
@@ -140,12 +140,12 @@ lookupInContext (m:|>n)
 
 -- FIXME: probably we should instead look up the effect op globally, then check for membership in the sig
 -- FIXME: return the index in the sig; it’s vital for evaluation of polymorphic effects when there are multiple such
-lookupInSig :: Has (Choose :+: Empty) sig m => QName -> Module -> Graph -> [Signature Type] -> m (RName :=: Type)
-lookupInSig (m :|> n) mod graph = foldMapC $ foldMapC (\ (Interface q@(m':.:_) _) -> do
-  guard (m == Nil || m == toSnoc m')
-  defs <- interfaceScope =<< lookupQ graph mod (toQ q)
+lookupInSig :: Has (Choose :+: Empty) sig m => QName -> Module -> Graph -> [Signature Type] -> m (QName :=: Type)
+lookupInSig (m :|> n) mod graph = foldMapC $ foldMapC (\ (Interface q@(m':|>_) _) -> do
+  guard (m == Nil || m == m')
+  defs <- interfaceScope =<< lookupQ graph mod q
   _ :=: d <- lookupScope n defs
-  pure $ m':.:n :=: d) . interfaces
+  pure $ m' :|> n :=: d) . interfaces
   where
   interfaceScope (_ :=: d) = case d of { DSubmodule (SInterface defs) _K -> pure defs ; _ -> empty }
 
@@ -207,7 +207,7 @@ data Err = Err
 data ErrReason
   = FreeVariable QName
   -- FIXME: add source references for the imports, definition sites, and any re-exports.
-  | AmbiguousName QName [RName]
+  | AmbiguousName QName [QName]
   | CouldNotSynthesize
   | ResourceMismatch Name Quantity Quantity
   | UnifyType UnifyErrReason (Exp (Either String Type)) (Act Type)
@@ -221,7 +221,7 @@ _FreeVariable = prism' FreeVariable (\case
   FreeVariable n -> Just n
   _              -> Nothing)
 
-_AmbiguousName :: Prism' ErrReason (QName, [RName])
+_AmbiguousName :: Prism' ErrReason (QName, [QName])
 _AmbiguousName = prism' (uncurry AmbiguousName) (\case
   AmbiguousName n ns -> Just (n, ns)
   _                  -> Nothing)
@@ -279,7 +279,7 @@ resourceMismatch n exp act = withFrozenCallStack $ throwError $ ResourceMismatch
 freeVariable :: Has (Throw ErrReason) sig m => QName -> m a
 freeVariable n = withFrozenCallStack $ throwError $ FreeVariable n
 
-ambiguousName :: Has (Throw ErrReason) sig m => QName -> [RName] -> m a
+ambiguousName :: Has (Throw ErrReason) sig m => QName -> [QName] -> m a
 ambiguousName n qs = withFrozenCallStack $ throwError $ AmbiguousName n qs
 
 missingInterface :: Has (Throw ErrReason) sig m => Interface Type -> m a

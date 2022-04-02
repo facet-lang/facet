@@ -151,7 +151,7 @@ qty (_ :@ q) = q
 -- Variables
 
 data Var a
-  = Global RName -- ^ Global variables, considered equal by 'RName'.
+  = Global QName -- ^ Global variables, considered equal by 'QName'.
   | Free a
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 

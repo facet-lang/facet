@@ -112,11 +112,11 @@ as (m ::: _T) = do
 -- Term combinators
 
 -- FIXME: we’re instantiating when inspecting types in the REPL.
-global :: Has (State (Subst Type)) sig m => RName ::: Type -> m (Term :==> Type)
+global :: Has (State (Subst Type)) sig m => QName ::: Type -> m (Term :==> Type)
 global (q ::: _T) = (\ (v ::: _T) -> v :==> _T) <$> instantiate const (Var (Global q) ::: _T)
 
 -- FIXME: we’re instantiating when inspecting types in the REPL.
-globalS :: (Has (State (Subst Type)) sig m, SQ.Sequent t c d, Applicative i) => RName ::: Type -> m (i t :==> Type)
+globalS :: (Has (State (Subst Type)) sig m, SQ.Sequent t c d, Applicative i) => QName ::: Type -> m (i t :==> Type)
 globalS (q ::: _T) = do
   v <- SQ.varA (Global q)
   (\ (v ::: _T) -> v :==> _T) <$> instantiate const (v ::: _T)
@@ -202,8 +202,8 @@ comp b = Check $ \ _T -> do
   (sig, _B) <- assertComp _T
   graph <- ask
   module' <- ask
-  let interfacePattern :: Has (Throw ErrReason) sig m => Interface Type -> m (RName :=: (Name :==> Type))
-      interfacePattern (Interface n _) = maybe (freeVariable (toQ n)) (\ (n' :=: _T) -> pure ((n .:. n') :=: (n' :==> _T))) (listToMaybe (scopeToList . tm =<< unDInterface . def =<< lookupQ graph module' (toQ n)))
+  let interfacePattern :: Has (Throw ErrReason) sig m => Interface Type -> m (QName :=: (Name :==> Type))
+      interfacePattern (Interface n _) = maybe (freeVariable n) (\ (n' :=: _T) -> pure ((n |> n') :=: (n' :==> _T))) (listToMaybe (scopeToList . tm =<< unDInterface . def =<< lookupQ graph module' n))
   p' <- traverse interfacePattern (interfaces sig)
   -- FIXME: can we apply quantities to dictionaries? what would they mean?
   b' <- (Many, PDict p') |- check (b ::: _B)
@@ -219,7 +219,7 @@ varP :: Name -> Bind m (Pattern (Name :==> Type))
 varP n = Bind $ \ _A k -> k (PVar (n :==> wrap _A))
   where
   wrap = \case
-    T.Comp sig _A -> T.Arrow Nothing Many (T.Ne (Global (NE.FromList ["Data", "Unit"] :.: T "Unit")) Nil) (T.Comp sig _A)
+    T.Comp sig _A -> T.Arrow Nothing Many (T.Ne (Global (NE.FromList ["Data", "Unit"] |> T "Unit")) Nil) (T.Comp sig _A)
     _T            -> _T
 
 conP :: (Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (State (Subst Type)) sig m, Has (Throw ErrReason) sig m, Has (Writer Usage) sig m) => QName -> [Bind m (Pattern (Name :==> Type))] -> Bind m (Pattern (Name :==> Type))
@@ -241,7 +241,7 @@ fieldsP = foldr cons nil
 allP :: Has (Throw ErrReason :+: Write Warn) sig m => Name -> Bind m (Pattern (Name :==> Type))
 allP n = Bind $ \ _A k -> do
   (sig, _T) <- assertComp _A
-  k (PVar (n :==> T.Arrow Nothing Many (T.Ne (Global (NE.FromList ["Data", "Unit"] :.: T "Unit")) Nil) (T.Comp sig _T)))
+  k (PVar (n :==> T.Arrow Nothing Many (T.Ne (Global (NE.FromList ["Data", "Unit"] |> T "Unit")) Nil) (T.Comp sig _T)))
 
 
 -- Expression elaboration
@@ -327,7 +327,7 @@ elabDataDef constructors = Check $ \ _K -> do
   mname <- view name_
   for constructors $ \ (S.Ann _ _ (n ::: t)) -> do
     c_T <- elabType $ runErr $ abstractType (Type.switch (synthType t) <==: KType) _K
-    con' <- elabTerm $ runErr $ check (abstractTerm (const (Con (mname :.: n) . toList)) ::: c_T)
+    con' <- elabTerm $ runErr $ check (abstractTerm (const (Con (mname |> n) . toList)) ::: c_T)
     pure $ n :=: DTerm (Just con') c_T
 
 elabInterfaceDef

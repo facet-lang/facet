@@ -17,8 +17,8 @@ import Fresnel.Prism (Prism', prism')
 data Pattern a
   = PWildcard
   | PVar a
-  | PCon RName [Pattern a]
-  | PDict [RName :=: a]
+  | PCon QName [Pattern a]
+  | PDict [QName :=: a]
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
 _PWildcard :: Prism' (Pattern a) ()
@@ -31,7 +31,7 @@ _PVar = prism' PVar (\case
   PVar a -> Just a
   _      -> Nothing)
 
-_PCon :: Prism' (Pattern a) (RName, [Pattern a])
+_PCon :: Prism' (Pattern a) (QName, [Pattern a])
 _PCon = prism' (uncurry PCon) (\case
   PCon h sp -> Just (h, sp)
   _         -> Nothing)

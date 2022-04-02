@@ -64,7 +64,7 @@ lookupWith lookup graph mod@Module{ name } (m:|>n)
   <|> guard (m == Nil) *> foldMapC (maybe empty (lookup n) . snd) (getGraph graph)
   <|> guard (m /= Nil) *> (lookupM (fromSnoc m) graph >>= maybe empty pure . snd >>= lookup n)
 
-lookupQ :: Has (Choose :+: Empty) sig m => Graph -> Module -> QName -> m (RName :=: Def)
+lookupQ :: Has (Choose :+: Empty) sig m => Graph -> Module -> QName -> m (QName :=: Def)
 lookupQ = lookupWith lookupD
 
 

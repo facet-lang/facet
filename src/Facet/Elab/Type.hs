@@ -37,7 +37,7 @@ tvar n = views context_ (lookupInContext n) >>= \case
     q :=: DSubmodule _ _K -> pure $ TX.Var (Global q) :==> _K
     _                     -> freeVariable n
 
-ivar :: (Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason) sig m) => QName -> m (RName :==> Kind)
+ivar :: (Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason) sig m) => QName -> m (QName :==> Kind)
 ivar n = resolveQ n >>= \case
     q :=: DSubmodule (SInterface _) _K -> pure $ q :==> _K
     _                                  -> freeVariable n

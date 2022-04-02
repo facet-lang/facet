@@ -10,9 +10,6 @@ module Facet.Name
 , __
 , QName
 , prettyQName
-, RName(..)
-, (.:.)
-, toQ
 , LName(..)
 , Name(..)
 , Assoc(..)
@@ -26,9 +23,8 @@ module Facet.Name
 , anm
 ) where
 
-import           Data.Foldable (foldl', foldr', toList)
+import           Data.Foldable (foldl', foldr')
 import           Data.Functor.Classes (showsUnaryWith)
-import           Data.List (intersperse)
 import qualified Data.List.NonEmpty as NE
 import           Data.String (IsString(..))
 import           Data.Text (Text)
@@ -86,28 +82,6 @@ type QName = NonEmpty Name
 
 prettyQName :: Printer a => QName -> a
 prettyQName (ns:|>n) = foldr' (surround dot . pretty) (pretty n) ns
-
-showsQName :: (Foldable t, Show a, Show b) => String -> t a -> b -> Int -> ShowS
-showsQName c m n p = showParen (p > 9) $ foldl' (.) id (intersperse (showChar '.') (shows <$> toList m)) . showString c . showsPrec 10 n
-
-
--- | Resolved names.
-data RName = QName :.: Name
-  deriving (Eq, Ord)
-
-instance Show RName where
-  showsPrec p (m :.: n) = showsQName ":.:" m n p
-
-instance P.Pretty RName where
-  pretty (m :.: n) = foldr' (surround dot . pretty) (pretty n) m
-
--- | Append a 'Name' onto an 'RName'.
-(.:.) :: RName -> Name -> RName
-m :.: n .:. n' = (m |> n) :.: n'
-
--- | Weaken an 'RName' to a 'QName'. This is primarily used for performing lookups in the graph starting from an 'RName' where the stronger structure is not required.
-toQ :: RName -> QName
-toQ (m :.: n) = m |> n
 
 
 -- | Local names, consisting of a 'Level' or 'Index' to a pattern in an 'Env' or 'Context' and a 'Name' bound by said pattern.

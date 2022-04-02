@@ -39,6 +39,7 @@ import           Data.Coerce
 import qualified Data.Map as Map
 import           Facet.Kind
 import           Facet.Name
+import           Facet.Snoc.NonEmpty ((|>))
 import           Facet.Syntax
 import           Facet.Term.Expr
 import           Facet.Type.Norm
@@ -85,20 +86,20 @@ foldMapC f = getChoosing #. foldMap (Choosing #. f)
 {-# INLINE (#.) #-}
 
 
-lookupC :: Has (Choose :+: Empty) sig m => Name -> Module -> m (RName :=: Maybe Term ::: Type)
+lookupC :: Has (Choose :+: Empty) sig m => Name -> Module -> m (QName :=: Maybe Term ::: Type)
 lookupC n Module{ name, scope } = foldMapC matchDef (map def (decls scope))
   where
   matchDef = matchTerm <=< lookupScope n . tm <=< unDData
-  matchTerm (n :=: d) = (name :.: n :=:) <$> unDTerm d
+  matchTerm (n :=: d) = (name |> n :=:) <$> unDTerm d
 
 -- | Look up effect operations.
-lookupE :: Has (Choose :+: Empty) sig m => Name -> Module -> m (RName :=: Def)
+lookupE :: Has (Choose :+: Empty) sig m => Name -> Module -> m (QName :=: Def)
 lookupE n Module{ name, scope } = foldMapC matchDef (map def (decls scope))
   where
-  matchDef = fmap (bimap (name:.:) (DTerm Nothing)) . lookupScope n . tm <=< unDInterface
+  matchDef = fmap (bimap (name |>) (DTerm Nothing)) . lookupScope n . tm <=< unDInterface
 
-lookupD :: Has Empty sig m => Name -> Module -> m (RName :=: Def)
-lookupD n Module{ name, scope } = maybe empty (pure . first (name:.:)) (lookupScope n scope)
+lookupD :: Has Empty sig m => Name -> Module -> m (QName :=: Def)
+lookupD n Module{ name, scope } = maybe empty (pure . first (name |>)) (lookupScope n scope)
 
 
 newtype Scope a = Scope { decls :: [Name :=: a] }

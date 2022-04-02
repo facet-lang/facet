@@ -13,7 +13,7 @@ import qualified Data.Set as Set
 import           Facet.Name
 import           Facet.Snoc
 
-data Interface a = Interface RName (Snoc a)
+data Interface a = Interface QName (Snoc a)
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
 newtype Signature a = Signature { getSignature :: Set.Set (Interface a) }

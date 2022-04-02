@@ -165,9 +165,9 @@ instance Printable a => Printable (Interface a) where
   print = print1
 
 instance Printable TX.Type where
-  print opts@Options{ rname } = go
+  print opts@Options{ qname } = go
     where
-    qvar = group . setPrec Var . rname
+    qvar = group . setPrec Var . qname
     go env = \case
       TX.Var (Global n)       -> qvar n
       TX.Var (Free (Right n)) -> fromMaybe (lname (toLeveled d n)) $ Env.lookup env n
@@ -191,7 +191,7 @@ deriving via (Quoting TX.Type TN.Type) instance Printable TN.Type
 
 
 instance Printable C.Term where
-  print opts@Options{ rname } = go
+  print opts@Options{ qname } = go
     where
     go env = \case
       C.Var (Global n) -> qvar n
@@ -200,12 +200,12 @@ instance Printable C.Term where
       C.App f a        -> go env f $$ go env a
       C.Con n p        -> qvar n $$* (group . go env <$> p)
       C.String s       -> annotate Lit $ pretty (show s)
-      C.Dict os        -> brackets (flatAlt space line <> commaSep (map (\ (n :=: v) -> rname n <+> equals <+> group (go env v)) os) <> flatAlt space line)
+      C.Dict os        -> brackets (flatAlt space line <> commaSep (map (\ (n :=: v) -> qname n <+> equals <+> group (go env v)) os) <> flatAlt space line)
       C.Let p v b      -> let p' = snd (mapAccumL (\ d n -> (succ d, n :=: local n d)) (getUsed (level env)) p) in pretty "let" <+> braces (print opts env (def <$> p') </> equals <+> group (go env v)) <+> pretty "in" <+> go (env |> p') b
       C.Comp p b       -> comp (clause env (PDict p, b))
       where
       d = level env
-    qvar = group . setPrec Var . rname
+    qvar = group . setPrec Var . qname
     clause env (p, b) = print opts env (def <$> p') <+> arrow <+> go (env |> p') b
       where
       p' = snd (mapAccumL (\ d n -> (succ d, n :=: local n d)) (getUsed (level env)) p)
@@ -241,16 +241,16 @@ class Printable1 f where
   printWith :: (Options Print -> Env Print -> a -> Print) -> Options Print -> Env Print -> f a -> Print
 
 instance Printable1 Interface where
-  printWith with opts@Options{ rname } env (Interface h sp) = rname h $$* fmap (with opts env) sp
+  printWith with opts@Options{ qname } env (Interface h sp) = qname h $$* fmap (with opts env) sp
 
 instance Printable1 Pattern where
-  printWith with opts@Options{ rname } env = go
+  printWith with opts@Options{ qname } env = go
     where
     go = \case
       PWildcard -> pretty '_'
       PVar n    -> with opts env n
-      PCon n ps -> parens (annotate Con (rname n) $$* map go (toList ps))
-      PDict os  -> brackets (flatAlt space line <> commaSep (map (\ (n :=: v) -> rname n <+> equals <+> group (with opts env v)) os) <> flatAlt space line)
+      PCon n ps -> parens (annotate Con (qname n) $$* map go (toList ps))
+      PDict os  -> brackets (flatAlt space line <> commaSep (map (\ (n :=: v) -> qname n <+> equals <+> group (with opts env v)) os) <> flatAlt space line)
 
 
 print1 :: (Printable1 f, Printable a) => Options Print -> Env Print -> f a -> Print

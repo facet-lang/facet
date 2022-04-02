@@ -14,9 +14,9 @@ data Term
   = Var (Var (LName Index))
   | Lam [(Pattern Name, Term)]
   | App Term Term
-  | Con RName [Term]
+  | Con QName [Term]
   | String Text
-  | Dict [RName :=: Term]
+  | Dict [QName :=: Term]
   | Let (Pattern Name) Term Term
-  | Comp [RName :=: Name] Term -- ^ NB: the first argument is a specialization of @'Pattern' 'Name'@ to the 'PDict' constructor
+  | Comp [QName :=: Name] Term -- ^ NB: the first argument is a specialization of @'Pattern' 'Name'@ to the 'PDict' constructor
   deriving (Eq, Ord, Show)

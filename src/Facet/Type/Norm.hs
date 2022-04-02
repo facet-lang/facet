@@ -83,7 +83,7 @@ _Comp :: Prism' Type (Signature Type, Type)
 _Comp = prism' (uncurry Comp) (\case{ Comp sig t -> Just (sig, t) ; _ -> Nothing })
 
 
-global :: RName -> Type
+global :: QName -> Type
 global = var . Global
 
 free :: LName Level -> Type

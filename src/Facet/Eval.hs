@@ -27,26 +27,26 @@ module Facet.Eval
 , reader'
 ) where
 
-import Control.Algebra
-import Control.Carrier.Reader
-import Control.Monad (ap, guard, liftM, (>=>))
-import Control.Monad.Trans.Class
-import Data.Foldable
-import Data.Function
-import Data.Maybe (fromMaybe)
-import Data.Text (Text)
-import Facet.Env as Env
-import Facet.Graph
-import Facet.Module
-import Facet.Name hiding (Op)
-import Facet.Pattern
-import Facet.Quote
-import Facet.Semialign (zipWithM)
-import Facet.Snoc.NonEmpty as NE hiding ((|>))
-import Facet.Syntax
-import Facet.Term.Expr
-import GHC.Stack (HasCallStack)
-import Prelude hiding (zipWith)
+import           Control.Algebra
+import           Control.Carrier.Reader
+import           Control.Monad (ap, guard, liftM, (>=>))
+import           Control.Monad.Trans.Class
+import           Data.Foldable
+import           Data.Function
+import           Data.Maybe (fromMaybe)
+import           Data.Text (Text)
+import           Facet.Env as Env
+import           Facet.Graph
+import           Facet.Module
+import           Facet.Name hiding (Op)
+import           Facet.Pattern
+import           Facet.Quote
+import           Facet.Semialign (zipWithM)
+import qualified Facet.Snoc.NonEmpty as NE
+import           Facet.Syntax
+import           Facet.Term.Expr
+import           GHC.Stack (HasCallStack)
+import           Prelude hiding (zipWith)
 
 eval :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Term -> ReaderC (Env (Value (Eval m))) (Eval m) (Value (Eval m))
 eval = \case
@@ -60,11 +60,11 @@ eval = \case
   Let p v b      -> eval v >>= \ v' -> local (|> fromMaybe (error "eval: non-exhaustive pattern in let") (matchV id p v')) (eval b)
   Comp p b       -> comp p b
 
-global :: Has (Reader Graph :+: Reader Module) sig m => RName -> ReaderC (Env (Value (Eval m))) (Eval m) Term
+global :: Has (Reader Graph :+: Reader Module) sig m => QName -> ReaderC (Env (Value (Eval m))) (Eval m) Term
 global n = do
   mod <- lift ask
   graph <- lift ask
-  case lookupQ graph mod (toQ n) of
+  case lookupQ graph mod n of
     [_ :=: DTerm (Just v) _] -> pure v -- FIXME: store values in the module graph
     _                        -> error "throw a real error here"
 
@@ -84,10 +84,10 @@ app f a = ask >>= \ envCallSite -> f >>= \case
 string :: Text -> ReaderC (Env (Value (Eval m))) (Eval m) (Value (Eval m))
 string = pure . VString
 
-con :: RName -> [ReaderC (Env (Value (Eval m))) (Eval m) (Value (Eval m))] -> ReaderC (Env (Value (Eval m))) (Eval m) (Value (Eval m))
+con :: QName -> [ReaderC (Env (Value (Eval m))) (Eval m) (Value (Eval m))] -> ReaderC (Env (Value (Eval m))) (Eval m) (Value (Eval m))
 con n fs = VCon n <$> sequenceA fs
 
-comp :: [RName :=: Name] -> Term -> ReaderC (Env (Value (Eval m))) (Eval m) (Value (Eval m))
+comp :: [QName :=: Name] -> Term -> ReaderC (Env (Value (Eval m))) (Eval m) (Value (Eval m))
 comp p b = pure $ VComp p b
 
 
@@ -121,15 +121,15 @@ data Value m
   -- | Neutral; variables, only used during quotation
   = VVar (Var (LName Level))
   -- | Value; data constructors.
-  | VCon RName [Value m]
+  | VCon QName [Value m]
   -- | Value; strings.
   | VString Text
   -- | Computation; lambdas.
   | VLam (Env (Value m)) [(Pattern Name, Term)]
   -- | Computation; continuations, used in effect handlers.
   | VCont (Value m -> m (Value m))
-  | VDict [RName :=: Value m]
-  | VComp [RName :=: Name] Term
+  | VDict [QName :=: Value m]
+  | VComp [QName :=: Name] Term
 
 instance Monad m => Quote (Value m) (m Term) where
   quote = \case
@@ -142,7 +142,7 @@ instance Monad m => Quote (Value m) (m Term) where
     VComp p b -> pure . pure $ Comp p b
 
 unit :: Value m
-unit = VCon (NE.FromList ["Data", "Unit"] :.: T "unit") []
+unit = VCon (NE.FromList ["Data", "Unit"] NE.|> T "unit") []
 
 
 -- Elimination
