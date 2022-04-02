@@ -16,6 +16,7 @@ module Facet.Quote
 , binderN
 , QuoterT(..)
 , runQuoterT
+, binderT
 ) where
 
 import Control.Algebra
@@ -107,3 +108,10 @@ newtype QuoterT m a = QuoterT (Level -> m a)
 
 runQuoterT :: Level -> QuoterT m a -> m a
 runQuoterT d (QuoterT f) = f d
+
+-- | Build quoted first-order syntax from a higher-order representation.
+binderT
+  :: (Level -> QuoterT m a)       -- ^ Constructor for variables in @a@.
+  -> (QuoterT m a -> QuoterT m b) -- ^ The binder's scope, represented as a Haskell function mapping variables' values to complete terms.
+  -> QuoterT m b                  -- ^ A 'Quoter' of the first-order term.
+binderT with f = QuoterT (\ d -> runQuoterT (d + 1) (f (with d)))
