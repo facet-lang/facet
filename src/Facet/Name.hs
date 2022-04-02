@@ -9,7 +9,7 @@ module Facet.Name
 , Meta(..)
 , __
 , MName
-, prettyMName
+, prettyQName
 , QName
 , RName(..)
 , (.:.)
@@ -84,8 +84,8 @@ __ = U T.empty
 
 type MName = NonEmpty Name
 
-prettyMName :: Printer a => MName -> a
-prettyMName (ns:|>n) = foldr' (surround dot . pretty) (pretty n) ns
+prettyQName :: Printer a => MName -> a
+prettyQName (ns:|>n) = foldr' (surround dot . pretty) (pretty n) ns
 
 showsModuleName :: (Foldable t, Show a, Show b) => String -> t a -> b -> Int -> ShowS
 showsModuleName c m n p = showParen (p > 9) $ foldl' (.) id (intersperse (showChar '.') (shows <$> toList m)) . showString c . showsPrec 10 n

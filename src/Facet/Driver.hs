@@ -109,11 +109,11 @@ reloadModules = do
     let loaded = traverse (\ name -> graph ^. at name >>= snd) h
     case loaded of
       Just loaded -> (Just <$> do
-        outputDocLn $ annotate Progress (brackets (ratio (i :: Int) nModules)) <+> nest 2 (group (fillSep [ pretty "Loading", prettyMName name ]))
+        outputDocLn $ annotate Progress (brackets (ratio (i :: Int) nModules)) <+> nest 2 (group (fillSep [ pretty "Loading", prettyQName name ]))
         storeModule name (path (reference src)) =<< loadModule graph loaded)
         `catchError` \ err -> Nothing <$ outputDocLn (prettyNotice err)
       Nothing -> do
-        outputDocLn $ annotate Progress (brackets (ratio i nModules)) <+> nest 2 (group (fillSep [ pretty "Skipping", prettyMName name ]))
+        outputDocLn $ annotate Progress (brackets (ratio i nModules)) <+> nest 2 (group (fillSep [ pretty "Skipping", prettyQName name ]))
         pure Nothing
   let nSuccess = length (catMaybes results)
       status
@@ -162,7 +162,7 @@ resolveName searchPaths name = do
   path <- liftIO $ findFile searchPaths namePath
   case path of
     Just path -> pure path
-    Nothing   -> throwError @(Notice.Notice (Doc Style)) $ Notice.Notice (Just Notice.Error) [] (fillSep [pretty "module", squotes (prettyMName name), reflow "could not be found."]) $ case searchPaths of
+    Nothing   -> throwError @(Notice.Notice (Doc Style)) $ Notice.Notice (Just Notice.Error) [] (fillSep [pretty "module", squotes (prettyQName name), reflow "could not be found."]) $ case searchPaths of
       [] -> []
       _  -> [ nest 2 (reflow "search paths:" <\> concatWith (<\>) (map pretty searchPaths)) ]
   where
@@ -183,4 +183,4 @@ ioErrorToNotice refs err = Notice.Notice (Just Notice.Error) refs (group (reflow
 rethrowGraphErrors :: Applicative m => [Source] -> I.ThrowC (Notice.Notice (Doc Style)) GraphErr m a -> m a
 rethrowGraphErrors refs = I.runThrow (pure . formatGraphErr)
   where
-  formatGraphErr (CyclicImport path) = Notice.Notice (Just Notice.Error) refs (reflow "cyclic import") (map prettyMName (toList path))
+  formatGraphErr (CyclicImport path) = Notice.Notice (Just Notice.Error) refs (reflow "cyclic import") (map prettyQName (toList path))

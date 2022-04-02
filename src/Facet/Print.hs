@@ -232,8 +232,8 @@ instance Printable C.Module where
         C.SInterface os -> annotate Keyword (pretty "interface") <+> scope (print opts env) os
         C.SModule ds    -> block (concatWith (surround hardline) (map ((hardline <>) . def . fmap defBody) (C.scopeToList ds)))
     scope with = block . group . concatWith (surround (hardline <> comma <> space)) . map (group . def . fmap with) . C.scopeToList
-    import' n = pretty "import" <+> braces (setPrec Var (prettyMName n))
-    module_ n t is ds = ann (setPrec Var (prettyMName n) ::: t) </> concatWith (surround hardline) (is ++ map (hardline <>) ds)
+    import' n = pretty "import" <+> braces (setPrec Var (prettyQName n))
+    module_ n t is ds = ann (setPrec Var (prettyQName n) ::: t) </> concatWith (surround hardline) (is ++ map (hardline <>) ds)
     defn (a :=: b) = group a <> hardline <> group b
 
 

@@ -173,9 +173,9 @@ showPaths   = Action $ do
   unless (null searchPaths)
     $ outputDocLn $ nest 2 $ pretty ("search paths:" :: Text) <\> unlines (map pretty searchPaths)
 
-showModules = Action $ uses (target_.modules_) (unlines . map (\ (name, (path, _)) -> prettyMName name <> maybe mempty ((space <>) . S.parens . pretty) path) . Map.toList . getGraph) >>= outputDocLn
+showModules = Action $ uses (target_.modules_) (unlines . map (\ (name, (path, _)) -> prettyQName name <> maybe mempty ((space <>) . S.parens . pretty) path) . Map.toList . getGraph) >>= outputDocLn
 
-showTargets = Action $ uses (target_.targets_) (unlines . map prettyMName . toList) >>= outputDocLn
+showTargets = Action $ uses (target_.targets_) (unlines . map prettyQName . toList) >>= outputDocLn
 
 
 addPath, removePath :: FilePath -> Action

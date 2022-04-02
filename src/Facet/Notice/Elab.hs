@@ -4,7 +4,7 @@ module Facet.Notice.Elab
 , rethrowElabWarnings
 ) where
 
-import           Data.Foldable (foldl', foldr')
+import           Data.Foldable (foldl')
 import           Data.Semigroup (stimes)
 import qualified Facet.Carrier.Throw.Inject as L
 import qualified Facet.Carrier.Write.Inject as L
@@ -21,7 +21,6 @@ import           Facet.Pretty
 import           Facet.Print as Print
 import           Facet.Semiring (Few(..), one, zero)
 import           Facet.Snoc
-import           Facet.Snoc.NonEmpty
 import           Facet.Style
 import           Facet.Subst (metas)
 import           Facet.Syntax hiding (ann)
@@ -63,8 +62,8 @@ rethrowElabErrors opts = L.runThrow (pure . rethrow)
 
 printErrReason :: Options Print -> Env.Env Print -> ErrReason -> Doc Style
 printErrReason opts ctx = group . \case
-  FreeVariable n               -> fillSep [reflow "variable not in scope:", qname n]
-  AmbiguousName n qs           -> fillSep [reflow "ambiguous name", qname n] <\> nest 2 (reflow "alternatives:" <\> unlines (map pretty qs))
+  FreeVariable n               -> fillSep [reflow "variable not in scope:", prettyQName n]
+  AmbiguousName n qs           -> fillSep [reflow "ambiguous name", prettyQName n] <\> nest 2 (reflow "alternatives:" <\> unlines (map pretty qs))
   CouldNotSynthesize           -> reflow "could not synthesize a type; try a type annotation"
   ResourceMismatch n e a       -> fillSep [reflow "uses of variable", pretty n, reflow "didn’t match requirements"]
     <> hardline <> pretty "expected:" <+> prettyQ e
@@ -98,8 +97,6 @@ printErrReason opts ctx = group . \case
     in fillSep [ reflow "found hole", pretty n, colon, _T' ]
   Invariant s -> reflow s
   MissingInterface i -> reflow "could not find required interface" <+> getPrint (print opts ctx i)
-  where
-  qname (m:|>n) = foldr' (surround dot . pretty) (pretty n) m
 
 
 rethrowElabWarnings :: L.WriteC (Notice (Doc Style)) Warn m a -> m a
