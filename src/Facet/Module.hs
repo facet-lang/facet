@@ -53,7 +53,7 @@ import           Fresnel.Review (review)
 
 -- FIXME: model operators and their associativities for parsing.
 data Module = Module
-  { name      :: MName
+  { name      :: QName
   -- FIXME: record source references to imports to contextualize ambiguous name errors.
   , imports   :: [Import]
   -- FIXME: record source references to operators to contextualize parse errors.
@@ -62,7 +62,7 @@ data Module = Module
   , scope     :: Scope Def
   }
 
-name_ :: Lens' Module MName
+name_ :: Lens' Module QName
 name_ = lens (\ Module{ name } -> name) (\ Module{ imports, operators, scope } name -> Module{ name, imports, operators, scope })
 
 imports_ :: Lens' Module [Import]
@@ -120,7 +120,7 @@ lookupScope :: Has Empty sig m => Name -> Scope a -> m (Name :=: a)
 lookupScope n (Scope ds) = maybe empty (pure . (n :=:)) (lookup n (map (\ (n :=: a) -> (n, a)) ds))
 
 
-newtype Import = Import { name :: MName }
+newtype Import = Import { name :: QName }
 
 
 data Submodule

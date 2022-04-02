@@ -60,7 +60,7 @@ whole :: TokenParsing p => p a -> p a
 whole p = whiteSpace *> p <* eof
 
 
-makeOperator :: (N.MName, N.Op, N.Assoc) -> Operator (S.Ann S.Expr)
+makeOperator :: (N.QName, N.Op, N.Assoc) -> Operator (S.Ann S.Expr)
 makeOperator (name, op, assoc) = (op, assoc, nary (N.toQ (name N.:.: N.O op)))
   where
   nary name es = foldl' (S.annBinary S.App) (S.Ann (S.ann (head es)) Nil (S.Var name)) es
@@ -75,7 +75,7 @@ module' = anned $ do
   ops <- get @[Operator (S.Ann S.Expr)]
   pure $ S.Module name imports (map (\ (op, assoc, _) -> (op, assoc)) ops) decls
 
-moduleHeader :: (Has Parser sig p, Has (Writer Comments) sig p, TokenParsing p) => p (N.MName, [S.Ann S.Import])
+moduleHeader :: (Has Parser sig p, Has (Writer Comments) sig p, TokenParsing p) => p (N.QName, [S.Ann S.Import])
 moduleHeader = (,) <$ reserve dnameStyle "module" <*> mname <* colon <* symbol "Module" <*> many import'
 
 
@@ -84,7 +84,7 @@ moduleHeader = (,) <$ reserve dnameStyle "module" <*> mname <* colon <* symbol "
 import' :: (Has Parser sig p, Has (Writer Comments) sig p, TokenParsing p) => p (S.Ann S.Import)
 import' = anned $ S.Import <$ reserve dnameStyle "import" <*> mname
 
-decl :: (Has Parser sig p, Has (Reader N.MName) sig p, Has (State [Operator (S.Ann S.Expr)]) sig p, Has (Writer Comments) sig p, TokenParsing p) => p (S.Ann (N.Name, S.Ann S.Def))
+decl :: (Has Parser sig p, Has (Reader N.QName) sig p, Has (State [Operator (S.Ann S.Expr)]) sig p, Has (Writer Comments) sig p, TokenParsing p) => p (S.Ann (N.Name, S.Ann S.Def))
 decl = choice
   [ termDecl
   , dataDecl
@@ -94,7 +94,7 @@ decl = choice
 -- FIXME: operators aren’t available until after their declarations have been parsed.
 -- FIXME: parse operator declarations in datatypes.
 -- FIXME: parse operator declarations in interfaces.
-termDecl :: (Has Parser sig p, Has (Reader N.MName) sig p, Has (State [Operator (S.Ann S.Expr)]) sig p, Has (Writer Comments) sig p, TokenParsing p) => p (S.Ann (N.Name, S.Ann S.Def))
+termDecl :: (Has Parser sig p, Has (Reader N.QName) sig p, Has (State [Operator (S.Ann S.Expr)]) sig p, Has (Writer Comments) sig p, TokenParsing p) => p (S.Ann (N.Name, S.Ann S.Def))
 termDecl = anned $ do
   name <- dename
   case name of
@@ -304,7 +304,7 @@ tname = ident tnameStyle
 dename :: (Monad p, TokenParsing p) => p N.Name
 dename = N.U <$> ident dnameStyle <|> N.O <$> oname
 
-mname :: (Monad p, TokenParsing p) => p N.MName
+mname :: (Monad p, TokenParsing p) => p N.QName
 mname = token (runUnspaced (fromList <$> sepBy1 comp dot))
   where
   comp = ident tnameStyle

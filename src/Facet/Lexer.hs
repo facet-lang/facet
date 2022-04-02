@@ -37,7 +37,7 @@ data TokenKind
   | RAngle
   | OpIdent String
   | QIdent QName
-  | MIdent MName
+  | MIdent QName
   | EIdent Name
   | TIdent Name
   | HIdent Name

@@ -35,11 +35,11 @@ import           Fresnel.At
 import           Fresnel.Iso
 import           Fresnel.Ixed
 
-newtype Graph = Graph { getGraph :: Map.Map MName (Maybe FilePath, Maybe Module) }
+newtype Graph = Graph { getGraph :: Map.Map QName (Maybe FilePath, Maybe Module) }
   deriving (Monoid, Semigroup)
 
 instance Ixed Graph where
-  type Index Graph = MName
+  type Index Graph = QName
   type IxValue Graph = (Maybe FilePath, Maybe Module)
   ix = ixAt
 
@@ -49,13 +49,13 @@ instance At   Graph where
 singleton :: Maybe FilePath -> Module -> Graph
 singleton p m@Module{ name } = Graph (Map.singleton name (p, Just m))
 
-restrict :: Graph -> Set.Set MName -> Graph
+restrict :: Graph -> Set.Set QName -> Graph
 restrict (Graph g) s = Graph $ Map.restrictKeys g s
 
 insert :: Maybe FilePath -> Module -> Graph -> Graph
 insert p m@Module{ name } = Graph . Map.insert name (p, Just m) . getGraph
 
-lookupM :: Has (Choose :+: Empty) sig m => MName -> Graph -> m (Maybe FilePath, Maybe Module)
+lookupM :: Has (Choose :+: Empty) sig m => QName -> Graph -> m (Maybe FilePath, Maybe Module)
 lookupM n = maybe empty pure . Map.lookup n . getGraph
 
 lookupWith :: Has (Choose :+: Empty) sig m => (Name -> Module -> m res) -> Graph -> Module -> QName -> m res
@@ -69,13 +69,13 @@ lookupQ = lookupWith lookupD
 
 
 -- FIXME: enrich this with source references for each
-newtype GraphErr = CyclicImport (Snoc MName)
+newtype GraphErr = CyclicImport (Snoc QName)
 
-data Node a = Node MName [MName] a
+data Node a = Node QName [QName] a
 
-loadOrder :: Has (Throw GraphErr) sig m => (MName -> m (Node a)) -> [Node a] -> m [a]
+loadOrder :: Has (Throw GraphErr) sig m => (QName -> m (Node a)) -> [Node a] -> m [a]
 loadOrder lookup modules = do
-  modules <- execWriter . evalState (Set.empty @MName) . runReader (Nil @MName)
+  modules <- execWriter . evalState (Set.empty @QName) . runReader (Nil @QName)
     $ for_ modules visit
   pure $ appEndo modules []
   where

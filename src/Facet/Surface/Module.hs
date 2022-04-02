@@ -25,7 +25,7 @@ data Def
 -- Modules
 
 data Module = Module
-  { name      :: MName
+  { name      :: QName
   , imports   :: [Ann Import]
   -- FIXME: store source references for operators’ definitions, for error reporting
   , operators :: [(Op, Assoc)]
@@ -34,5 +34,5 @@ data Module = Module
   deriving (Eq, Show)
 
 
-newtype Import = Import { name :: MName }
+newtype Import = Import { name :: QName }
   deriving (Eq, Show)

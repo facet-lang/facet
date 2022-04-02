@@ -8,7 +8,6 @@ module Facet.Name
 , Used(..)
 , Meta(..)
 , __
-, MName
 , prettyQName
 , QName
 , RName(..)
@@ -82,9 +81,7 @@ __ :: Name
 __ = U T.empty
 
 
-type MName = NonEmpty Name
-
-prettyQName :: Printer a => MName -> a
+prettyQName :: Printer a => QName -> a
 prettyQName (ns:|>n) = foldr' (surround dot . pretty) (pretty n) ns
 
 showsModuleName :: (Foldable t, Show a, Show b) => String -> t a -> b -> Int -> ShowS
@@ -97,7 +94,7 @@ type QName = NonEmpty Name
 
 
 -- | Resolved names.
-data RName = MName :.: Name
+data RName = QName :.: Name
   deriving (Eq, Ord)
 
 instance Show RName where

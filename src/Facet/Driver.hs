@@ -62,14 +62,14 @@ import           Text.Parser.Token (whiteSpace)
 
 data Target = Target
   { modules     :: Graph
-  , targets     :: Set.Set MName
+  , targets     :: Set.Set QName
   , searchPaths :: Set.Set FilePath
   }
 
 modules_ :: Lens' Target Graph
 modules_ = lens modules (\ r modules -> r{ modules })
 
-targets_ :: Lens' Target (Set.Set MName)
+targets_ :: Lens' Target (Set.Set QName)
 targets_ = lens targets (\ r targets -> r{ targets })
 
 searchPaths_ :: Lens' Target (Set.Set FilePath)
@@ -124,7 +124,7 @@ reloadModules = do
   ratio n d = pretty n <+> pretty "of" <+> pretty d
 
 data ModuleHeader a = ModuleHeader
-  { moduleName :: MName
+  { moduleName :: QName
   , source     :: Source
   , imports    :: [a]
   }
@@ -133,10 +133,10 @@ data ModuleHeader a = ModuleHeader
 imports_ :: Lens (ModuleHeader a) (ModuleHeader b) [a] [b]
 imports_ = lens imports (\ h imports -> h{ imports })
 
-headerNode :: ModuleHeader MName -> Node (ModuleHeader MName)
+headerNode :: ModuleHeader QName -> Node (ModuleHeader QName)
 headerNode h@(ModuleHeader n _ imports) = Node n imports h
 
-loadModuleHeader :: (Has (Output :+: Throw (Notice.Notice (Doc Style))) sig m, MonadIO m) => [FilePath] -> Either FilePath MName -> m (ModuleHeader MName)
+loadModuleHeader :: (Has (Output :+: Throw (Notice.Notice (Doc Style))) sig m, MonadIO m) => [FilePath] -> Either FilePath QName -> m (ModuleHeader QName)
 loadModuleHeader searchPaths target = do
   path <- case target of
     Left path  -> pure path
@@ -153,10 +153,10 @@ loadModule graph (ModuleHeader _ src imports) = do
   opts <- get
   rethrowElabWarnings . rethrowElabErrors opts . runReader graph . runReader src $ Elab.elabModule m
 
-storeModule :: Has (State Target) sig m => MName -> Maybe FilePath -> Module -> m ()
+storeModule :: Has (State Target) sig m => QName -> Maybe FilePath -> Module -> m ()
 storeModule name path m = modules_ .at name .= Just (path, Just m)
 
-resolveName :: (Has (Throw (Notice.Notice (Doc Style))) sig m, MonadIO m) => [FilePath] -> MName -> m FilePath
+resolveName :: (Has (Throw (Notice.Notice (Doc Style))) sig m, MonadIO m) => [FilePath] -> QName -> m FilePath
 resolveName searchPaths name = do
   let namePath = toPath name FP.<.> ".facet"
   path <- liftIO $ findFile searchPaths namePath

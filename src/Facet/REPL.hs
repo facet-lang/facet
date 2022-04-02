@@ -185,7 +185,7 @@ addPath path = Action $ target_.searchPaths_ %= Set.insert path
 removePath path = Action $ target_.searchPaths_ %= Set.delete path
 
 
-addTarget, removeTarget :: [MName] -> Action
+addTarget, removeTarget :: [QName] -> Action
 
 addTarget targets = Action $ do
   target_.targets_ %= Set.union (Set.fromList targets)
@@ -243,7 +243,7 @@ prompt = do
   p <- liftIO $ fn line
   fmap (sourceFromString Nothing line) <$> getInputLine p
 
-runElab :: Has (State (Options Print) :+: State REPL) sig m => I.WriteC (Notice.Notice (Doc Style)) Elab.Warn (I.ThrowC (Notice.Notice (Doc Style)) Elab.Err (ReaderC MName (ReaderC Module (ReaderC Graph m)))) a -> m a
+runElab :: Has (State (Options Print) :+: State REPL) sig m => I.WriteC (Notice.Notice (Doc Style)) Elab.Warn (I.ThrowC (Notice.Notice (Doc Style)) Elab.Err (ReaderC QName (ReaderC Module (ReaderC Graph m)))) a -> m a
 runElab m = do
   graph <- use (target_.modules_)
   localDefs <- use localDefs_
