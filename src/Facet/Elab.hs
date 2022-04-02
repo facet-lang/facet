@@ -78,7 +78,7 @@ import           Facet.Pattern
 import           Facet.Quote
 import           Facet.Semiring
 import           Facet.Snoc
-import           Facet.Snoc.NonEmpty (toSnoc)
+import           Facet.Snoc.NonEmpty (NonEmpty(..), toSnoc)
 import           Facet.Source (Source, slice)
 import           Facet.Span (Span(..))
 import           Facet.Subst
@@ -134,14 +134,14 @@ resolveQ :: (Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Read
 resolveQ = resolveWith lookupD
 
 lookupInContext :: Has (Choose :+: Empty) sig m => QName -> Context -> m (LName Index, Either Kind (Quantity, Type))
-lookupInContext (m:.n)
+lookupInContext (m:|>n)
   | m == Nil  = lookupIndex n
   | otherwise = const empty
 
 -- FIXME: probably we should instead look up the effect op globally, then check for membership in the sig
 -- FIXME: return the index in the sig; it’s vital for evaluation of polymorphic effects when there are multiple such
 lookupInSig :: Has (Choose :+: Empty) sig m => QName -> Module -> Graph -> [Signature Type] -> m (RName :=: Type)
-lookupInSig (m :. n) mod graph = foldMapC $ foldMapC (\ (Interface q@(m':.:_) _) -> do
+lookupInSig (m :|> n) mod graph = foldMapC $ foldMapC (\ (Interface q@(m':.:_) _) -> do
   guard (m == Nil || m == toSnoc m')
   defs <- interfaceScope =<< lookupQ graph mod (toQ q)
   _ :=: d <- lookupScope n defs

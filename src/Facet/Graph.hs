@@ -29,7 +29,7 @@ import qualified Data.Set as Set
 import           Facet.Module
 import           Facet.Name
 import           Facet.Snoc
-import           Facet.Snoc.NonEmpty (fromSnoc, toSnoc)
+import           Facet.Snoc.NonEmpty (NonEmpty(..), fromSnoc, toSnoc)
 import           Facet.Syntax
 import           Fresnel.At
 import           Fresnel.Iso
@@ -59,7 +59,7 @@ lookupM :: Has (Choose :+: Empty) sig m => MName -> Graph -> m (Maybe FilePath, 
 lookupM n = maybe empty pure . Map.lookup n . getGraph
 
 lookupWith :: Has (Choose :+: Empty) sig m => (Name -> Module -> m res) -> Graph -> Module -> QName -> m res
-lookupWith lookup graph mod@Module{ name } (m:.n)
+lookupWith lookup graph mod@Module{ name } (m:|>n)
   =   guard (m == toSnoc name || m == Nil) *> lookup n mod
   <|> guard (m == Nil) *> foldMapC (maybe empty (lookup n) . snd) (getGraph graph)
   <|> guard (m /= Nil) *> (lookupM (fromSnoc m) graph >>= maybe empty pure . snd >>= lookup n)

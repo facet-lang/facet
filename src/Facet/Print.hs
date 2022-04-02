@@ -40,6 +40,7 @@ import           Facet.Print.Options
 import           Facet.Quote
 import           Facet.Semiring (one, zero)
 import           Facet.Snoc
+import           Facet.Snoc.NonEmpty (NonEmpty(..))
 import           Facet.Style
 import           Facet.Syntax hiding (Ann(..))
 import qualified Facet.Term.Expr as C
@@ -123,7 +124,7 @@ intro  n = name lower n . getLevel
 tintro n = name upper n . getLevel
 
 qvar :: (P.Level p ~ Precedence, PrecedencePrinter p) => QName -> p
-qvar (_ :. n) = setPrec Var (pretty n)
+qvar (_ :|> n) = setPrec Var (pretty n)
 
 lname :: LName Level -> Print
 lname (LName d n) = intro n d
@@ -218,11 +219,11 @@ instance Printable a => Printable (Pattern a) where
 instance Printable C.Module where
   print opts env (C.Module mname is _ ds) = module_
     mname
-    (qvar (fromList [U (T.pack "Kernel")]:.U (T.pack "Module")))
+    (qvar (fromList [U (T.pack "Kernel")]:|>U (T.pack "Module")))
     (map (\ (C.Import n) -> import' n) is)
     (map (def . fmap defBody) (C.scopeToList ds))
     where
-    def (n :=: d) = ann (qvar (Nil:.n) ::: d)
+    def (n :=: d) = ann (qvar (Nil:|>n) ::: d)
     defBody = \case
       C.DTerm Nothing  _T ->       print opts env _T
       C.DTerm (Just b) _T -> defn (print opts env _T :=: print opts env b)

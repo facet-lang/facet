@@ -10,7 +10,7 @@ module Facet.Name
 , __
 , MName
 , prettyMName
-, QName(..)
+, QName
 , RName(..)
 , (.:.)
 , toQ
@@ -35,7 +35,6 @@ import           Data.String (IsString(..))
 import           Data.Text (Text)
 import qualified Data.Text as T
 import           Facet.Pretty (subscript)
-import           Facet.Snoc
 import           Facet.Snoc.NonEmpty
 import qualified Prettyprinter as P
 import           Silkscreen
@@ -94,14 +93,7 @@ showsModuleName c m n p = showParen (p > 9) $ foldl' (.) id (intersperse (showCh
 
 
 -- | Qualified names, consisting of a module name and declaration name.
-data QName = Snoc Name :. Name
-  deriving (Eq, Ord)
-
-instance Show QName where
-  showsPrec p (m :. n) = showsModuleName ":." m n p
-
-instance P.Pretty QName where
-  pretty (m :. n) = foldr' (surround dot . pretty) (pretty n) m
+type QName = NonEmpty Name
 
 
 -- | Resolved names.
@@ -120,7 +112,7 @@ m :.: n .:. n' = (m |> n) :.: n'
 
 -- | Weaken an 'RName' to a 'QName'. This is primarily used for performing lookups in the graph starting from an 'RName' where the stronger structure is not required.
 toQ :: RName -> QName
-toQ (m :.: n) = toSnoc m :. n
+toQ (m :.: n) = m |> n
 
 
 -- | Local names, consisting of a 'Level' or 'Index' to a pattern in an 'Env' or 'Context' and a 'Name' bound by said pattern.
