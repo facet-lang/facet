@@ -64,7 +64,7 @@ kind_ = choice
   , RBracket   <$  char ']' <?> "]"
   , LAngle     <$  char '<' <?> "<"
   , RAngle     <$  char '>' <?> ">"
-  , QIdent     <$> (fmap toQ . (:.:) <$> mname <* dot <*> choice [ T <$> ename, tname ])
+  , QIdent     <$> mname
   , MIdent     <$> mname
   , EIdent . T <$> ename
   , TIdent     <$> tname
