@@ -14,8 +14,12 @@ module Facet.Quote
 , runQuoter
 , binder
 , binderN
+, QuoterT(..)
+, runQuoterT
 ) where
 
+import Control.Algebra
+import Control.Carrier.Reader
 import Facet.Name (Level)
 
 -- Quotation
@@ -96,3 +100,10 @@ binderN
   -> Quoter b                 -- ^ A 'Quoter' of the first-order term.
 binderN n with f = Quoter (\ d -> runQuoter (d + n') (f (map with [0..n'])))
   where n' = fromIntegral n
+
+
+newtype QuoterT m a = QuoterT (Level -> m a)
+  deriving (Algebra (Reader Level :+: sig), Applicative, Functor, Monad) via ReaderC Level m
+
+runQuoterT :: Level -> QuoterT m a -> m a
+runQuoterT d (QuoterT f) = f d
