@@ -21,7 +21,6 @@ import qualified Facet.Sequent.Class as C
 import qualified Facet.Sequent.Expr as X
 import           Facet.Sequent.Pattern
 import           Facet.Sequent.Type
-import           Facet.Syntax (Var(..))
 import           Fresnel.Fold (Fold, Union(..), preview)
 import           Fresnel.Getter (to)
 import           Fresnel.Lens (Lens', lens)
@@ -42,15 +41,20 @@ instantiateHead p              = p
 
 
 compileClauses :: Has Empty sig m => [X.Term] -> Type -> [Clause X.Term] -> QuoterT m X.Term
-compileClauses ctx (_A :-> _T) heads = C.lamR $ \ v k -> case _A of
-  -- FIXME: look variables up in @ctx@ instead of hard-coding de Bruijn indices
-  Opaque   -> (match (_Var._Nothing.to (const [])) heads >>= compileClauses ctx _T) X..||. X.covarA (Free 0)
-  _ :-> _  -> (match (_Var._Nothing.to (const [])) heads >>= compileClauses ctx _T) X..||. X.covarA (Free 0)
-  One      -> (match (_Unit.to (const [])) heads >>= compileClauses ctx _T) X..||. X.covarA (Free 0)
+compileClauses ctx (_A :-> _T) heads = C.lamR (compileClausesBody ctx _A _T heads)
+compileClauses _ _T heads
+  | Just (Clause [] b) <- getFirst (foldMap (First . Just) heads) = pure b
+  | otherwise                                                     = empty
+
+compileClausesBody :: Has Empty sig m => [X.Term] -> Type -> Type -> [Clause X.Term] -> QuoterT m X.Term -> QuoterT m X.Coterm -> QuoterT m X.Command
+compileClausesBody ctx _A _T heads v k = case _A of
+  Opaque   -> (match (_Var._Nothing.to (const [])) heads >>= compileClauses ctx _T) C..|. k
+  _ :-> _  -> (match (_Var._Nothing.to (const [])) heads >>= compileClauses ctx _T) C..|. k
+  One      -> (match (_Unit.to (const [])) heads >>= compileClauses ctx _T) C..|. k
   _A :* _B -> match (getUnion (Union (_Pair.to (\ (p, q) -> [p, q])) <> Union (_Var._Nothing.to (const [Var Nothing, Var Nothing])))) heads >>= \ heads' ->
-    X.letA (X.µRA (X.varA (Free 2) X..||. X.prdL1A (X.covarA (Free 0)))) (
-    X.letA (X.µRA (X.varA (Free 3) X..||. X.prdL2A (X.covarA (Free 0)))) (
-      compileClauses ctx _T heads' X..||. X.covarA (Free 2)))
+    C.let' (C.µR (\ k -> v C..|. C.prdL1 k)) (\ _ ->
+    C.let' (C.µR (\ k -> v C..|. C.prdL2 k)) (\ _ ->
+      compileClauses ctx _T heads' C..|. k))
   _A :+ _B -> do
     heads' <- fold <$> for heads (\case
       Clause (p:ps) b -> case instantiateHead p of
@@ -59,14 +63,11 @@ compileClauses ctx (_A :-> _T) heads = C.lamR $ \ v k -> case _A of
         Var Nothing -> pure (fromList [[Clause (Var Nothing:ps) b], [Clause (Var Nothing:ps) b]])
         _           -> empty
       _    -> empty)
-    X.varA (Free 1) X..||. X.sumLA
+    v C..|. C.sumL
       -- FIXME: n-ary sums
-      -- FIXME: don't create extra lambdas for the recursive calls
-      (X.µLA (compileClauses ctx (_A :-> _T) (heads' `at` 0) X..||. X.covarA (Free 0)))
-      (X.µLA (compileClauses ctx (_B :-> _T) (heads' `at` 1) X..||. X.covarA (Free 0)))
-compileClauses _ _T heads
-  | Just (Clause [] b) <- getFirst (foldMap (First . Just) heads) = pure b
-  | otherwise                                                     = empty
+      (C.µL (\ v -> compileClausesBody ctx _A _T (heads' `at` 0) v k))
+      (C.µL (\ v -> compileClausesBody ctx _B _T (heads' `at` 1) v k))
+
 
 match :: Has Empty sig m => Fold (Pattern Name) [Pattern Name] -> [Clause X.Term] -> m [Clause X.Term]
 match o heads = forOf (traversed.patterns_) heads (\case
