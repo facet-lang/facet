@@ -247,7 +247,7 @@ allP n = Bind $ \ _A k -> do
 -- Expression elaboration
 
 synthExpr :: (HasCallStack, Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (State (Subst Type)) sig m, Has (Throw ErrReason :+: Write Warn) sig m, Has (Writer Usage) sig m) => S.Ann S.Expr -> m (Term :==> Type)
-synthExpr = let ?callStack = popCallStack GHC.Stack.callStack in withSpan $ \case
+synthExpr = withCallStack (popCallStack GHC.Stack.callStack) $ withSpan $ \case
   S.Var n    -> var n
   S.App f a  -> synthApp f a
   S.As t _T  -> synthAs t _T
@@ -263,7 +263,7 @@ synthExpr = let ?callStack = popCallStack GHC.Stack.callStack in withSpan $ \cas
 
 
 checkExpr :: (HasCallStack, Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (State (Subst Type)) sig m, Has (Throw ErrReason :+: Write Warn) sig m, Has (Writer Usage) sig m) => S.Ann S.Expr -> Type <==: m Term
-checkExpr expr = let ?callStack = popCallStack GHC.Stack.callStack in withSpanC expr $ \case
+checkExpr expr = withCallStack (popCallStack GHC.Stack.callStack) $ withSpanC expr $ \case
   S.Hole n   -> hole n
   S.Lam cs   -> checkLam cs
   S.Var{}    -> switch (synthExpr expr)
@@ -425,6 +425,9 @@ withSpanC (S.Ann s _ a) k = Check (\ _T -> pushSpan s (k a <==: _T))
 
 withSpan :: Has (Reader ElabContext) sig m => (a -> m b) -> S.Ann a -> m b
 withSpan k (S.Ann s _ a) = pushSpan s (k a)
+
+withCallStack :: CallStack -> (HasCallStack => a) -> a
+withCallStack cs with = let ?callStack = cs in with
 
 provide :: (Has (Reader ElabContext) sig m, Has (State (Subst Type)) sig m) => Signature Type -> m a -> m a
 provide sig m = do
