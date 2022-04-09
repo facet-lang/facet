@@ -10,7 +10,6 @@ module Facet.Syntax
 , nm_
 , def_
 , (:@)(..)
-, qty
 , qty_
   -- * Variables
 , Var(..)
@@ -133,13 +132,10 @@ instance Bitraversable (:@) where
   bitraverse f g (a :@ b) = (:@) <$> f a <*> g b
 
 instance IsPair (:@) where
-  pair_ = iso ((,) <$> view tm_ <*> qty) (uncurry (:@))
+  pair_ = iso ((,) <$> view tm_ <*> view qty_) (uncurry (:@))
 
 instance HasTerm (:@) where
   tm_ = lens (\ (a :@ _) -> a) (\ (_ :@ t) s' -> s' :@ t)
-
-qty :: p :@ q -> q
-qty (_ :@ q) = q
 
 qty_ :: Lens (p :@ q) (p :@ q') q q'
 qty_ = lens (\ (_ :@ q) -> q) (\ (p :@ _) q -> p :@ q)
