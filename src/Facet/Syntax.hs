@@ -11,6 +11,7 @@ module Facet.Syntax
 , def_
 , (:@)(..)
 , qty
+, qty_
   -- * Variables
 , Var(..)
   -- * Decomposition
@@ -139,6 +140,9 @@ instance HasTerm (:@) where
 
 qty :: p :@ q -> q
 qty (_ :@ q) = q
+
+qty_ :: Lens (p :@ q) (p :@ q') q q'
+qty_ = lens (\ (_ :@ q) -> q) (\ (p :@ _) q -> p :@ q)
 
 
 -- Variables
