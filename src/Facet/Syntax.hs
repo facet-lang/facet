@@ -3,7 +3,7 @@ module Facet.Syntax
 ( -- * Term containers
   IsPair(..)
 , HasTerm(..)
-, tm
+-- , tm
 , (:::)(..)
 , ty_
 , (:=:)(..)
@@ -53,9 +53,6 @@ class IsPair p where
 class HasTerm p where
   tm_ :: Lens (p s t) (p s' t) s s'
 
-tm :: HasTerm p => a `p` b -> a
-tm = view tm_
-
 
 data a ::: b = a ::: b
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
@@ -84,7 +81,7 @@ instance Ord2 (:::) where
   liftCompare2 compareA compareB (a1 ::: b1) (a2 ::: b2) = compareA a1 a2 <> compareB b1 b2
 
 instance IsPair (:::) where
-  pair_ = iso ((,) <$> tm <*> view ty_) (uncurry (:::))
+  pair_ = iso ((,) <$> view tm_ <*> view ty_) (uncurry (:::))
 
 instance HasTerm (:::) where
   tm_ = lens (\ (a ::: _) -> a) (\ (_ ::: t) s' -> s' ::: t)
@@ -135,7 +132,7 @@ instance Bitraversable (:@) where
   bitraverse f g (a :@ b) = (:@) <$> f a <*> g b
 
 instance IsPair (:@) where
-  pair_ = iso ((,) <$> tm <*> qty) (uncurry (:@))
+  pair_ = iso ((,) <$> view tm_ <*> qty) (uncurry (:@))
 
 instance HasTerm (:@) where
   tm_ = lens (\ (a :@ _) -> a) (\ (_ :@ t) s' -> s' :@ t)

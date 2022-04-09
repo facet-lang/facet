@@ -88,6 +88,7 @@ import           Facet.Type.Norm as T hiding (global)
 import           Facet.Unify
 import           Facet.Usage hiding (restrict)
 import           Fresnel.At as At
+import           Fresnel.Getter as Getter (view)
 import           Fresnel.Ixed
 import           Fresnel.Prism (Prism')
 import           Fresnel.Review (review)
@@ -203,7 +204,7 @@ comp b = Check $ \ _T -> do
   graph <- ask
   module' <- ask
   let interfacePattern :: Has (Throw ErrReason) sig m => Interface Type -> m (QName :=: (Name :==> Type))
-      interfacePattern (Interface n _) = maybe (freeVariable n) (\ (n' :=: _T) -> pure ((n |> n') :=: (n' :==> _T))) (listToMaybe (scopeToList . tm =<< unDInterface . def =<< lookupQ graph module' n))
+      interfacePattern (Interface n _) = maybe (freeVariable n) (\ (n' :=: _T) -> pure ((n |> n') :=: (n' :==> _T))) (listToMaybe (scopeToList . Getter.view tm_ =<< unDInterface . def =<< lookupQ graph module' n))
   p' <- traverse interfacePattern (interfaces sig)
   -- FIXME: can we apply quantities to dictionaries? what would they mean?
   b' <- (Many, PDict p') |- check (b ::: _B)
@@ -324,7 +325,7 @@ elabDataDef
   -> Kind <==: m [Name :=: Def]
 -- FIXME: check that all constructors return the datatype.
 elabDataDef constructors = Check $ \ _K -> do
-  mname <- view name_
+  mname <- Lens.view name_
   for constructors $ \ (S.Ann _ _ (n ::: t)) -> do
     c_T <- elabType $ runErr $ abstractType (Type.switch (synthType t) <==: KType) _K
     con' <- elabTerm $ runErr $ check (abstractTerm (const (Con (mname |> n) . toList)) ::: c_T)
@@ -437,7 +438,7 @@ provide sig m = do
 
 require :: (Has (Reader ElabContext) sig m, Has (State (Subst Type)) sig m, Has (Throw ErrReason) sig m, Has (Writer Usage) sig m) => Signature Type -> m ()
 require req = do
-  prv <- view sig_
+  prv <- Lens.view sig_
   for_ (interfaces req) $ \ i -> findMaybeA (findMaybeA (runUnifyMaybe . unifyInterface i) . interfaces) prv >>= \case
     Nothing -> missingInterface i
     Just _  -> pure ()
