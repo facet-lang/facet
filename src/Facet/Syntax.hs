@@ -6,7 +6,7 @@ module Facet.Syntax
 , tm
 , (:::)(..)
 , ty
-, _ty
+, ty_
 , (:=:)(..)
 , nm
 , def
@@ -93,8 +93,8 @@ instance HasTerm (:::) where
 ty :: a ::: b -> b
 ty (_ ::: b) = b
 
-_ty :: Lens (s ::: t) (s ::: t') t t'
-_ty = lens ty (\ (s ::: _) t' -> s ::: t')
+ty_ :: Lens (s ::: t) (s ::: t') t t'
+ty_ = lens ty (\ (s ::: _) t' -> s ::: t')
 
 
 data a :=: b = a :=: b
