@@ -5,7 +5,6 @@ module Facet.Syntax
 , HasTerm(..)
 , tm
 , (:::)(..)
-, ty
 , ty_
 , (:=:)(..)
 , nm
@@ -85,13 +84,10 @@ instance Ord2 (:::) where
   liftCompare2 compareA compareB (a1 ::: b1) (a2 ::: b2) = compareA a1 a2 <> compareB b1 b2
 
 instance IsPair (:::) where
-  pair_ = iso ((,) <$> tm <*> ty) (uncurry (:::))
+  pair_ = iso ((,) <$> tm <*> view ty_) (uncurry (:::))
 
 instance HasTerm (:::) where
   tm_ = lens (\ (a ::: _) -> a) (\ (_ ::: t) s' -> s' ::: t)
-
-ty :: a ::: b -> b
-ty = view ty_
 
 ty_ :: Lens (s ::: t) (s ::: t') t t'
 ty_ = lens (\ (_ ::: b) -> b) (\ (s ::: _) t' -> s ::: t')
