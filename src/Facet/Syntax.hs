@@ -8,6 +8,7 @@ module Facet.Syntax
 , ty_
 , (:=:)(..)
 , nm
+, nm_
 , def
 , (:@)(..)
 , qty
@@ -112,6 +113,9 @@ instance HasTerm (:=:) where
 
 nm :: a :=: b -> a
 nm (a :=: _) = a
+
+nm_ :: Lens (a :=: b) (a' :=: b) a a'
+nm_ = lens (\ (a :=: _) -> a) (\ (_ :=: b) a -> a :=: b)
 
 def :: a :=: b -> b
 def (_ :=: b) = b
