@@ -23,6 +23,7 @@ data Term
   | LamR (Term -> Coterm -> Command)
   | SumR1 Term
   | SumR2 Term
+  | BottomR Command
   | UnitR
   | PrdR Term Term
   | StringR Text
@@ -53,6 +54,7 @@ instance Class.Sequent Term Coterm Command where
   lamR = LamR
   sumR1 = SumR1
   sumR2 = SumR2
+  bottomR = BottomR
   unitR = UnitR
   prdR = PrdR
   stringR = StringR
@@ -76,6 +78,7 @@ instance Quote Term X.Term where
     LamR b    -> X.LamR <$> Quoter (\ d -> runQuoter (d + 2) (quote (b (Var (Free d)) (Covar (Free (d + 1))))))
     SumR1 t   -> X.SumR1 <$> quote t
     SumR2 t   -> X.SumR2 <$> quote t
+    BottomR c -> X.BottomR <$> quote c
     UnitR     -> pure X.UnitR
     PrdR l r  -> X.PrdR <$> quote l <*> quote r
     StringR t -> pure (X.StringR t)

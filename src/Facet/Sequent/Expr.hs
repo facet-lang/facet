@@ -26,6 +26,7 @@ data Term
   | LamR Command
   | SumR1 Term
   | SumR2 Term
+  | BottomR Command
   | UnitR
   | PrdR Term Term
   | StringR Text
@@ -56,6 +57,7 @@ instance Applicative m => C.Sequent (QuoterT m Term) (QuoterT m Coterm) (QuoterT
   lamR body = LamR <$> binderT (C.var . Free) (binderT (C.covar . Free) . body)
   sumR1 = fmap SumR1
   sumR2 = fmap SumR2
+  bottomR = fmap BottomR
   unitR = pure UnitR
   prdR = liftA2 PrdR
   stringR = pure . StringR
@@ -77,6 +79,7 @@ instance C.Sequent (Quoter Term) (Quoter Coterm) (Quoter Command) where
   lamR b = LamR <$> binder (\ d' -> Quoter (\ d -> var (toIndexed d d'))) (binder (\ d'' -> Quoter (\ d -> covar (toIndexed d d''))) . b)
   sumR1 = fmap SumR1
   sumR2 = fmap SumR2
+  bottomR = fmap BottomR
   unitR = pure UnitR
   prdR = liftA2 PrdR
   stringR = pure . StringR
@@ -109,6 +112,7 @@ interpretTerm _G _D = \case
   LamR b         -> C.lamR (\ a k -> interpretCommand (a:_G) (k:_D) b)
   SumR1 t        -> C.sumR1 (interpretTerm _G _D t)
   SumR2 t        -> C.sumR2 (interpretTerm _G _D t)
+  BottomR c      -> C.bottomR (interpretCommand _G _D c)
   UnitR          -> C.unitR
   PrdR l r       -> C.prdR (interpretTerm _G _D l) (interpretTerm _G _D r)
   StringR s      -> C.stringR s

@@ -39,6 +39,7 @@ class Sequent term coterm command | coterm -> term command, term -> coterm comma
   lamR :: (term -> coterm -> command) -> term
   sumR1 :: term -> term
   sumR2 :: term -> term
+  bottomR :: command -> term
   unitR :: term
   prdR :: term -> term -> term
   stringR :: Text -> term
