@@ -87,14 +87,14 @@ foldMapC f = getChoosing #. foldMap (Choosing #. f)
 
 
 lookupC :: Has (Choose :+: Empty) sig m => Name -> Module -> m (QName :=: Maybe Term ::: Type)
-lookupC n Module{ name, scope } = foldMapC matchDef (map def (decls scope))
+lookupC n Module{ name, scope } = foldMapC matchDef (map (view def_) (decls scope))
   where
   matchDef = matchTerm <=< lookupScope n . view tm_ <=< unDData
   matchTerm (n :=: d) = (name |> n :=:) <$> unDTerm d
 
 -- | Look up effect operations.
 lookupE :: Has (Choose :+: Empty) sig m => Name -> Module -> m (QName :=: Def)
-lookupE n Module{ name, scope } = foldMapC matchDef (map def (decls scope))
+lookupE n Module{ name, scope } = foldMapC matchDef (map (view def_) (decls scope))
   where
   matchDef = fmap (bimap (name |>) (DTerm Nothing)) . lookupScope n . view tm_ <=< unDInterface
 

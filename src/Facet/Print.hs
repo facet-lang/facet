@@ -47,6 +47,7 @@ import qualified Facet.Term.Expr as C
 import qualified Facet.Term.Norm as N
 import qualified Facet.Type.Expr as TX
 import qualified Facet.Type.Norm as TN
+import           Fresnel.Getter (view)
 import           Prelude hiding (print)
 import qualified Prettyprinter as PP
 import           Silkscreen as P
@@ -201,12 +202,12 @@ instance Printable C.Term where
       C.Con n p        -> qvar n $$* (group . go env <$> p)
       C.String s       -> annotate Lit $ pretty (show s)
       C.Dict os        -> brackets (flatAlt space line <> commaSep (map (\ (n :=: v) -> qname n <+> equals <+> group (go env v)) os) <> flatAlt space line)
-      C.Let p v b      -> let p' = snd (mapAccumL (\ d n -> (succ d, n :=: local n d)) (level env) p) in pretty "let" <+> braces (print opts env (def <$> p') </> equals <+> group (go env v)) <+> pretty "in" <+> go (env |> p') b
+      C.Let p v b      -> let p' = snd (mapAccumL (\ d n -> (succ d, n :=: local n d)) (level env) p) in pretty "let" <+> braces (print opts env (view def_ <$> p') </> equals <+> group (go env v)) <+> pretty "in" <+> go (env |> p') b
       C.Comp p b       -> comp (clause env (PDict p, b))
       where
       d = level env
     qvar = group . setPrec Var . qname
-    clause env (p, b) = print opts env (def <$> p') <+> arrow <+> go (env |> p') b
+    clause env (p, b) = print opts env (view def_ <$> p') <+> arrow <+> go (env |> p') b
       where
       p' = snd (mapAccumL (\ d n -> (succ d, n :=: local n d)) (level env) p)
 
