@@ -10,6 +10,7 @@ module Facet.Syntax
 , nm
 , nm_
 , def
+, def_
 , (:@)(..)
 , qty
   -- * Variables
@@ -119,6 +120,9 @@ nm_ = lens (\ (a :=: _) -> a) (\ (_ :=: b) a -> a :=: b)
 
 def :: a :=: b -> b
 def (_ :=: b) = b
+
+def_ :: Lens (a :=: b) (a :=: b') b b'
+def_ = lens (\ (_ :=: b) -> b) (\ (a :=: _) b -> a :=: b)
 
 
 data a :@ b = a :@ b
