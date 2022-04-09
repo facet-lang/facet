@@ -91,10 +91,10 @@ instance HasTerm (:::) where
   tm_ = lens (\ (a ::: _) -> a) (\ (_ ::: t) s' -> s' ::: t)
 
 ty :: a ::: b -> b
-ty (_ ::: b) = b
+ty = view ty_
 
 ty_ :: Lens (s ::: t) (s ::: t') t t'
-ty_ = lens ty (\ (s ::: _) t' -> s ::: t')
+ty_ = lens (\ (_ ::: b) -> b) (\ (s ::: _) t' -> s ::: t')
 
 
 data a :=: b = a :=: b
