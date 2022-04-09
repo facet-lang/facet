@@ -71,7 +71,7 @@ import           Facet.Functor.Synth
 import           Facet.Graph as Graph
 import           Facet.Interface
 import           Facet.Kind
-import           Facet.Lens hiding (use)
+import           Facet.Lens hiding (use, view)
 import           Facet.Module
 import           Facet.Name hiding (L, R)
 import           Facet.Pattern
@@ -89,6 +89,7 @@ import           Facet.Type.Norm as TN
 import           Facet.Usage as Usage
 import           Facet.Vars as Vars
 import           Fresnel.Fold ((^?))
+import           Fresnel.Getter (view)
 import           Fresnel.Lens (Lens', lens)
 import           Fresnel.Prism (Prism', prism')
 import           GHC.Stack
@@ -125,7 +126,7 @@ resolveWith
 resolveWith lookup n = ask >>= \ graph -> asks (\ module' -> lookupWith lookup graph module' n) >>= \case
   []  -> freeVariable n
   [v] -> pure v
-  ds  -> ambiguousName n (map nm ds)
+  ds  -> ambiguousName n (map (view nm_) ds)
 
 resolveC :: (Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason) sig m) => QName -> m (QName :=: Maybe Term ::: Type)
 resolveC = resolveWith lookupC

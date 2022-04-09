@@ -7,7 +7,6 @@ module Facet.Syntax
 , (:::)(..)
 , ty_
 , (:=:)(..)
-, nm
 , nm_
 , def
 , def_
@@ -107,13 +106,10 @@ instance Bitraversable (:=:) where
   bitraverse f g (a :=: b) = (:=:) <$> f a <*> g b
 
 instance IsPair (:=:) where
-  pair_ = iso ((,) <$> nm <*> def) (uncurry (:=:))
+  pair_ = iso ((,) <$> view nm_ <*> def) (uncurry (:=:))
 
 instance HasTerm (:=:) where
   tm_ = lens (\ (a :=: _) -> a) (\ (_ :=: t) s' -> s' :=: t)
-
-nm :: a :=: b -> a
-nm (a :=: _) = a
 
 nm_ :: Lens (a :=: b) (a' :=: b) a a'
 nm_ = lens (\ (a :=: _) -> a) (\ (_ :=: b) a -> a :=: b)
