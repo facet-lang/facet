@@ -8,7 +8,7 @@ import Data.Profunctor
 
 -- Check judgement
 
-newtype b <==: a = Check (b -> a)
+newtype b <==: a = Check { runCheck :: b -> a }
   deriving (Applicative, Functor, Monad, Profunctor)
 
 infixl 2 <==:
