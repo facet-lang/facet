@@ -5,6 +5,8 @@ module Facet.Elab.Sequent
   -- * Constructors
 , lamS
 , stringS
+  -- * Eliminators
+, appS
   -- * Assertions
 , assertTacitFunction
   -- * Judgements
@@ -17,7 +19,7 @@ import Control.Effect.Throw
 import Control.Effect.Writer
 import Data.Text (Text)
 import Facet.Context (level)
-import Facet.Elab (ElabContext, ErrReason, assertMatch, context_, freeVariable, instantiate, lookupInContext, mismatchTypes, resolveQ, use)
+import Facet.Elab (ElabContext, ErrReason, assertFunction, assertMatch, context_, freeVariable, instantiate, lookupInContext, mismatchTypes, resolveQ, use)
 import Facet.Functor.Check
 import Facet.Functor.Compose
 import Facet.Functor.Synth
@@ -25,11 +27,13 @@ import Facet.Graph
 import Facet.Lens as Lens (views)
 import Facet.Module
 import Facet.Name
+import Facet.Semiring
 import Facet.Sequent.Class as SQ
 import Facet.Subst
 import Facet.Syntax hiding (context_)
 import Facet.Type.Norm as T
 import Facet.Usage
+import GHC.Stack (HasCallStack)
 
 -- Variables
 
@@ -65,6 +69,16 @@ lamS f = runC $ SQ.lamRA $ \ wk a k -> C $ Check $ \ _T -> do
 
 stringS :: (Applicative m, SQ.Sequent t c d, Applicative i) => Text -> m (i t :==> Type)
 stringS s = SQ.stringRA s ==> pure T.String
+
+
+-- Eliminators
+
+appS :: (HasCallStack, Has (Reader ElabContext) sig m, Has (Throw ErrReason) sig m, Has (Writer Usage) sig m, SQ.Sequent t c d, Applicative i) => (HasCallStack => m (i t :==> Type)) -> (HasCallStack => Type <==: m (i t)) -> m (i t :==> Type)
+appS f a = do
+  f' :==> _F <- f
+  (_, q, _A, _B) <- assertFunction _F
+  a' <- censor @Usage (q ><<) $ check (a ::: _A)
+  (:==> _B) <$> SQ.µRA (\ wk k -> pure (wk f') SQ..||. SQ.lamLA (pure (wk a')) (pure k))
 
 
 -- Assertions

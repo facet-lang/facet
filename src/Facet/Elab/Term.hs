@@ -11,7 +11,6 @@ module Facet.Elab.Term
 , tlam
 , lam
 , app
-, appS
 , string
 , let'
 , comp
@@ -69,7 +68,6 @@ import           Facet.Module as Module
 import           Facet.Name
 import           Facet.Pattern
 import           Facet.Semiring (Few(..), (><<))
-import qualified Facet.Sequent.Class as SQ
 import           Facet.Snoc
 import           Facet.Snoc.NonEmpty as NE
 import           Facet.Source (Source)
@@ -148,13 +146,6 @@ app mk operator operand = do
   (_, q, _A, _B) <- assertFunction _F
   a' <- censor @Usage (q ><<) $ check (operand ::: _A)
   pure $ mk f' a' :==> _B
-
-appS :: (HasCallStack, Has (Reader ElabContext) sig m, Has (State (Subst Type)) sig m, Has (Throw ErrReason) sig m, Has (Writer Usage) sig m, SQ.Sequent t c d, Applicative i) => (HasCallStack => m (i t :==> Type)) -> (HasCallStack => Type <==: m (i t)) -> m (i t :==> Type)
-appS f a = do
-  f' :==> _F <- f
-  (_, q, _A, _B) <- assertFunction _F
-  a' <- censor @Usage (q ><<) $ check (a ::: _A)
-  (:==> _B) <$> SQ.µRA (\ wk k -> pure (wk f') SQ..||. SQ.lamLA (pure (wk a')) (pure k))
 
 
 string :: Applicative m => Text -> m (Term :==> Type)
