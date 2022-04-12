@@ -10,7 +10,6 @@ module Facet.Elab.Term
 , var
 , tlam
 , lam
-, lamS
 , app
 , appS
 , string
@@ -61,7 +60,7 @@ import           Facet.Elab
 import           Facet.Elab.Type hiding (switch)
 import qualified Facet.Elab.Type as Type
 import           Facet.Functor.Check
-import           Facet.Functor.Compose hiding (Clause)
+
 import           Facet.Functor.Synth
 import           Facet.Graph
 import           Facet.Interface
@@ -143,11 +142,6 @@ lam cs = Check $ \ _T -> do
 
 lam1 :: (Has (Reader ElabContext) sig m, Has (State (Subst Type)) sig m, Has (Throw ErrReason) sig m, Has (Writer Usage) sig m) => Bind m (Pattern (Name :==> Type)) -> Type <==: m Term -> Type <==: m Term
 lam1 p b = lam [(p, b)]
-
-lamS :: (Has (Reader ElabContext) sig m, Has (State (Subst Type)) sig m, Has (Throw ErrReason) sig m, SQ.Sequent t c d, Applicative i) => (forall j . Applicative j => (i ~> j) -> (j t :@ Quantity :==> Type) -> (j c :@ Quantity :==> Type) -> (Type <==: m (j d))) -> Type <==: m (i t)
-lamS f = runC $ SQ.lamRA $ \ wk a k -> C $ Check $ \ _T -> do
-  (_, q, _A, _B) <- assertTacitFunction _T
-  check (f wk (a :@ q :==> _A) (k :@ q :==> _B) ::: _B)
 
 app :: (Has (Reader ElabContext) sig m, Has (State (Subst Type)) sig m, Has (Throw ErrReason) sig m, Has (Writer Usage) sig m) => (a -> b -> c) -> (HasCallStack => m (a :==> Type)) -> (HasCallStack => Type <==: m b) -> m (c :==> Type)
 app mk operator operand = do
