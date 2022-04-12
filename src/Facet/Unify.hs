@@ -12,8 +12,8 @@ module Facet.Unify
 
 import           Control.Carrier.Empty.Church
 import           Control.Carrier.Error.Church
+import           Control.Carrier.State.Church
 import           Control.Effect.Reader
-import           Control.Effect.State
 import           Control.Effect.Sum
 import           Control.Effect.Writer
 import           Control.Monad (unless)
@@ -36,8 +36,8 @@ import           GHC.Stack
 -- Unification
 
 -- FIXME: we don’t get good source references during unification
-unify :: (HasCallStack, Has (Reader ElabContext) sig m, Has (State (Subst Type)) sig m, Has (Throw ErrReason) sig m, Has (Writer Usage) sig m) => Exp Type -> Act Type -> m Type
-unify t1 t2 = runUnify t1 t2 (unifyType (getExp t1) (getAct t2))
+unify :: (HasCallStack, Has (Reader ElabContext) sig m, Has (Throw ErrReason) sig m, Has (Writer Usage) sig m) => Exp Type -> Act Type -> m Type
+unify t1 t2 = runUnify t1 t2 (runState (const pure) (mempty :: Subst Type) (unifyType (getExp t1) (getAct t2)))
 
 runUnify :: Has (Throw ErrReason) sig m => Exp Type -> Act Type -> ThrowC ErrReason (WithCallStack UnifyErrReason) m a -> m a
 runUnify t1 t2 = runThrow (withCallStack (\ r -> throwError (UnifyType r (Right <$> t1) t2)))

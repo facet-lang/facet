@@ -52,7 +52,6 @@ import           Data.Monoid (Ap(..), First(..))
 import qualified Data.Set as Set
 import           Data.Text (Text)
 import           Data.Traversable (for, mapAccumL)
-import           Facet.Context (toEnv)
 import           Facet.Effect.Write
 import           Facet.Elab
 import           Facet.Elab.Type hiding (switch)
@@ -92,12 +91,12 @@ import           GHC.Stack
 
 -- General combinators
 
-switch :: (Has (Reader ElabContext) sig m, Has (State (Subst Type)) sig m, Has (Throw ErrReason) sig m, Has (Writer Usage) sig m) => m (a :==> Type) -> Type <==: m a
+switch :: (Has (Reader ElabContext) sig m, Has (Throw ErrReason) sig m, Has (Writer Usage) sig m) => m (a :==> Type) -> Type <==: m a
 switch m = Check $ \ _Exp -> m >>= \case
   a :==> T.Comp req _Act -> require req >> unify (Exp _Exp) (Act _Act) $> a
   a :==>            _Act -> unify (Exp _Exp) (Act _Act) $> a
 
-as :: (Has (Reader ElabContext) sig m, Has (State (Subst Type)) sig m, Has (Throw ErrReason) sig m) => (Type <==: m a) ::: m (Type :==> Kind) -> m (a :==> Type)
+as :: (Has (Reader ElabContext) sig m, Has (Throw ErrReason) sig m) => (Type <==: m a) ::: m (Type :==> Kind) -> m (a :==> Type)
 as (m ::: _T) = do
   _T' <- Type.switch _T <==: KType
   a <- check (m ::: _T')
@@ -126,21 +125,21 @@ hole :: Has (Throw ErrReason) sig m => Name -> Type <==: m a
 hole n = Check $ \ _T -> withFrozenCallStack $ throwError $ Hole n _T
 
 
-tlam :: (Has (Reader ElabContext) sig m, Has (State (Subst Type)) sig m, Has (Throw ErrReason) sig m) => Type <==: m Term -> Type <==: m Term
+tlam :: (Has (Reader ElabContext) sig m, Has (Throw ErrReason) sig m) => Type <==: m Term -> Type <==: m Term
 tlam b = Check $ \ _T -> do
   (n, _A, _B) <- assertQuantifier _T
   d <- depth
   n :==> _A ||- check (b ::: _B (T.free (LName d n)))
 
-lam :: (Has (Reader ElabContext) sig m, Has (State (Subst Type)) sig m, Has (Throw ErrReason) sig m, Has (Writer Usage) sig m) => [(Bind m (Pattern (Name :==> Type)), Type <==: m Term)] -> Type <==: m Term
+lam :: (Has (Reader ElabContext) sig m, Has (Throw ErrReason) sig m, Has (Writer Usage) sig m) => [(Bind m (Pattern (Name :==> Type)), Type <==: m Term)] -> Type <==: m Term
 lam cs = Check $ \ _T -> do
   (_, q, _A, _B) <- assertTacitFunction _T
   Lam <$> traverse (\ (p, b) -> bind (p ::: (q, _A)) (check (b ::: _B))) cs
 
-lam1 :: (Has (Reader ElabContext) sig m, Has (State (Subst Type)) sig m, Has (Throw ErrReason) sig m, Has (Writer Usage) sig m) => Bind m (Pattern (Name :==> Type)) -> Type <==: m Term -> Type <==: m Term
+lam1 :: (Has (Reader ElabContext) sig m, Has (Throw ErrReason) sig m, Has (Writer Usage) sig m) => Bind m (Pattern (Name :==> Type)) -> Type <==: m Term -> Type <==: m Term
 lam1 p b = lam [(p, b)]
 
-app :: (Has (Reader ElabContext) sig m, Has (State (Subst Type)) sig m, Has (Throw ErrReason) sig m, Has (Writer Usage) sig m) => (a -> b -> c) -> (HasCallStack => m (a :==> Type)) -> (HasCallStack => Type <==: m b) -> m (c :==> Type)
+app :: (Has (Reader ElabContext) sig m, Has (Throw ErrReason) sig m, Has (Writer Usage) sig m) => (a -> b -> c) -> (HasCallStack => m (a :==> Type)) -> (HasCallStack => Type <==: m b) -> m (c :==> Type)
 app mk operator operand = do
   f' :==> _F <- operator
   (_, q, _A, _B) <- assertFunction _F
@@ -152,14 +151,14 @@ string :: Applicative m => Text -> m (Term :==> Type)
 string s = pure $ E.String s :==> T.String
 
 
-let' :: (Has (Reader ElabContext) sig m, Has (State (Subst Type)) sig m, Has (Throw ErrReason) sig m, Has (Writer Usage) sig m) => Bind m (Pattern (Name :==> Type)) -> m (Term :==> Type) -> Type <==: m Term -> Type <==: m Term
+let' :: (Has (Reader ElabContext) sig m, Has (Throw ErrReason) sig m, Has (Writer Usage) sig m) => Bind m (Pattern (Name :==> Type)) -> m (Term :==> Type) -> Type <==: m Term -> Type <==: m Term
 let' p a b = Check $ \ _B -> do
   a' :==> _A <- a
   (p', b') <- bind (p ::: (Many, _A)) (check (b ::: _B))
   pure $ Let p' a' b'
 
 
-comp :: (Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (State (Subst Type)) sig m, Has (Throw ErrReason) sig m, Has (Writer Usage) sig m) => Type <==: m Term -> Type <==: m Term
+comp :: (Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason) sig m, Has (Writer Usage) sig m) => Type <==: m Term -> Type <==: m Term
 comp b = Check $ \ _T -> do
   (sig, _B) <- assertComp _T
   graph <- ask
@@ -184,7 +183,7 @@ varP n = Bind $ \ _A k -> k (PVar (n :==> wrap _A))
     T.Comp sig _A -> T.Arrow Nothing Many (T.Ne (Global (NE.FromList ["Data", "Unit"] |> T "Unit")) Nil) (T.Comp sig _A)
     _T            -> _T
 
-conP :: (Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (State (Subst Type)) sig m, Has (Throw ErrReason) sig m, Has (Writer Usage) sig m) => QName -> [Bind m (Pattern (Name :==> Type))] -> Bind m (Pattern (Name :==> Type))
+conP :: (Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason) sig m, Has (Writer Usage) sig m) => QName -> [Bind m (Pattern (Name :==> Type))] -> Bind m (Pattern (Name :==> Type))
 conP n fs = Bind $ \ _A k -> do
   n' :=: _ ::: _T <- resolveC n
   _T' <- maybe (pure _T) (foldl' (\ _T _A -> do t <- _T ; (_, _, b) <- assertQuantifier t ; pure (b _A)) (pure _T) . snd) (unNeutral _A)
@@ -258,7 +257,7 @@ abstractType body = \case
   KArrow (Just n) a b -> TX.ForAll n a <$> (n :==> a ||- abstractType body b)
   _                   -> body
 
-abstractTerm :: (Has (Reader ElabContext) sig m, Has (State (Subst Type)) sig m, Has (Throw ErrReason :+: Write Warn) sig m, Has (Writer Usage) sig m) => (Snoc TX.Type -> Snoc Term -> Term) -> Type <==: m Term
+abstractTerm :: (Has (Reader ElabContext) sig m, Has (Throw ErrReason :+: Write Warn) sig m, Has (Writer Usage) sig m) => (Snoc TX.Type -> Snoc Term -> Term) -> Type <==: m Term
 abstractTerm body = go Nil Nil
   where
   go ts fs = Check $ \case
@@ -391,16 +390,13 @@ withSpan k (S.Ann s _ a) = pushSpan s (k a)
 withCallStack :: CallStack -> (HasCallStack => a) -> a
 withCallStack cs with = let ?callStack = cs in with
 
-provide :: (Has (Reader ElabContext) sig m, Has (State (Subst Type)) sig m) => Signature Type -> m a -> m a
-provide sig m = do
-  subst <- get
-  env <- views context_ toEnv
-  locally sig_ (mapSignature (apply subst env) sig :) m
+provide :: Has (Reader ElabContext) sig m => Signature Type -> m a -> m a
+provide sig m = locally sig_ (sig :) m
 
-require :: (Has (Reader ElabContext) sig m, Has (State (Subst Type)) sig m, Has (Throw ErrReason) sig m, Has (Writer Usage) sig m) => Signature Type -> m ()
+require :: (Has (Reader ElabContext) sig m, Has (Throw ErrReason) sig m, Has (Writer Usage) sig m) => Signature Type -> m ()
 require req = do
   prv <- Lens.view sig_
-  for_ (interfaces req) $ \ i -> findMaybeA (findMaybeA (runUnifyMaybe . unifyInterface i) . interfaces) prv >>= \case
+  for_ (interfaces req) $ \ i -> findMaybeA (findMaybeA (runUnifyMaybe . runState (const pure) (mempty :: Subst Type) . unifyInterface i) . interfaces) prv >>= \case
     Nothing -> missingInterface i
     Just _  -> pure ()
 
@@ -410,7 +406,7 @@ findMaybeA p = getAp . fmap getFirst . foldMap (Ap . fmap First . p)
 
 -- Judgements
 
-check :: (Has (Reader ElabContext) sig m, Has (State (Subst Type)) sig m) => ((Type <==: m a) ::: Type) -> m a
+check :: Has (Reader ElabContext) sig m => ((Type <==: m a) ::: Type) -> m a
 check (m ::: _T) = case _T of
   T.Comp sig _T -> provide sig $ m <==: _T
   _T            -> m <==: _T
