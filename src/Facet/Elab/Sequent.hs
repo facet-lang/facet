@@ -4,6 +4,7 @@ module Facet.Elab.Sequent
 , varS
   -- * Constructors
 , lamS
+, stringS
   -- * Assertions
 , assertTacitFunction
   -- * Judgements
@@ -14,6 +15,7 @@ import Control.Effect.Reader
 import Control.Effect.State
 import Control.Effect.Throw
 import Control.Effect.Writer
+import Data.Text (Text)
 import Facet.Context (level)
 import Facet.Elab (ElabContext, ErrReason, assertMatch, context_, freeVariable, instantiate, lookupInContext, mismatchTypes, resolveQ, use)
 import Facet.Functor.Check
@@ -60,6 +62,9 @@ lamS
 lamS f = runC $ SQ.lamRA $ \ wk a k -> C $ Check $ \ _T -> do
   (_, q, _A, _B) <- assertTacitFunction _T
   check (f wk (a :@ q :==> _A) (k :@ q :==> _B) ::: _B)
+
+stringS :: (Applicative m, SQ.Sequent t c d, Applicative i) => Text -> m (i t :==> Type)
+stringS s = SQ.stringRA s ==> pure T.String
 
 
 -- Assertions
