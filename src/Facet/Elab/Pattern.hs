@@ -13,7 +13,6 @@ module Facet.Elab.Pattern
 import           Control.Effect.Empty
 import           Data.Foldable (fold)
 import qualified Data.IntMap as IntMap
-import           Data.Monoid (First(..))
 import           Data.Traversable (for)
 import           Facet.Name
 import           Facet.Quote
@@ -21,7 +20,7 @@ import qualified Facet.Sequent.Class as C
 import qualified Facet.Sequent.Expr as X
 import           Facet.Sequent.Pattern
 import           Facet.Sequent.Type
-import           Fresnel.Fold (Fold, Union(..), preview)
+import           Fresnel.Fold (Fold, Union(..), folded, preview)
 import           Fresnel.Getter (to)
 import           Fresnel.Lens (Lens', lens)
 import           Fresnel.Maybe (_Nothing)
@@ -43,8 +42,8 @@ instantiateHead p              = p
 compileClauses :: Has Empty sig m => [X.Term] -> Type -> [Clause X.Term] -> QuoterT m X.Term
 compileClauses ctx (_A :-> _T) heads = C.lamR (compileClausesBody ctx _A _T heads)
 compileClauses _ _T heads
-  | Just (Clause [] b) <- getFirst (foldMap (First . Just) heads) = pure b
-  | otherwise                                                     = empty
+  | Just (Clause [] b) <- preview folded heads = pure b
+  | otherwise                                  = empty
 
 compileClausesBody :: Has Empty sig m => [X.Term] -> Type -> Type -> [Clause X.Term] -> QuoterT m X.Term -> QuoterT m X.Coterm -> QuoterT m X.Command
 compileClausesBody ctx _A _T heads v k = case _A of
