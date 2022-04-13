@@ -30,7 +30,7 @@ import           Control.Algebra
 import           Control.Effect.Choose
 import           Control.Effect.Empty
 import           Control.Monad ((<=<))
-import           Data.Bifunctor (Bifunctor(bimap), first)
+import           Data.Bifunctor (first)
 import           Data.Bitraversable
 import           Data.Coerce
 import qualified Data.Map as Map
@@ -87,16 +87,16 @@ lookupC :: Has (Choose :+: Empty) sig m => Name -> Module -> m (QName :=: Maybe 
 lookupC n Module{ name, scope } = foldMapC matchDef (map (view def_) (decls scope))
   where
   matchDef = matchTerm <=< lookupScope n . view tm_ <=< maybe empty pure . preview _DData
-  matchTerm (n :=: d) = (name |> n :=:) <$> maybe empty pure (preview _DTerm d)
+  matchTerm d = (name |> n :=:) <$> maybe empty pure (preview _DTerm d)
 
 -- | Look up effect operations.
 lookupE :: Has (Choose :+: Empty) sig m => Name -> Module -> m (QName :=: Def)
 lookupE n Module{ name, scope } = foldMapC matchDef (map (view def_) (decls scope))
   where
-  matchDef = fmap (bimap (name |>) (DTerm Nothing)) . lookupScope n . view tm_ <=< maybe empty pure . preview _DInterface
+  matchDef = fmap ((name |> n :=:) . DTerm Nothing) . lookupScope n . view tm_ <=< maybe empty pure . preview _DInterface
 
 lookupD :: Has Empty sig m => Name -> Module -> m (QName :=: Def)
-lookupD n Module{ name, scope } = maybe empty (pure . first (name |>)) (lookupScope n scope)
+lookupD n Module{ name, scope } = maybe empty (pure . (name |> n :=:)) (lookupScope n scope)
 
 
 newtype Scope a = Scope { decls :: [Name :=: a] }
@@ -114,8 +114,8 @@ scopeFromList = review toList_
 scopeToList :: Scope a -> [Name :=: a]
 scopeToList = view toList_
 
-lookupScope :: Has Empty sig m => Name -> Scope a -> m (Name :=: a)
-lookupScope n = maybe empty (pure . (n :=:)) . lookup n . map (\ (n :=: a) -> (n, a)) . decls
+lookupScope :: Has Empty sig m => Name -> Scope a -> m a
+lookupScope n = maybe empty pure . lookup n . map (\ (n :=: a) -> (n, a)) . decls
 
 
 newtype Import = Import { name :: QName }

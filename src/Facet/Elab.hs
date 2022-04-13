@@ -149,7 +149,7 @@ lookupInSig :: Has (Choose :+: Empty) sig m => QName -> Module -> Graph -> [Sign
 lookupInSig (m :|> n) mod graph = foldMapC $ foldMapC (\ (Interface q@(m':|>_) _) -> do
   guard (m == Nil || m == m')
   defs <- interfaceScope =<< lookupQ graph mod q
-  _ :=: d <- lookupScope n defs
+  d <- lookupScope n defs
   pure $ m' :|> n :=: d) . interfaces
   where
   interfaceScope (_ :=: d) = case d of { DSubmodule (SInterface defs) _K -> pure defs ; _ -> empty }
