@@ -20,9 +20,6 @@ module Facet.Module
 , _SInterface
 , _SModule
 , Def(..)
-, unDTerm
-, unDData
-, unDInterface
 , _DSubmodule
 , _DData
 , _DInterface
@@ -89,14 +86,14 @@ foldMapC f = getChoosing #. foldMap (Choosing #. f)
 lookupC :: Has (Choose :+: Empty) sig m => Name -> Module -> m (QName :=: Maybe Term ::: Type)
 lookupC n Module{ name, scope } = foldMapC matchDef (map (view def_) (decls scope))
   where
-  matchDef = matchTerm <=< lookupScope n . view tm_ <=< unDData
-  matchTerm (n :=: d) = (name |> n :=:) <$> unDTerm d
+  matchDef = matchTerm <=< lookupScope n . view tm_ <=< maybe empty pure . preview _DData
+  matchTerm (n :=: d) = (name |> n :=:) <$> maybe empty pure (preview _DTerm d)
 
 -- | Look up effect operations.
 lookupE :: Has (Choose :+: Empty) sig m => Name -> Module -> m (QName :=: Def)
 lookupE n Module{ name, scope } = foldMapC matchDef (map (view def_) (decls scope))
   where
-  matchDef = fmap (bimap (name |>) (DTerm Nothing)) . lookupScope n . view tm_ <=< unDInterface
+  matchDef = fmap (bimap (name |>) (DTerm Nothing)) . lookupScope n . view tm_ <=< maybe empty pure . preview _DInterface
 
 lookupD :: Has Empty sig m => Name -> Module -> m (QName :=: Def)
 lookupD n Module{ name, scope } = maybe empty (pure . first (name |>)) (lookupScope n scope)
@@ -148,15 +145,6 @@ _SModule = prism' SModule (\case
 data Def
   = DTerm (Maybe Term) Type
   | DSubmodule Submodule Kind
-
-unDTerm :: Has Empty sig m => Def -> m (Maybe Term ::: Type)
-unDTerm = maybe empty pure . preview _DTerm
-
-unDData :: Has Empty sig m => Def -> m (Scope Def ::: Kind)
-unDData = maybe empty pure . preview _DData
-
-unDInterface :: Has Empty sig m => Def -> m (Scope Type ::: Kind)
-unDInterface = maybe empty pure . preview _DInterface
 
 _DTerm :: Prism' Def (Maybe Term ::: Type)
 _DTerm = prism' (\ (t ::: _T) -> DTerm t _T) (\case
