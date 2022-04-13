@@ -381,12 +381,6 @@ runModule m = do
 withSpanB :: Has (Reader ElabContext) sig m => (a -> Bind m b) -> S.Ann a -> Bind m b
 withSpanB k (S.Ann s _ a) = Bind (\ _A k' -> pushSpan s (runBind (k a) _A k'))
 
-withSpanC :: Has (Reader ElabContext) sig m => S.Ann a -> (a -> Type <==: m b) -> Type <==: m b
-withSpanC (S.Ann s _ a) k = Check (\ _T -> pushSpan s (k a <==: _T))
-
-withSpan :: Has (Reader ElabContext) sig m => (a -> m b) -> S.Ann a -> m b
-withSpan k (S.Ann s _ a) = pushSpan s (k a)
-
 withCallStack :: CallStack -> (HasCallStack => a) -> a
 withCallStack cs with = let ?callStack = cs in with
 

@@ -16,6 +16,8 @@ module Facet.Elab
 , (||-)
   -- * Errors
 , pushSpan
+, withSpanC
+, withSpan
 , Err(..)
 , ErrReason(..)
 , _FreeVariable
@@ -67,6 +69,7 @@ import           Facet.Context hiding (empty)
 import qualified Facet.Context as Context (empty)
 import           Facet.Effect.Write
 import qualified Facet.Env as Env
+import           Facet.Functor.Check
 import           Facet.Functor.Synth
 import           Facet.Graph as Graph
 import           Facet.Interface
@@ -83,6 +86,7 @@ import           Facet.Source (Source, slice)
 import           Facet.Span (Span(..))
 import           Facet.Subst
 import           Facet.Syntax hiding (context_)
+import qualified Facet.Syntax as S
 import           Facet.Term.Expr as E
 import qualified Facet.Type.Expr as TX
 import           Facet.Type.Norm as TN
@@ -193,6 +197,13 @@ use n q = do
 
 pushSpan :: Has (Reader ElabContext) sig m => Span -> m a -> m a
 pushSpan = locally spans_ . flip (:>)
+
+withSpanC :: Has (Reader ElabContext) sig m => S.Ann a -> (a -> Type <==: m b) -> Type <==: m b
+withSpanC (S.Ann s _ a) k = Check (\ _T -> pushSpan s (k a <==: _T))
+
+withSpan :: Has (Reader ElabContext) sig m => (a -> m b) -> S.Ann a -> m b
+withSpan k (S.Ann s _ a) = pushSpan s (k a)
+
 
 
 data Err = Err
