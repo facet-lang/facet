@@ -64,9 +64,8 @@ compileClausesBody ctx _A _T heads v k = case _A of
         _           -> empty
       _    -> empty)
     v C..|. C.sumL
-      -- FIXME: n-ary sums
-      (C.µL (\ v -> compileClausesBody ctx _A _T (heads' `at` 0) v k))
-      (C.µL (\ v -> compileClausesBody ctx _B _T (heads' `at` 1) v k))
+      [ C.µL (\ v -> compileClausesBody ctx _A _T (heads' `at` 0) v k)
+      , C.µL (\ v -> compileClausesBody ctx _B _T (heads' `at` 1) v k) ]
 
 
 match :: Has Empty sig m => Fold (Pattern Name) [Pattern Name] -> [Clause X.Term] -> m [Clause X.Term]
