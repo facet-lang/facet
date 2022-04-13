@@ -1,3 +1,4 @@
+{-# LANGUAGE TypeFamilies #-}
 module Facet.Module
 ( -- * Modules
   Module(..)
@@ -43,7 +44,9 @@ import           Facet.Type.Norm
 import           Fresnel.Fold (preview)
 import           Fresnel.Getter (view)
 import           Fresnel.Iso (Iso, coerced, fmapping, iso)
+import           Fresnel.Ixed
 import           Fresnel.Lens (Lens', lens)
+import           Fresnel.Optional (optional')
 import           Fresnel.Prism
 import           Fresnel.Review (review)
 
@@ -101,6 +104,16 @@ lookupD n Module{ name, scope } = maybe empty (pure . (name |> n :=:)) (lookupSc
 
 newtype Scope a = Scope { decls :: [Name :=: a] }
   deriving (Monoid, Semigroup)
+
+instance Ixed (Scope a) where
+  type Index (Scope a) = Name
+  type IxValue (Scope a) = a
+  ix n = optional' (lookupScope n) (\ (Scope ds) d' -> Scope (replace (\ (n' :=: _) -> (n' :=: d') <$ guard (n == n')) ds))
+    where
+    replace _ []     = []
+    replace f (v:vs) = case f v of
+      Nothing -> v:replace f vs
+      Just v' -> v':vs
 
 decls_ :: Iso (Scope a) (Scope b) (Map.Map Name a) (Map.Map Name b)
 decls_ = toList_.fmapping pair_.iso Map.fromList Map.toList
