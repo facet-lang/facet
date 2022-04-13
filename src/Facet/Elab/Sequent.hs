@@ -1,3 +1,4 @@
+{-# LANGUAGE ImplicitParams #-}
 module Facet.Elab.Sequent
 ( -- * Variables
   globalS
@@ -7,33 +8,42 @@ module Facet.Elab.Sequent
 , stringS
   -- * Eliminators
 , appS
+  -- * Elaboration
+, synthExprS
+, checkExprS
   -- * Assertions
 , assertTacitFunction
   -- * Judgements
 , check
 ) where
 
-import Control.Effect.Reader
-import Control.Effect.State
-import Control.Effect.Throw
-import Control.Effect.Writer
-import Data.Text (Text)
-import Facet.Context (level)
-import Facet.Elab (ElabContext, ErrReason, assertFunction, assertMatch, context_, freeVariable, instantiate, lookupInContext, mismatchTypes, resolveQ, use)
-import Facet.Functor.Check
-import Facet.Functor.Compose
-import Facet.Functor.Synth
-import Facet.Graph
-import Facet.Lens as Lens (views)
-import Facet.Module
-import Facet.Name
-import Facet.Semiring
-import Facet.Sequent.Class as SQ
-import Facet.Subst
-import Facet.Syntax hiding (context_)
-import Facet.Type.Norm as T
-import Facet.Usage
-import GHC.Stack (HasCallStack)
+import           Control.Effect.Reader
+import           Control.Effect.State
+import           Control.Effect.Throw
+import           Control.Effect.Writer
+import           Data.Text (Text)
+import           Facet.Context (level)
+import           Facet.Effect.Write
+import           Facet.Elab
+import qualified Facet.Elab.Type as Type
+import           Facet.Functor.Check
+import           Facet.Functor.Compose
+import           Facet.Functor.Synth
+import           Facet.Graph
+import           Facet.Kind
+import           Facet.Lens as Lens (views)
+import           Facet.Module
+import           Facet.Name
+import           Facet.Semiring
+import           Facet.Sequent.Class as SQ
+import           Facet.Subst
+import qualified Facet.Surface.Term.Expr as S
+import qualified Facet.Surface.Type.Expr as S
+import           Facet.Syntax as S hiding (context_)
+import           Facet.Type.Norm as T
+import           Facet.Unify
+import           Facet.Usage
+import           GHC.Stack (HasCallStack, callStack, popCallStack, withFrozenCallStack)
 
 -- Variables
 
@@ -55,6 +65,9 @@ varS n = views context_ (lookupInContext n) >>= \case
   _                     -> resolveQ n >>= \case
     n :=: DTerm _ _T -> globalS (n ::: _T)
     _ :=: _          -> freeVariable n
+
+hole :: Has (Throw ErrReason) sig m => Name -> Type <==: m a
+hole n = Check $ \ _T -> withFrozenCallStack $ throwError $ Hole n _T
 
 
 -- Constructors
@@ -79,6 +92,56 @@ appS f a = do
   (_, q, _A, _B) <- assertFunction _F
   a' <- censor @Usage (q ><<) $ check (a ::: _A)
   (:==> _B) <$> SQ.µRA (\ wk k -> pure (wk f') SQ..||. SQ.lamLA (pure (wk a')) (pure k))
+
+
+-- General combinators
+
+switch :: (Has (Reader ElabContext) sig m, Has (Throw ErrReason) sig m, Has (Writer Usage) sig m) => m (a :==> Type) -> Type <==: m a
+switch m = Check $ \ _Exp -> do
+  a :==> _Act <- m
+  a <$ unify (Exp _Exp) (Act _Act)
+
+as :: (Has (Reader ElabContext) sig m, Has (Throw ErrReason) sig m) => (Type <==: m a) ::: m (Type :==> Kind) -> m (a :==> Type)
+as (m ::: _T) = do
+  _T' <- Type.switch _T <==: KType
+  a <- check (m ::: _T')
+  pure $ a :==> _T'
+
+
+-- Elaboration
+
+synthExprS :: (HasCallStack, Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (State (Subst Type)) sig m, Has (Throw ErrReason) sig m, Has (Write Warn) sig m, Has (Writer Usage) sig m, SQ.Sequent t c d, Applicative i) => S.Ann S.Expr -> m (i t :==> Type)
+synthExprS = let ?callStack = popCallStack GHC.Stack.callStack in withSpan $ \case
+  S.Var n    -> varS n
+  S.App f a  -> synthApp f a
+  S.As t _T  -> synthAs t _T
+  S.String s -> stringS s
+  S.Hole{}   -> nope
+  S.Lam{}    -> nope
+  where
+  nope = couldNotSynthesize
+
+synthApp :: (Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (State (Subst Type)) sig m, Has (Throw ErrReason) sig m, Has (Write Warn) sig m, Has (Writer Usage) sig m, SQ.Sequent t c d, Applicative i) => S.Ann S.Expr -> S.Ann S.Expr -> m (i t :==> Type)
+synthApp f a = appS (synthExprS f) (checkExprS a)
+
+synthAs :: (HasCallStack, Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (State (Subst Type)) sig m, Has (Throw ErrReason) sig m, Has (Write Warn) sig m, Has (Writer Usage) sig m, SQ.Sequent t c d, Applicative i) => S.Ann S.Expr -> S.Ann S.Type -> m (i t :==> Type)
+synthAs t _T = as (checkExprS t ::: do { _T :==> _K <- Type.synthType _T ; (:==> _K) <$> evalTExpr _T })
+
+
+checkExprS :: (HasCallStack, Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (State (Subst Type)) sig m, Has (Throw ErrReason) sig m, Has (Write Warn) sig m, Has (Writer Usage) sig m, SQ.Sequent t c d, Applicative i) => S.Ann S.Expr -> Type <==: m (i t)
+checkExprS expr = let ?callStack = popCallStack GHC.Stack.callStack in withSpanC expr $ \case
+  S.Hole n   -> hole n
+  S.Lam cs   -> checkLamS (Check (\ _T -> map (\ (S.Clause (S.Ann _ _ p) b) -> (p, check (checkExprS b ::: _T))) cs))
+  S.Var{}    -> switch (synthExprS expr)
+  S.App{}    -> switch (synthExprS expr)
+  S.As{}     -> switch (synthExprS expr)
+  S.String{} -> switch (synthExprS expr)
+
+checkLamS
+  :: Has (Throw ErrReason) sig m
+  => Type <==: [(S.Pattern, m (i t))]
+  -> Type <==: m (i t)
+checkLamS _ = Check (\ _T -> mismatchTypes (Exp (Left "unimplemented")) (Act _T))
 
 
 -- Assertions
