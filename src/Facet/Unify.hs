@@ -14,7 +14,6 @@ import           Control.Carrier.Empty.Church
 import           Control.Carrier.Error.Church
 import           Control.Carrier.State.Church
 import           Control.Effect.Reader
-import           Control.Effect.Sum
 import           Control.Effect.Writer
 import           Control.Monad (unless)
 import           Facet.Carrier.Throw.Inject
@@ -45,13 +44,13 @@ runUnify t1 t2 = runThrow (withCallStack (\ r -> throwError (UnifyType r (Right 
 runUnifyMaybe :: Applicative m => ErrorC (WithCallStack UnifyErrReason) m a -> m (Maybe a)
 runUnifyMaybe = runError (const (pure Nothing)) (pure . Just)
 
-mismatch :: (HasCallStack, Has (Reader ElabContext :+: State (Subst Type) :+: Throw ErrReason :+: Throw (WithCallStack UnifyErrReason) :+: Writer Usage) sig m) => m a
+mismatch :: (HasCallStack, Has (Throw (WithCallStack UnifyErrReason)) sig m) => m a
 mismatch   = withFrozenCallStack $ throwError $ WithCallStack GHC.Stack.callStack Mismatch
 
-occurs :: (HasCallStack, Has (Reader ElabContext :+: State (Subst Type) :+: Throw ErrReason :+: Throw (WithCallStack UnifyErrReason) :+: Writer Usage) sig m) => Meta -> Type -> m a
+occurs :: (HasCallStack, Has (Throw (WithCallStack UnifyErrReason)) sig m) => Meta -> Type -> m a
 occurs v t = withFrozenCallStack $ throwError $ WithCallStack GHC.Stack.callStack (Occurs v t)
 
-unifyType :: (HasCallStack, Has (Reader ElabContext :+: State (Subst Type) :+: Throw ErrReason :+: Throw (WithCallStack UnifyErrReason) :+: Writer Usage) sig m) => Type -> Type -> m Type
+unifyType :: (HasCallStack, Has (Reader ElabContext) sig m, Has (State (Subst Type)) sig m, Has (Throw ErrReason) sig m, Has (Throw (WithCallStack UnifyErrReason)) sig m, Has (Writer Usage) sig m) => Type -> Type -> m Type
 unifyType = curry $ \case
   (TN.Comp s1 t1, TN.Comp s2 t2)                           -> TN.Comp . fromInterfaces <$> unifySpine unifyInterface (interfaces s1) (interfaces s2) <*> unifyType t1 t2
   (TN.Comp s1 t1, t2)                                      -> TN.Comp s1 <$> unifyType t1 t2
@@ -70,19 +69,19 @@ unifyType = curry $ \case
   where
   mkForAll d n k b = TX.ForAll n k (runQuoter (succ d) (quote b))
 
-unifyKind :: Has (Reader ElabContext :+: State (Subst Type) :+: Throw ErrReason :+: Throw (WithCallStack UnifyErrReason) :+: Writer Usage) sig m => Kind -> Kind -> m Kind
+unifyKind :: (Has (Throw (WithCallStack UnifyErrReason)) sig m) => Kind -> Kind -> m Kind
 unifyKind k1 k2 = if k1 == k2 then pure k2 else mismatch
 
-unifyVar :: (Eq a, Eq b, HasCallStack, Has (Reader ElabContext :+: State (Subst Type) :+: Throw ErrReason :+: Throw (WithCallStack UnifyErrReason) :+: Writer Usage) sig m) => Var (Either a b) -> Var (Either a b) -> m (Var (Either a b))
+unifyVar :: (Eq a, Eq b, HasCallStack, Has (Throw (WithCallStack UnifyErrReason)) sig m) => Var (Either a b) -> Var (Either a b) -> m (Var (Either a b))
 unifyVar v1 v2 = if v1 == v2 then pure v2 else mismatch
 
-unifyInterface :: (HasCallStack, Has (Reader ElabContext :+: State (Subst Type) :+: Throw ErrReason :+: Throw (WithCallStack UnifyErrReason) :+: Writer Usage) sig m) => Interface Type -> Interface Type -> m (Interface Type)
+unifyInterface :: (HasCallStack, Has (Reader ElabContext) sig m, Has (State (Subst Type)) sig m, Has (Throw ErrReason) sig m, Has (Throw (WithCallStack UnifyErrReason)) sig m, Has (Writer Usage) sig m) => Interface Type -> Interface Type -> m (Interface Type)
 unifyInterface (Interface h1 sp1) (Interface h2 sp2) = Interface h2 <$ unless (h1 == h2) mismatch <*> unifySpine unifyType sp1 sp2
 
-unifySpine :: (Traversable t, Zip t, Has (Reader ElabContext :+: State (Subst Type) :+: Throw ErrReason :+: Throw (WithCallStack UnifyErrReason) :+: Writer Usage) sig m) => (a -> b -> m c) -> t a -> t b -> m (t c)
+unifySpine :: (Traversable t, Zip t, Has (Throw (WithCallStack UnifyErrReason)) sig m) => (a -> b -> m c) -> t a -> t b -> m (t c)
 unifySpine f sp1 sp2 = unless (length sp1 == length sp2) mismatch >> zipWithM f sp1 sp2
 
-flexFlex :: (HasCallStack, Has (Reader ElabContext :+: State (Subst Type) :+: Throw ErrReason :+: Throw (WithCallStack UnifyErrReason) :+: Writer Usage) sig m) => Meta -> Meta -> m Type
+flexFlex :: (HasCallStack, Has (Reader ElabContext) sig m, Has (State (Subst Type)) sig m, Has (Throw ErrReason) sig m, Has (Throw (WithCallStack UnifyErrReason)) sig m, Has (Writer Usage) sig m) => Meta -> Meta -> m Type
 flexFlex v1 v2
   | v1 == v2  = pure (metavar v2)
   | otherwise = gets (\ s -> (lookupMeta v1 s, lookupMeta v2 s)) >>= \case
@@ -91,7 +90,7 @@ flexFlex v1 v2
     (Nothing, Just t2) -> unifyType (metavar v1) t2
     (Nothing, Nothing) -> solve v1 (metavar v2)
 
-solve :: (HasCallStack, Has (Reader ElabContext :+: State (Subst Type) :+: Throw ErrReason :+: Throw (WithCallStack UnifyErrReason) :+: Writer Usage) sig m) => Meta -> Type -> m Type
+solve :: (HasCallStack, Has (Reader ElabContext) sig m, Has (State (Subst Type)) sig m, Has (Throw ErrReason) sig m, Has (Throw (WithCallStack UnifyErrReason)) sig m, Has (Writer Usage) sig m) => Meta -> Type -> m Type
 solve v t = do
   d <- depth
   if occursIn v d t then
