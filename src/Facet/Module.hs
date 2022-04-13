@@ -115,7 +115,7 @@ scopeToList :: Scope a -> [Name :=: a]
 scopeToList = view toList_
 
 lookupScope :: Has Empty sig m => Name -> Scope a -> m (Name :=: a)
-lookupScope n (Scope ds) = maybe empty (pure . (n :=:)) (lookup n (map (\ (n :=: a) -> (n, a)) ds))
+lookupScope n = maybe empty (pure . (n :=:)) . lookup n . map (\ (n :=: a) -> (n, a)) . decls
 
 
 newtype Import = Import { name :: QName }
