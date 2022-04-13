@@ -37,8 +37,7 @@ class Sequent term coterm command | coterm -> term command, term -> coterm comma
   var :: Var Level -> term
   µR :: (coterm -> command) -> term
   lamR :: (term -> coterm -> command) -> term
-  sumR1 :: term -> term
-  sumR2 :: term -> term
+  sumR :: Int -> term -> term
   bottomR :: command -> term
   unitR :: term
   prdR :: term -> term -> term
@@ -48,7 +47,7 @@ class Sequent term coterm command | coterm -> term command, term -> coterm comma
   covar :: Var Level -> coterm
   µL :: (term -> command) -> coterm
   lamL :: term -> coterm -> coterm
-  sumL :: coterm -> coterm -> coterm
+  sumL :: [coterm] -> coterm
   unitL :: coterm
   prdL1 :: coterm -> coterm
   prdL2 :: coterm -> coterm
@@ -111,10 +110,9 @@ infixr 9 .$$.
 
 sumLA
   :: (Sequent t c d, Applicative i, Applicative m)
-  => m (i c)
+  => m (i [c])
   -> m (i c)
-  -> m (i c)
-sumLA = liftA2 (liftA2 sumL)
+sumLA = fmap (fmap sumL)
 
 -- sumLA
 --   :: (Sequent t c d, Applicative i, Applicative m)

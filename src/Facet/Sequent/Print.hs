@@ -28,8 +28,7 @@ instance S.Sequent Print Print Print where
   var = var
   µR b = P.pretty "µ" <> P.braces (fresh (\ v -> anon v P.<+> P.dot P.<+> b (anon v)))
   lamR c = P.pretty "λ" <> P.braces (fresh (\ u -> fresh (\ v -> anon u <> P.comma P.<+> anon v P.<+> P.pretty "." P.<+> c (anon u) (anon v))))
-  sumR1 t = P.parens (P.pretty "inl" P.<+> t)
-  sumR2 t = P.parens (P.pretty "inr" P.<+> t)
+  sumR i t = P.parens (P.pretty "in" <> subscript i P.<+> t)
   bottomR c = P.pretty "µ" <> P.braces (P.brackets mempty P.<+> P.dot P.<+> c)
   unitR = P.parens mempty
   prdR l r = P.tupled [l, r]
@@ -38,7 +37,7 @@ instance S.Sequent Print Print Print where
   covar = var
   µL b = µ̃ <> P.braces (fresh (\ v -> anon v P.<+> P.dot P.<+> b (anon v)))
   lamL a k = a P.<+> P.dot P.<+> k
-  sumL l r = P.pretty "case" <> P.braces (commaSep [l, r])
+  sumL cs = P.pretty "case" <> P.braces (commaSep (map (\ (i, c) -> P.pretty "in" <> subscript i P.<+> P.pretty "->" P.<+> c) (zip [0..] cs)))
   unitL = P.pretty "_"
   prdL1 k = P.parens (µ̃ <> P.braces (P.pretty "πl" P.<+> k))
   prdL2 k = P.parens (µ̃ <> P.braces (P.pretty "πr" P.<+> k))

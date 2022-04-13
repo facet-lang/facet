@@ -24,8 +24,7 @@ data Term
   = Var (Var Index)
   | MuR Command
   | LamR Command
-  | SumR1 Term
-  | SumR2 Term
+  | SumR Int Term
   | BottomR Command
   | UnitR
   | PrdR Term Term
@@ -38,7 +37,7 @@ data Coterm
   = Covar (Var Index)
   | MuL Command
   | LamL Term Coterm
-  | SumL Coterm Coterm
+  | SumL [Coterm]
   | UnitL
   | PrdL1 Coterm
   | PrdL2 Coterm
@@ -55,8 +54,7 @@ instance Applicative m => C.Sequent (QuoterT m Term) (QuoterT m Coterm) (QuoterT
   var inner = QuoterT (\ outer -> pure (Var (toIndexed outer inner)))
   µR body = MuR <$> binderT (C.covar . Free) body
   lamR body = LamR <$> binderT (C.var . Free) (binderT (C.covar . Free) . body)
-  sumR1 = fmap SumR1
-  sumR2 = fmap SumR2
+  sumR = fmap . SumR
   bottomR = fmap BottomR
   unitR = pure UnitR
   prdR = liftA2 PrdR
@@ -65,7 +63,7 @@ instance Applicative m => C.Sequent (QuoterT m Term) (QuoterT m Coterm) (QuoterT
   covar inner = QuoterT (\ outer -> pure (Covar (toIndexed outer inner)))
   µL body = MuL <$> binderT (C.var . Free) body
   lamL = liftA2 LamL
-  sumL = liftA2 SumL
+  sumL = fmap SumL . sequenceA
   unitL = pure UnitL
   prdL1 = fmap PrdL1
   prdL2 = fmap PrdL2
@@ -77,8 +75,7 @@ instance C.Sequent (Quoter Term) (Quoter Coterm) (Quoter Command) where
   var v = Quoter (\ d -> Var (toIndexed d v))
   µR b = MuR <$> binder (\ d' -> Quoter (\ d -> covar (toIndexed d d'))) b
   lamR b = LamR <$> binder (\ d' -> Quoter (\ d -> var (toIndexed d d'))) (binder (\ d'' -> Quoter (\ d -> covar (toIndexed d d''))) . b)
-  sumR1 = fmap SumR1
-  sumR2 = fmap SumR2
+  sumR = fmap . SumR
   bottomR = fmap BottomR
   unitR = pure UnitR
   prdR = liftA2 PrdR
@@ -87,7 +84,7 @@ instance C.Sequent (Quoter Term) (Quoter Coterm) (Quoter Command) where
   covar v = Quoter (\ d -> Covar (toIndexed d v))
   µL b = MuL <$> binder (\ d' -> Quoter (\ d -> var (toIndexed d d'))) b
   lamL = liftA2 LamL
-  sumL = liftA2 SumL
+  sumL = fmap SumL . sequenceA
   unitL = pure UnitL
   prdL1 = fmap PrdL1
   prdL2 = fmap PrdL2
@@ -110,8 +107,7 @@ interpretTerm _G _D = \case
   Var (Global n) -> C.var (Global n)
   MuR b          -> C.µR (\ k -> interpretCommand _G (k:_D) b)
   LamR b         -> C.lamR (\ a k -> interpretCommand (a:_G) (k:_D) b)
-  SumR1 t        -> C.sumR1 (interpretTerm _G _D t)
-  SumR2 t        -> C.sumR2 (interpretTerm _G _D t)
+  SumR i t       -> C.sumR i (interpretTerm _G _D t)
   BottomR c      -> C.bottomR (interpretCommand _G _D c)
   UnitR          -> C.unitR
   PrdR l r       -> C.prdR (interpretTerm _G _D l) (interpretTerm _G _D r)
@@ -123,7 +119,7 @@ interpretCoterm _G _D = \case
   Covar (Global n) -> C.covar (Global n)
   MuL b            -> C.µL (\ t -> interpretCommand (t:_G) _D b)
   LamL a k         -> C.lamL (interpretTerm _G _D a) (interpretCoterm _G _D k)
-  SumL l r         -> C.sumL (interpretCoterm _G _D l) (interpretCoterm _G _D r)
+  SumL cs          -> C.sumL (interpretCoterm _G _D <$> cs)
   UnitL            -> C.unitL
   PrdL1 c          -> C.prdL1 (interpretCoterm _G _D c)
   PrdL2 c          -> C.prdL2 (interpretCoterm _G _D c)
