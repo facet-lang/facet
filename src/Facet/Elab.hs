@@ -137,7 +137,7 @@ resolveC :: (Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Read
 resolveC = resolveWith lookupConstructor
 
 resolveD :: (Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason) sig m) => QName -> m (QName :=: Def)
-resolveD = resolveWith lookupD
+resolveD = resolveWith lookupDef
 
 lookupInContext :: Has (Choose :+: Empty) sig m => QName -> Context -> m (LName Index, Either Kind (Quantity, Type))
 lookupInContext (m:|>n)

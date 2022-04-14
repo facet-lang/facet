@@ -65,7 +65,7 @@ lookupWith lookup graph mod@Module{ name } (m:|>n)
   <|> guard (m /= Nil) *> (lookupM (fromSnoc m) graph >>= maybe empty pure . snd >>= lookup n)
 
 lookupQ :: Has (Choose :+: Empty) sig m => Graph -> Module -> QName -> m (QName :=: Def)
-lookupQ = lookupWith lookupD
+lookupQ = lookupWith lookupDef
 
 
 -- FIXME: enrich this with source references for each

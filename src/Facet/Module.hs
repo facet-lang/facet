@@ -8,7 +8,7 @@ module Facet.Module
 , foldMapC
 , lookupConstructor
 , lookupOperation
-, lookupD
+, lookupDef
 , Scope(..)
 , decls_
 , toList_
@@ -90,8 +90,8 @@ lookupOperation n Module{ name, scope } = foldMapC matchDef (map (view def_) (de
   where
   matchDef = maybe empty (pure . ((name |> n :=:) . DTerm Nothing)) . preview (_DInterface.ix n)
 
-lookupD :: Has Empty sig m => Name -> Module -> m (QName :=: Def)
-lookupD n Module{ name, scope } = maybe empty (pure . (name |> n :=:)) (preview (ix n) scope)
+lookupDef :: Has Empty sig m => Name -> Module -> m (QName :=: Def)
+lookupDef n Module{ name, scope } = maybe empty (pure . (name |> n :=:)) (preview (ix n) scope)
 
 
 newtype Scope a = Scope { decls :: [Name :=: a] }
