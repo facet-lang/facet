@@ -35,7 +35,7 @@ import           Facet.Snoc.NonEmpty ((|>))
 import           Facet.Syntax
 import           Facet.Term.Expr
 import           Facet.Type.Norm
-import           Fresnel.Fold (preview)
+import           Fresnel.Fold (Fold, foldMapOf, preview)
 import           Fresnel.Getter (view)
 import           Fresnel.Iso (Iso, coerced, fmapping, iso)
 import           Fresnel.Ixed
@@ -69,6 +69,10 @@ scope_ = lens scope (\ m scope -> m{ scope })
 foldMapC :: (Foldable t, Has (Choose :+: Empty) sig m) => (a -> m b) -> t a -> m b
 foldMapC f = getChoosing #. foldMap (Choosing #. f)
 {-# INLINE foldMapC #-}
+
+foldMapOfC :: (Has Choose sig m, Has Empty sig m) => Fold s a -> (a -> m b) -> (s -> m b)
+foldMapOfC o f = getChoosing #. foldMapOf o (Choosing #. f)
+{-# INLINE foldMapOfC #-}
 
 
 -- | Compose a function operationally equivalent to 'id' on the left.
