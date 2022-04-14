@@ -353,9 +353,9 @@ elabScope :: (Has (State Module) sig m, Monoid a) => Name -> Prism' Submodule a 
 elabScope dname p _K elab ret = letrec (scope_.decls_) dname (_DSubmodule.tm_.p) (DSubmodule (review p mempty) _K) (runModule (elab <==: _K) >>= ret)
 
 letrec :: (Has (State s) sig m, At a) => Setter' s a -> At.Index a -> Traversal' (IxValue a) b -> IxValue a -> m b -> m ()
-letrec getter key projection initial final = do
-  getter.at key .= Just initial
-  getter.ix key.projection <~ final
+letrec setter key projection initial final = do
+  setter.at key .= Just initial
+  setter.ix key.projection <~ final
 
 
 -- Errors
