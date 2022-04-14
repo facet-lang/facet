@@ -124,7 +124,7 @@ instantiate inst = go
 
 
 resolveWith
-  :: (Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason) sig m)
+  :: (Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason) sig m)
   => (forall sig m . Has (Choose :+: Empty) sig m => Name -> Module -> m (QName :=: d))
   -> QName
   -> m (QName :=: d)
@@ -133,10 +133,10 @@ resolveWith lookup n = ask >>= \ graph -> asks (\ module' -> lookupWith lookup g
   [v] -> pure v
   ds  -> ambiguousName n (map (view nm_) ds)
 
-resolveC :: (Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason) sig m) => QName -> m (QName :=: Type)
+resolveC :: (Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason) sig m) => QName -> m (QName :=: Type)
 resolveC = resolveWith lookupConstructor
 
-resolveD :: (Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason) sig m) => QName -> m (QName :=: Def)
+resolveD :: (Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason) sig m) => QName -> m (QName :=: Def)
 resolveD = resolveWith lookupDef
 
 lookupInContext :: Has (Choose :+: Empty) sig m => QName -> Context -> m (LName Index, Either Kind (Quantity, Type))
