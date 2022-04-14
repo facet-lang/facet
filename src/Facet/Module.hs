@@ -87,7 +87,7 @@ lookupC :: Has (Choose :+: Empty) sig m => Name -> Module -> m (QName :=: Maybe 
 lookupC n Module{ name, scope } = foldMapC matchDef (map (view def_) (decls scope))
   where
   matchDef = matchTerm <=< maybe empty pure . preview (_DData.tm_.ix n)
-  matchTerm d = (name |> n :=:) <$> maybe empty pure (preview _DTerm d)
+  matchTerm = fmap (name |> n :=:) . maybe empty pure . preview _DTerm
 
 -- | Look up effect operations.
 lookupE :: Has (Choose :+: Empty) sig m => Name -> Module -> m (QName :=: Def)
