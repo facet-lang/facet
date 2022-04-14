@@ -34,6 +34,7 @@ import           Facet.Kind
 import           Facet.Lens as Lens (views)
 import           Facet.Module
 import           Facet.Name
+import           Facet.Pattern
 import           Facet.Semiring
 import           Facet.Sequent.Class as SQ
 import           Facet.Subst
@@ -142,6 +143,9 @@ checkLamS
   => Type <==: [(S.Pattern, m (i t))]
   -> Type <==: m (i t)
 checkLamS _ = Check (\ _T -> mismatchTypes (Exp (Left "unimplemented")) (Act _T))
+
+
+data Clause a = Clause (Pattern Name) a
 
 
 -- Assertions
