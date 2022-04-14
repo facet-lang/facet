@@ -83,15 +83,11 @@ foldMapOfC o f = getChoosing #. foldMapOf o (Choosing #. f)
 
 
 lookupConstructor :: Has (Choose :+: Empty) sig m => Name -> Module -> m (QName :=: Type)
-lookupConstructor n Module{ name, scope } = foldMapOfC (toList_.folded.def_._DData) matchDef scope
-  where
-  matchDef = maybe empty (pure . (name |> n :=:)) . preview (ix n)
+lookupConstructor n Module{ name, scope } = foldMapOfC (toList_.folded.def_._DData.ix n) (pure . (name |> n :=:)) scope
 
 -- | Look up effect operations.
 lookupOperation :: Has (Choose :+: Empty) sig m => Name -> Module -> m (QName :=: Type)
-lookupOperation n Module{ name, scope } = foldMapOfC (toList_.folded.def_._DInterface) matchDef scope
-  where
-  matchDef = maybe empty (pure . (name |> n :=:)) . preview (ix n)
+lookupOperation n Module{ name, scope } = foldMapOfC (toList_.folded.def_._DInterface.ix n) (pure . (name |> n :=:)) scope
 
 lookupDef :: Has Empty sig m => Name -> Module -> m (QName :=: Def)
 lookupDef n Module{ name, scope } = maybe empty (pure . (name |> n :=:)) (preview (ix n) scope)
