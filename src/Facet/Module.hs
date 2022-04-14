@@ -35,7 +35,7 @@ import           Facet.Snoc.NonEmpty ((|>))
 import           Facet.Syntax
 import           Facet.Term.Expr
 import           Facet.Type.Norm
-import           Fresnel.Fold (folded, preview, (^?))
+import           Fresnel.Fold (folded, (^?))
 import           Fresnel.Iso (Iso, coerced, fmapping, iso)
 import           Fresnel.Ixed
 import           Fresnel.Lens (Lens', lens)
@@ -78,15 +78,15 @@ foldMapC f = getChoosing #. foldMap (Choosing #. f)
 {-# INLINE (#.) #-}
 
 
-lookupConstructor :: Has Empty sig m => Name -> Module -> m (QName :=: Type)
+lookupConstructor :: Has (Choose :+: Empty) sig m => Name -> Module -> m (QName :=: Type)
 lookupConstructor n Module{ name, scope } = maybe empty (pure . (name |> n :=:)) (scope ^? toList_.folded.def_._DData.ix n)
 
 -- | Look up effect operations.
-lookupOperation :: Has Empty sig m => Name -> Module -> m (QName :=: Type)
+lookupOperation :: Has (Choose :+: Empty) sig m => Name -> Module -> m (QName :=: Type)
 lookupOperation n Module{ name, scope } = maybe empty (pure . (name |> n :=:)) (scope ^? toList_.folded.def_._DInterface.ix n)
 
 lookupDef :: Has Empty sig m => Name -> Module -> m (QName :=: Def)
-lookupDef n Module{ name, scope } = maybe empty (pure . (name |> n :=:)) (preview (ix n) scope)
+lookupDef n Module{ name, scope } = maybe empty (pure . (name |> n :=:)) (scope ^? ix n)
 
 
 newtype Scope a = Scope { decls :: [Name :=: a] }
