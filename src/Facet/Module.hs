@@ -35,7 +35,7 @@ import           Facet.Snoc.NonEmpty ((|>))
 import           Facet.Syntax
 import           Facet.Term.Expr
 import           Facet.Type.Norm
-import           Fresnel.Fold (Fold, foldMapOf, preview)
+import           Fresnel.Fold (Fold, foldMapOf, folded, preview)
 import           Fresnel.Getter (view)
 import           Fresnel.Iso (Iso, coerced, fmapping, iso)
 import           Fresnel.Ixed
@@ -84,15 +84,15 @@ foldMapOfC o f = getChoosing #. foldMapOf o (Choosing #. f)
 
 
 lookupConstructor :: Has (Choose :+: Empty) sig m => Name -> Module -> m (QName :=: Type)
-lookupConstructor n Module{ name, scope } = foldMapC matchDef (map (view def_) (decls scope))
+lookupConstructor n Module{ name, scope } = foldMapOfC (toList_.folded.def_._DData) matchDef scope
   where
-  matchDef = maybe empty (pure . (name |> n :=:)) . preview (_DData.ix n)
+  matchDef = maybe empty (pure . (name |> n :=:)) . preview (ix n)
 
 -- | Look up effect operations.
 lookupOperation :: Has (Choose :+: Empty) sig m => Name -> Module -> m (QName :=: Def)
-lookupOperation n Module{ name, scope } = foldMapC matchDef (map (view def_) (decls scope))
+lookupOperation n Module{ name, scope } = foldMapOfC (toList_.folded.def_._DInterface) matchDef scope
   where
-  matchDef = maybe empty (pure . ((name |> n :=:) . DTerm Nothing)) . preview (_DInterface.ix n)
+  matchDef = maybe empty (pure . ((name |> n :=:) . DTerm Nothing)) . preview (ix n)
 
 lookupDef :: Has Empty sig m => Name -> Module -> m (QName :=: Def)
 lookupDef n Module{ name, scope } = maybe empty (pure . (name |> n :=:)) (preview (ix n) scope)
