@@ -30,7 +30,6 @@ import           Facet.Module
 import           Facet.Name
 import           Facet.Snoc
 import           Facet.Snoc.NonEmpty (NonEmpty(..), fromSnoc, toSnoc)
-import           Facet.Syntax
 import           Fresnel.At
 import           Fresnel.Iso
 import           Fresnel.Ixed
@@ -64,7 +63,7 @@ lookupWith lookup graph mod@Module{ name } (m:|>n)
   <|> guard (m == Nil) *> foldMapC (maybe empty (lookup n) . snd) (getGraph graph)
   <|> guard (m /= Nil) *> (lookupM (fromSnoc m) graph >>= maybe empty pure . snd >>= lookup n)
 
-lookupQ :: Has (Choose :+: Empty) sig m => Graph -> Module -> QName -> m (QName :=: Def)
+lookupQ :: Has (Choose :+: Empty) sig m => Graph -> Module -> QName -> m Def
 lookupQ = lookupWith lookupDef
 
 

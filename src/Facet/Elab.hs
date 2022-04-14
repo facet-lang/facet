@@ -135,7 +135,7 @@ resolveWith lookup n = ask >>= \ graph -> asks (\ module' -> lookupWith lookup g
 resolveC :: (Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason) sig m) => QName -> m (QName :=: Type)
 resolveC = resolveWith lookupConstructor
 
-resolveD :: (Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason) sig m) => QName -> m (QName :=: Def)
+resolveD :: (Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason) sig m) => QName -> m Def
 resolveD = resolveWith lookupDef
 
 lookupInContext :: Has (Choose :+: Empty) sig m => QName -> Context -> m (LName Index, Either Kind (Quantity, Type))
@@ -152,7 +152,7 @@ lookupInSig (m :|> n) mod graph = foldMapC $ foldMapC (\ (Interface q@(m':|>_) _
   d <- maybe empty pure (defs ^? ix n)
   pure $ m' :|> n :=: d) . interfaces
   where
-  interfaceScope (_ :=: d) = case d of { DSubmodule (SInterface defs) _K -> pure defs ; _ -> empty }
+  interfaceScope = \case { DSubmodule (SInterface defs) _K -> pure defs ; _ -> empty }
 
 
 (|-) :: Has (Reader ElabContext :+: Throw ErrReason :+: Writer Usage) sig m => (Quantity, Pattern (Name :==> Type)) -> m a -> m a

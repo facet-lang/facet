@@ -65,8 +65,8 @@ global n = do
   mod <- lift ask
   graph <- lift ask
   case lookupQ graph mod n of
-    [_ :=: DTerm (Just v) _] -> pure v -- FIXME: store values in the module graph
-    _                        -> error "throw a real error here"
+    [DTerm (Just v) _] -> pure v -- FIXME: store values in the module graph
+    _                  -> error "throw a real error here"
 
 var :: (HasCallStack, Algebra sig m) => LName Index -> ReaderC (Env (Value m)) m (Value m)
 var n = asks (`index` n)

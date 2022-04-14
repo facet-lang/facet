@@ -34,13 +34,13 @@ tvar :: (Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader M
 tvar n = views context_ (lookupInContext n) >>= \case
   [(n', Left _K)] -> pure (TX.Var (Free (Right n')) :==> _K)
   _               -> resolveD n >>= \case
-    q :=: DSubmodule _ _K -> pure $ TX.Var (Global q) :==> _K
-    _                     -> freeVariable n
+    DSubmodule _ _K -> pure $ TX.Var (Global n) :==> _K
+    _               -> freeVariable n
 
 ivar :: (Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason) sig m) => QName -> m (QName :==> Kind)
 ivar n = resolveD n >>= \case
-    q :=: DSubmodule (SInterface _) _K -> pure $ q :==> _K
-    _                                  -> freeVariable n
+    DSubmodule (SInterface _) _K -> pure $ n :==> _K
+    _                            -> freeVariable n
 
 
 _String :: Applicative m => m (TX.Type :==> Kind)

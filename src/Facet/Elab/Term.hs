@@ -118,8 +118,8 @@ var :: (Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Mo
 var n = views context_ (lookupInContext n) >>= \case
   [(n', Right (q, _T))] -> use n' q $> (Var (Free n') :==> _T)
   _                     -> resolveD n >>= \case
-    n :=: DTerm _ _T -> global (n ::: _T)
-    _ :=: _          -> freeVariable n
+    DTerm _ _T -> global (n ::: _T)
+    _          -> freeVariable n
 
 
 hole :: Has (Throw ErrReason) sig m => Name -> Type <==: m a
@@ -165,7 +165,7 @@ comp b = Check $ \ _T -> do
   graph <- ask
   module' <- ask
   let interfacePattern :: Has (Throw ErrReason) sig m => Interface Type -> m (QName :=: (Name :==> Type))
-      interfacePattern (Interface n _) = maybe (freeVariable n) (\ (n' :=: _T) -> pure ((n |> n') :=: (n' :==> _T))) (listToMaybe (maybe [] (Getter.view toList_) . preview (def_._DInterface) =<< lookupQ graph module' n))
+      interfacePattern (Interface n _) = maybe (freeVariable n) (\ (n' :=: _T) -> pure ((n |> n') :=: (n' :==> _T))) (listToMaybe (maybe [] (Getter.view toList_) . preview _DInterface =<< lookupQ graph module' n))
   p' <- traverse interfacePattern (interfaces sig)
   -- FIXME: can we apply quantities to dictionaries? what would they mean?
   b' <- (Many, PDict p') |- check (b ::: _B)
