@@ -124,9 +124,9 @@ instantiate inst = go
 
 resolveWith
   :: (Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason) sig m)
-  => (forall sig m . Has (Choose :+: Empty) sig m => Name -> Module -> m (QName :=: d))
+  => (forall sig m . Has (Choose :+: Empty) sig m => Name -> Module -> m d)
   -> QName
-  -> m (QName :=: d)
+  -> m d
 resolveWith lookup n = ask >>= \ graph -> asks (\ module' -> lookupWith lookup graph module' n) >>= \case
   []  -> freeVariable n
   [v] -> pure v
