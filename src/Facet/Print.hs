@@ -229,7 +229,7 @@ instance Printable C.Module where
       C.DTerm Nothing  _T ->       print opts env _T
       C.DTerm (Just b) _T -> defn (print opts env _T :=: print opts env b)
       C.DSubmodule s _K   -> case s of
-        C.SData cs      -> annotate Keyword (pretty "data") <+> scope defBody cs
+        C.SData cs      -> annotate Keyword (pretty "data") <+> scope (print opts env) cs
         C.SInterface os -> annotate Keyword (pretty "interface") <+> scope (print opts env) os
         C.SModule ds    -> block (concatWith (surround hardline) (map ((hardline <>) . def . fmap defBody) (view C.toList_ ds)))
     scope with = block . group . concatWith (surround (hardline <> comma <> space)) . map (group . def . fmap with) . view C.toList_

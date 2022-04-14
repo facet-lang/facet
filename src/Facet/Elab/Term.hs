@@ -186,7 +186,7 @@ varP n = Bind $ \ _A k -> k (PVar (n :==> wrap _A))
 
 conP :: (Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason) sig m, Has (Writer Usage) sig m) => QName -> [Bind m (Pattern (Name :==> Type))] -> Bind m (Pattern (Name :==> Type))
 conP n fs = Bind $ \ _A k -> do
-  n' :=: _ ::: _T <- resolveC n
+  n' :=: _T <- resolveC n
   _T' <- maybe (pure _T) (foldl' (\ _T _A -> do t <- _T ; (_, _, b) <- assertQuantifier t ; pure (b _A)) (pure _T) . snd) (unNeutral _A)
   fs' <- runBind (fieldsP fs) _T' (\ (fs, _T) -> fs <$ unify (Exp _A) (Act _T))
   k $ PCon n' (fromList fs')
@@ -283,14 +283,14 @@ patternForArgType = \case
 elabDataDef
   :: (HasCallStack, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Reader Source) sig m, Has (Throw Err) sig m, Has (Write Warn) sig m)
   => [S.Ann (Name ::: S.Ann S.Type)]
-  -> Kind <==: m [Name :=: Def]
+  -> Kind <==: m [Name :=: Term ::: Type]
 -- FIXME: check that all constructors return the datatype.
 elabDataDef constructors = Check $ \ _K -> do
   mname <- Lens.view name_
   for constructors $ \ (S.Ann _ _ (n ::: t)) -> do
     c_T <- elabType $ runErr $ abstractType (Type.switch (synthType t) <==: KType) _K
     con' <- elabTerm $ runErr $ check (abstractTerm (const (Con (mname |> n) . toList)) ::: c_T)
-    pure $ n :=: DTerm (Just con') c_T
+    pure $ n :=: con' ::: c_T
 
 elabInterfaceDef
   :: (HasCallStack, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Reader Source) sig m, Has (Throw Err) sig m)
@@ -335,7 +335,7 @@ elabModule (S.Ann _ _ (S.Module mname is os ds)) = execState (Module mname [] os
     -- elaborate all the types first
     es <- for ds $ \ (S.Ann _ _ (dname, S.Ann _ _ def)) -> case def of
       S.DataDef cs _K -> Nothing <$ elabScope dname _SData _K (elabDataDef cs) (\ cs ->
-        review toList_ cs <$ for_ cs (\ (dname :=: decl) -> scope_.decls_.at dname .= Just decl))
+        fmap (Getter.view ty_) (review toList_ cs) <$ for_ cs (\ (dname :=: tm ::: ty) -> scope_.decls_.at dname .= Just (DTerm (Just tm) ty)))
 
       S.InterfaceDef os _K -> Nothing <$ elabScope dname _SInterface _K (elabInterfaceDef os) (pure . review toList_)
 

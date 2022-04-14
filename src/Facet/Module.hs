@@ -83,10 +83,10 @@ foldMapC f = getChoosing #. foldMap (Choosing #. f)
 {-# INLINE (#.) #-}
 
 
-lookupC :: Has (Choose :+: Empty) sig m => Name -> Module -> m (QName :=: Maybe Term ::: Type)
+lookupC :: Has (Choose :+: Empty) sig m => Name -> Module -> m (QName :=: Type)
 lookupC n Module{ name, scope } = foldMapC matchDef (map (view def_) (decls scope))
   where
-  matchDef = maybe empty (pure . (name |> n :=:)) . preview (_DData.tm_.ix n._DTerm)
+  matchDef = maybe empty (pure . (name |> n :=:)) . preview (_DData.tm_.ix n)
 
 -- | Look up effect operations.
 lookupE :: Has (Choose :+: Empty) sig m => Name -> Module -> m (QName :=: Def)
@@ -123,11 +123,11 @@ newtype Import = Import { name :: QName }
 
 
 data Submodule
-  = SData (Scope Def)
+  = SData (Scope Type)
   | SInterface (Scope Type)
   | SModule (Scope Def)
 
-_SData :: Prism' Submodule (Scope Def)
+_SData :: Prism' Submodule (Scope Type)
 _SData = prism' SData (\case
   SData cs -> Just cs
   _        -> Nothing)
@@ -157,7 +157,7 @@ _DSubmodule = prism' (\ (s ::: _K) -> DSubmodule s _K) (\case
   DSubmodule s _K -> Just (s ::: _K)
   _               -> Nothing)
 
-_DData :: Prism' Def (Scope Def ::: Kind)
+_DData :: Prism' Def (Scope Type ::: Kind)
 _DData = onFst _DSubmodule _SData
 
 _DInterface :: Prism' Def (Scope Type ::: Kind)
