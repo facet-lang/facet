@@ -9,7 +9,6 @@ module Facet.Functor.Compose
 , weaken
   -- * Binding syntax
 , binder
-, Clause(..)
 ) where
 
 import Control.Applicative (Alternative(..))
@@ -51,5 +50,3 @@ weaken = C . fmap pure
 
 binder :: (Functor m, Applicative i) => ((c -> d) -> e) -> (forall j . Applicative j => (forall x . i x -> j x) -> j c -> m (j d)) -> m (i e)
 binder f c = fmap f . runC <$> c weaken (liftCInner id)
-
-newtype Clause m i a b = Clause { runClause :: forall j . Applicative j => (forall x . i x -> j x) -> j a -> m (j b) }
