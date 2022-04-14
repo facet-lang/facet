@@ -36,7 +36,6 @@ import           Facet.Syntax
 import           Facet.Term.Expr
 import           Facet.Type.Norm
 import           Fresnel.Fold (Fold, foldMapOf, folded, preview)
-import           Fresnel.Getter (view)
 import           Fresnel.Iso (Iso, coerced, fmapping, iso)
 import           Fresnel.Ixed
 import           Fresnel.Lens (Lens', lens)
@@ -89,10 +88,10 @@ lookupConstructor n Module{ name, scope } = foldMapOfC (toList_.folded.def_._DDa
   matchDef = maybe empty (pure . (name |> n :=:)) . preview (ix n)
 
 -- | Look up effect operations.
-lookupOperation :: Has (Choose :+: Empty) sig m => Name -> Module -> m (QName :=: Def)
+lookupOperation :: Has (Choose :+: Empty) sig m => Name -> Module -> m (QName :=: Type)
 lookupOperation n Module{ name, scope } = foldMapOfC (toList_.folded.def_._DInterface) matchDef scope
   where
-  matchDef = maybe empty (pure . ((name |> n :=:) . DTerm Nothing)) . preview (ix n)
+  matchDef = maybe empty (pure . (name |> n :=:)) . preview (ix n)
 
 lookupDef :: Has Empty sig m => Name -> Module -> m (QName :=: Def)
 lookupDef n Module{ name, scope } = maybe empty (pure . (name |> n :=:)) (preview (ix n) scope)
