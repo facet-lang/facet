@@ -27,9 +27,6 @@ module Facet.Module
 import           Control.Algebra
 import           Control.Effect.Choose
 import           Control.Effect.Empty
-import           Control.Monad ((<=<))
-import           Data.Bifunctor (first)
-import           Data.Bitraversable
 import           Data.Coerce
 import qualified Data.Map as Map
 import           Facet.Kind
@@ -45,7 +42,6 @@ import           Fresnel.Ixed
 import           Fresnel.Lens (Lens', lens)
 import           Fresnel.Optional (Optional', optional')
 import           Fresnel.Prism
-import           Fresnel.Review (review)
 
 -- Modules
 
@@ -163,8 +159,5 @@ _DData = _DSubmodule.tm_._SData
 _DInterface :: Optional' Def (Scope Type)
 _DInterface = _DSubmodule.tm_._SInterface
 
-_DModule :: Prism' Def (Scope Def ::: Kind)
-_DModule = onFst _DSubmodule _SModule
-
-onFst :: Bitraversable f => Prism' s (f a c) -> Prism' a b -> Prism' s (f b c)
-onFst p q = prism' (review p . first (review q)) (bitraverse (preview q) pure <=< preview p)
+_DModule :: Optional' Def (Scope Def)
+_DModule = _DSubmodule.tm_._SModule
