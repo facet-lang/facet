@@ -12,8 +12,6 @@ module Facet.Module
 , Scope(..)
 , decls_
 , toList_
-, scopeFromList
-, scopeToList
 , lookupScope
 , Import(..)
 , Submodule(..)
@@ -120,12 +118,6 @@ decls_ = toList_.fmapping pair_.iso Map.fromList Map.toList
 
 toList_ :: Iso (Scope a) (Scope b) [Name :=: a] [Name :=: b]
 toList_ = coerced
-
-scopeFromList :: [Name :=: a] -> Scope a
-scopeFromList = review toList_
-
-scopeToList :: Scope a -> [Name :=: a]
-scopeToList = view toList_
 
 lookupScope :: Has Empty sig m => Name -> Scope a -> m a
 lookupScope n = maybe empty pure . lookup n . map (\ (n :=: a) -> (n, a)) . decls

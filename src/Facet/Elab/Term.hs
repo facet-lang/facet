@@ -165,7 +165,7 @@ comp b = Check $ \ _T -> do
   graph <- ask
   module' <- ask
   let interfacePattern :: Has (Throw ErrReason) sig m => Interface Type -> m (QName :=: (Name :==> Type))
-      interfacePattern (Interface n _) = maybe (freeVariable n) (\ (n' :=: _T) -> pure ((n |> n') :=: (n' :==> _T))) (listToMaybe (scopeToList . Getter.view tm_ =<< maybe [] pure . preview _DInterface . Getter.view def_ =<< lookupQ graph module' n))
+      interfacePattern (Interface n _) = maybe (freeVariable n) (\ (n' :=: _T) -> pure ((n |> n') :=: (n' :==> _T))) (listToMaybe (Getter.view (tm_.toList_) =<< maybe [] pure . preview _DInterface . Getter.view def_ =<< lookupQ graph module' n))
   p' <- traverse interfacePattern (interfaces sig)
   -- FIXME: can we apply quantities to dictionaries? what would they mean?
   b' <- (Many, PDict p') |- check (b ::: _B)
@@ -335,9 +335,9 @@ elabModule (S.Ann _ _ (S.Module mname is os ds)) = execState (Module mname [] os
     -- elaborate all the types first
     es <- for ds $ \ (S.Ann _ _ (dname, S.Ann _ _ def)) -> case def of
       S.DataDef cs _K -> Nothing <$ elabScope dname _SData _K (elabDataDef cs) (\ cs ->
-        scopeFromList cs <$ for_ cs (\ (dname :=: decl) -> scope_.decls_.at dname .= Just decl))
+        review toList_ cs <$ for_ cs (\ (dname :=: decl) -> scope_.decls_.at dname .= Just decl))
 
-      S.InterfaceDef os _K -> Nothing <$ elabScope dname _SInterface _K (elabInterfaceDef os) (pure . scopeFromList)
+      S.InterfaceDef os _K -> Nothing <$ elabScope dname _SInterface _K (elabInterfaceDef os) (pure . review toList_)
 
       S.TermDef t tele -> do
         _T <- runModule $ elabType $ runErr $ Type.switch (synthType tele) <==: KType
