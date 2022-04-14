@@ -117,7 +117,7 @@ global (q ::: _T) = (\ (v ::: _T) -> v :==> _T) <$> instantiate const (Var (Glob
 var :: (Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (State (Subst Type)) sig m, Has (Throw ErrReason) sig m, Has (Writer Usage) sig m) => QName -> m (Term :==> Type)
 var n = views context_ (lookupInContext n) >>= \case
   [(n', Right (q, _T))] -> use n' q $> (Var (Free n') :==> _T)
-  _                     -> resolveQ n >>= \case
+  _                     -> resolveD n >>= \case
     n :=: DTerm _ _T -> global (n ::: _T)
     _ :=: _          -> freeVariable n
 

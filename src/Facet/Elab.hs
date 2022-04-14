@@ -8,7 +8,7 @@ module Facet.Elab
 ( -- * General
   lookupInContext
 , lookupInSig
-, resolveQ
+, resolveD
 , resolveC
 , meta
 , instantiate
@@ -136,8 +136,8 @@ resolveWith lookup n = ask >>= \ graph -> asks (\ module' -> lookupWith lookup g
 resolveC :: (Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason) sig m) => QName -> m (QName :=: Type)
 resolveC = resolveWith lookupC
 
-resolveQ :: (Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason) sig m) => QName -> m (QName :=: Def)
-resolveQ = resolveWith lookupD
+resolveD :: (Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason) sig m) => QName -> m (QName :=: Def)
+resolveD = resolveWith lookupD
 
 lookupInContext :: Has (Choose :+: Empty) sig m => QName -> Context -> m (LName Index, Either Kind (Quantity, Type))
 lookupInContext (m:|>n)

@@ -63,7 +63,7 @@ varS n = views context_ (lookupInContext n) >>= \case
     use n' q
     d <- views context_ level
     SQ.varA (Free (toLeveled d (ident n'))) ==> pure _T
-  _                     -> resolveQ n >>= \case
+  _                     -> resolveD n >>= \case
     n :=: DTerm _ _T -> globalS (n ::: _T)
     _ :=: _          -> freeVariable n
 
