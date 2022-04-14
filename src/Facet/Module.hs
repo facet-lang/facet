@@ -43,7 +43,7 @@ import           Fresnel.Getter (view)
 import           Fresnel.Iso (Iso, coerced, fmapping, iso)
 import           Fresnel.Ixed
 import           Fresnel.Lens (Lens', lens)
-import           Fresnel.Optional (optional')
+import           Fresnel.Optional (Optional', optional')
 import           Fresnel.Prism
 import           Fresnel.Review (review)
 
@@ -86,7 +86,7 @@ foldMapC f = getChoosing #. foldMap (Choosing #. f)
 lookupC :: Has (Choose :+: Empty) sig m => Name -> Module -> m (QName :=: Type)
 lookupC n Module{ name, scope } = foldMapC matchDef (map (view def_) (decls scope))
   where
-  matchDef = maybe empty (pure . (name |> n :=:)) . preview (_DData.tm_.ix n)
+  matchDef = maybe empty (pure . (name |> n :=:)) . preview (_DData.ix n)
 
 -- | Look up effect operations.
 lookupE :: Has (Choose :+: Empty) sig m => Name -> Module -> m (QName :=: Def)
@@ -157,8 +157,8 @@ _DSubmodule = prism' (\ (s ::: _K) -> DSubmodule s _K) (\case
   DSubmodule s _K -> Just (s ::: _K)
   _               -> Nothing)
 
-_DData :: Prism' Def (Scope Type ::: Kind)
-_DData = onFst _DSubmodule _SData
+_DData :: Optional' Def (Scope Type)
+_DData = _DSubmodule.tm_._SData
 
 _DInterface :: Prism' Def (Scope Type ::: Kind)
 _DInterface = onFst _DSubmodule _SInterface
