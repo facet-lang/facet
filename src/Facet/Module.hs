@@ -6,7 +6,7 @@ module Facet.Module
 , imports_
 , scope_
 , foldMapC
-, lookupC
+, lookupConstructor
 , lookupE
 , lookupD
 , Scope(..)
@@ -79,8 +79,8 @@ foldMapC f = getChoosing #. foldMap (Choosing #. f)
 {-# INLINE (#.) #-}
 
 
-lookupC :: Has (Choose :+: Empty) sig m => Name -> Module -> m (QName :=: Type)
-lookupC n Module{ name, scope } = foldMapC matchDef (map (view def_) (decls scope))
+lookupConstructor :: Has (Choose :+: Empty) sig m => Name -> Module -> m (QName :=: Type)
+lookupConstructor n Module{ name, scope } = foldMapC matchDef (map (view def_) (decls scope))
   where
   matchDef = maybe empty (pure . (name |> n :=:)) . preview (_DData.ix n)
 

@@ -134,7 +134,7 @@ resolveWith lookup n = ask >>= \ graph -> asks (\ module' -> lookupWith lookup g
   ds  -> ambiguousName n (map (view nm_) ds)
 
 resolveC :: (Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason) sig m) => QName -> m (QName :=: Type)
-resolveC = resolveWith lookupC
+resolveC = resolveWith lookupConstructor
 
 resolveD :: (Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason) sig m) => QName -> m (QName :=: Def)
 resolveD = resolveWith lookupD
