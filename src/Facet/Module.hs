@@ -86,14 +86,13 @@ foldMapC f = getChoosing #. foldMap (Choosing #. f)
 lookupC :: Has (Choose :+: Empty) sig m => Name -> Module -> m (QName :=: Maybe Term ::: Type)
 lookupC n Module{ name, scope } = foldMapC matchDef (map (view def_) (decls scope))
   where
-  matchDef = matchTerm <=< maybe empty pure . preview (_DData.tm_.ix n)
-  matchTerm = fmap (name |> n :=:) . maybe empty pure . preview _DTerm
+  matchDef = maybe empty (pure . (name |> n :=:)) . preview (_DData.tm_.ix n._DTerm)
 
 -- | Look up effect operations.
 lookupE :: Has (Choose :+: Empty) sig m => Name -> Module -> m (QName :=: Def)
 lookupE n Module{ name, scope } = foldMapC matchDef (map (view def_) (decls scope))
   where
-  matchDef = fmap ((name |> n :=:) . DTerm Nothing) . maybe empty pure . preview (_DInterface.tm_.ix n)
+  matchDef = maybe empty (pure . ((name |> n :=:) . DTerm Nothing)) . preview (_DInterface.tm_.ix n)
 
 lookupD :: Has Empty sig m => Name -> Module -> m (QName :=: Def)
 lookupD n Module{ name, scope } = maybe empty (pure . (name |> n :=:)) (preview (ix n) scope)
