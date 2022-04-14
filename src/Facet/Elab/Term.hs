@@ -332,9 +332,6 @@ elabModule (S.Ann _ _ (S.Module mname is os ds)) = execState (Module mname [] os
     -- FIXME: maybe figure out the graph for mutual recursion?
     -- FIXME: check for redundant naming
 
-    let elabScope :: (Has (State Module) sig m, Monoid a) => Name -> Prism' Submodule a -> Kind -> Kind <==: ReaderC Module m b -> (b -> m a) -> m ()
-        elabScope dname p _K elab ret = letrec (scope_.decls_) dname (_DSubmodule.tm_.p) (DSubmodule (review p mempty) _K) (runModule (elab <==: _K) >>= ret)
-
     -- elaborate all the types first
     es <- for ds $ \ (S.Ann _ _ (dname, S.Ann _ _ def)) -> case def of
       S.DataDef cs _K -> Nothing <$ elabScope dname _SData _K (elabDataDef cs) (\ cs -> do
@@ -351,6 +348,9 @@ elabModule (S.Ann _ _ (S.Module mname is os ds)) = execState (Module mname [] os
     for_ (catMaybes es) $ \ (dname, t, _T) -> do
       t' <- runModule $ elabTermDef t <==: _T
       scope_.decls_.ix dname .= DTerm (Just t') _T
+
+elabScope :: (Has (State Module) sig m, Monoid a) => Name -> Prism' Submodule a -> Kind -> Kind <==: ReaderC Module m b -> (b -> m a) -> m ()
+elabScope dname p _K elab ret = letrec (scope_.decls_) dname (_DSubmodule.tm_.p) (DSubmodule (review p mempty) _K) (runModule (elab <==: _K) >>= ret)
 
 letrec :: (Has (State s) sig m, At a) => Setter' s a -> At.Index a -> Traversal' (IxValue a) b -> IxValue a -> m b -> m ()
 letrec getter key projection initial final = do
