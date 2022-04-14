@@ -92,7 +92,7 @@ lookupC n Module{ name, scope } = foldMapC matchDef (map (view def_) (decls scop
 lookupE :: Has (Choose :+: Empty) sig m => Name -> Module -> m (QName :=: Def)
 lookupE n Module{ name, scope } = foldMapC matchDef (map (view def_) (decls scope))
   where
-  matchDef = maybe empty (pure . ((name |> n :=:) . DTerm Nothing)) . preview (_DInterface.tm_.ix n)
+  matchDef = maybe empty (pure . ((name |> n :=:) . DTerm Nothing)) . preview (_DInterface.ix n)
 
 lookupD :: Has Empty sig m => Name -> Module -> m (QName :=: Def)
 lookupD n Module{ name, scope } = maybe empty (pure . (name |> n :=:)) (preview (ix n) scope)
@@ -160,8 +160,8 @@ _DSubmodule = prism' (\ (s ::: _K) -> DSubmodule s _K) (\case
 _DData :: Optional' Def (Scope Type)
 _DData = _DSubmodule.tm_._SData
 
-_DInterface :: Prism' Def (Scope Type ::: Kind)
-_DInterface = onFst _DSubmodule _SInterface
+_DInterface :: Optional' Def (Scope Type)
+_DInterface = _DSubmodule.tm_._SInterface
 
 _DModule :: Prism' Def (Scope Def ::: Kind)
 _DModule = onFst _DSubmodule _SModule

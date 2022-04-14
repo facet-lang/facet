@@ -165,7 +165,7 @@ comp b = Check $ \ _T -> do
   graph <- ask
   module' <- ask
   let interfacePattern :: Has (Throw ErrReason) sig m => Interface Type -> m (QName :=: (Name :==> Type))
-      interfacePattern (Interface n _) = maybe (freeVariable n) (\ (n' :=: _T) -> pure ((n |> n') :=: (n' :==> _T))) (listToMaybe (Getter.view (tm_.toList_) =<< maybe [] pure . preview _DInterface . Getter.view def_ =<< lookupQ graph module' n))
+      interfacePattern (Interface n _) = maybe (freeVariable n) (\ (n' :=: _T) -> pure ((n |> n') :=: (n' :==> _T))) (listToMaybe (maybe [] (Getter.view toList_) . preview (def_._DInterface) =<< lookupQ graph module' n))
   p' <- traverse interfacePattern (interfaces sig)
   -- FIXME: can we apply quantities to dictionaries? what would they mean?
   b' <- (Many, PDict p') |- check (b ::: _B)
