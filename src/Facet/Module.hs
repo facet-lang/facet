@@ -7,7 +7,7 @@ module Facet.Module
 , scope_
 , foldMapC
 , lookupConstructor
-, lookupE
+, lookupOperation
 , lookupD
 , Scope(..)
 , decls_
@@ -85,8 +85,8 @@ lookupConstructor n Module{ name, scope } = foldMapC matchDef (map (view def_) (
   matchDef = maybe empty (pure . (name |> n :=:)) . preview (_DData.ix n)
 
 -- | Look up effect operations.
-lookupE :: Has (Choose :+: Empty) sig m => Name -> Module -> m (QName :=: Def)
-lookupE n Module{ name, scope } = foldMapC matchDef (map (view def_) (decls scope))
+lookupOperation :: Has (Choose :+: Empty) sig m => Name -> Module -> m (QName :=: Def)
+lookupOperation n Module{ name, scope } = foldMapC matchDef (map (view def_) (decls scope))
   where
   matchDef = maybe empty (pure . ((name |> n :=:) . DTerm Nothing)) . preview (_DInterface.ix n)
 
