@@ -94,6 +94,7 @@ import           Facet.Usage as Usage
 import           Facet.Vars as Vars
 import           Fresnel.Fold ((^?))
 import           Fresnel.Getter (view)
+import           Fresnel.Ixed (ix)
 import           Fresnel.Lens (Lens', lens)
 import           Fresnel.Prism (Prism', prism')
 import           GHC.Stack
@@ -149,7 +150,7 @@ lookupInSig :: Has (Choose :+: Empty) sig m => QName -> Module -> Graph -> [Sign
 lookupInSig (m :|> n) mod graph = foldMapC $ foldMapC (\ (Interface q@(m':|>_) _) -> do
   guard (m == Nil || m == m')
   defs <- interfaceScope =<< lookupQ graph mod q
-  d <- lookupScope n defs
+  d <- maybe empty pure (defs ^? ix n)
   pure $ m' :|> n :=: d) . interfaces
   where
   interfaceScope (_ :=: d) = case d of { DSubmodule (SInterface defs) _K -> pure defs ; _ -> empty }
