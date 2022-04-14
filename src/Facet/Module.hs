@@ -99,7 +99,7 @@ lookupD n Module{ name, scope } = maybe empty (pure . (name |> n :=:)) (preview 
 
 
 newtype Scope a = Scope { decls :: [Name :=: a] }
-  deriving (Monoid, Semigroup)
+  deriving (Functor, Monoid, Semigroup)
 
 instance Ixed (Scope a) where
   type Index (Scope a) = Name
