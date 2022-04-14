@@ -93,7 +93,6 @@ import           Facet.Type.Norm as TN
 import           Facet.Usage as Usage
 import           Facet.Vars as Vars
 import           Fresnel.Fold ((^?))
-import           Fresnel.Getter (view)
 import           Fresnel.Ixed (ix)
 import           Fresnel.Lens (Lens', lens)
 import           Fresnel.Prism (Prism', prism')
@@ -131,7 +130,7 @@ resolveWith
 resolveWith lookup n = ask >>= \ graph -> asks (\ module' -> lookupWith lookup graph module' n) >>= \case
   []  -> freeVariable n
   [v] -> pure v
-  ds  -> ambiguousName n (map (view nm_) ds)
+  _   -> ambiguousName n
 
 resolveC :: (Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason) sig m) => QName -> m (QName :=: Type)
 resolveC = resolveWith lookupConstructor
@@ -220,7 +219,7 @@ data Err = Err
 data ErrReason
   = FreeVariable QName
   -- FIXME: add source references for the imports, definition sites, and any re-exports.
-  | AmbiguousName QName [QName]
+  | AmbiguousName QName
   | CouldNotSynthesize
   | ResourceMismatch Name Quantity Quantity
   | UnifyType UnifyErrReason (Exp (Either String Type)) (Act Type)
@@ -234,10 +233,10 @@ _FreeVariable = prism' FreeVariable (\case
   FreeVariable n -> Just n
   _              -> Nothing)
 
-_AmbiguousName :: Prism' ErrReason (QName, [QName])
-_AmbiguousName = prism' (uncurry AmbiguousName) (\case
-  AmbiguousName n ns -> Just (n, ns)
-  _                  -> Nothing)
+_AmbiguousName :: Prism' ErrReason QName
+_AmbiguousName = prism' AmbiguousName (\case
+  AmbiguousName n -> Just n
+  _               -> Nothing)
 
 _UnifyType :: Prism' ErrReason (UnifyErrReason, Exp (Either String Type), Act Type)
 _UnifyType = prism' (\ (r, x, a) -> UnifyType r x a) (\case
@@ -292,8 +291,9 @@ resourceMismatch n exp act = withFrozenCallStack $ throwError $ ResourceMismatch
 freeVariable :: Has (Throw ErrReason) sig m => QName -> m a
 freeVariable n = withFrozenCallStack $ throwError $ FreeVariable n
 
-ambiguousName :: Has (Throw ErrReason) sig m => QName -> [QName] -> m a
-ambiguousName n qs = withFrozenCallStack $ throwError $ AmbiguousName n qs
+-- FIXME: get references for the resolved names
+ambiguousName :: Has (Throw ErrReason) sig m => QName -> m a
+ambiguousName n = withFrozenCallStack $ throwError $ AmbiguousName n
 
 missingInterface :: Has (Throw ErrReason) sig m => Interface Type -> m a
 missingInterface i = withFrozenCallStack $ throwError $ MissingInterface i
