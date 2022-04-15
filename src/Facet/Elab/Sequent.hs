@@ -145,6 +145,7 @@ checkLamS
 checkLamS _ = Check (\ _T -> mismatchTypes (Exp (Left "unimplemented")) (Act _T))
 
 
+-- FIXME: multiple patterns per clause
 data Clause a = Clause (Pattern Name) a
 
 
