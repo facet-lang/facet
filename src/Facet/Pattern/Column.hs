@@ -7,6 +7,7 @@ import qualified Data.IntMap as IntMap
 import           Fresnel.Iso (Iso, coerced)
 
 newtype Column a = Column { getColumn :: IntMap.IntMap a }
+  deriving (Monoid)
 
 column_ :: Iso (Column a) (Column b) (IntMap.IntMap a) (IntMap.IntMap b)
 column_ = coerced
