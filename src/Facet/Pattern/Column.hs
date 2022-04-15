@@ -6,6 +6,7 @@ module Facet.Pattern.Column
 ) where
 
 import qualified Data.IntMap as IntMap
+import           Fresnel.At
 import           Fresnel.Iso (Iso, coerced)
 import           Fresnel.Ixed
 
@@ -25,3 +26,6 @@ instance Ixed (Column a) where
   type Index (Column a) = RowIndex
   type IxValue (Column a) = a
   ix i = column_.ix i
+
+instance At (Column a) where
+  at i = column_.at i
