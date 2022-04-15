@@ -112,6 +112,7 @@ library
     Facet.Parser
     Facet.Parser.Table
     Facet.Pattern
+    Facet.Pattern.Column
     Facet.Polarized
     Facet.Pretty
     Facet.Print
