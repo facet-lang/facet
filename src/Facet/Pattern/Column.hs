@@ -11,3 +11,6 @@ newtype Column a = Column { getColumn :: IntMap.IntMap a }
 column_ :: Iso (Column a) (Column b) (IntMap.IntMap a) (IntMap.IntMap b)
 column_ = coerced
 {-# INLINE column_ #-}
+
+instance Semigroup a => Semigroup (Column a) where
+  as <> bs = Column (IntMap.unionWith (<>) (getColumn as) (getColumn bs))
