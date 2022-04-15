@@ -3,25 +3,22 @@ module Facet.Elab.Pattern
 , patterns_
   -- * Coverage judgement
 , compileClauses
-, Column(..)
-, RowIndex
-, singleton
-, fromList
-, at
 ) where
 
 import           Control.Effect.Empty
 import           Data.Foldable (fold)
-import qualified Data.IntMap as IntMap
+import           Data.Maybe (fromJust)
 import           Data.Traversable (for)
 import           Facet.Name
+import           Facet.Pattern.Column
 import           Facet.Quote
 import qualified Facet.Sequent.Class as C
 import qualified Facet.Sequent.Expr as X
 import           Facet.Sequent.Pattern
 import           Facet.Sequent.Type
-import           Fresnel.Fold (Fold, Union(..), folded, preview)
+import           Fresnel.Fold (Fold, Union(..), folded, preview, (^?))
 import           Fresnel.Getter (to)
+import           Fresnel.Ixed
 import           Fresnel.Lens (Lens', lens)
 import           Fresnel.Maybe (_Nothing)
 import           Fresnel.Traversal (forOf, traversed)
@@ -63,33 +60,11 @@ compileClausesBody ctx _A _T heads v k = case _A of
         _           -> empty
       _    -> empty)
     v C..|. C.sumL
-      [ C.µL (\ v -> compileClausesBody ctx _A _T (heads' `at` 0) v k)
-      , C.µL (\ v -> compileClausesBody ctx _B _T (heads' `at` 1) v k) ]
+      [ C.µL (\ v -> compileClausesBody ctx _A _T (fromJust (heads' ^? ix 0)) v k)
+      , C.µL (\ v -> compileClausesBody ctx _B _T (fromJust (heads' ^? ix 1)) v k) ]
 
 
 match :: Has Empty sig m => Fold (Pattern Name) [Pattern Name] -> [Clause X.Term] -> m [Clause X.Term]
 match o heads = forOf (traversed.patterns_) heads (\case
   p:ps | Just prefix <- preview o (instantiateHead p) -> pure (prefix <> ps)
   _                                                   -> empty)
-
-
-newtype Column a = Column { getColumn :: IntMap.IntMap a }
-
-instance Semigroup a => Semigroup (Column a) where
-  as <> bs = Column (IntMap.unionWith (<>) (getColumn as) (getColumn bs))
-
-instance Monoid a => Monoid (Column a) where
-  mempty = Column mempty
-
-type RowIndex = Int
-
--- | Construct a sparse 'Column' from a single value.
-singleton :: RowIndex -> a -> Column a
-singleton row a = Column (IntMap.singleton row a)
-
--- | Construct a dense 'Column' from a list of values.
-fromList :: [a] -> Column a
-fromList = Column . IntMap.fromList . zipWith (\ a b -> (a, b)) [0..]
-
-at :: Column a -> RowIndex -> a
-at (Column m) i = m IntMap.! i
