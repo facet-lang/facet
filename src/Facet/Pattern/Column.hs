@@ -1,6 +1,7 @@
 module Facet.Pattern.Column
 ( Column(..)
 , column_
+, RowIndex
 ) where
 
 import qualified Data.IntMap as IntMap
@@ -15,3 +16,5 @@ column_ = coerced
 
 instance Semigroup a => Semigroup (Column a) where
   as <> bs = Column (IntMap.unionWith (<>) (getColumn as) (getColumn bs))
+
+type RowIndex = Int
