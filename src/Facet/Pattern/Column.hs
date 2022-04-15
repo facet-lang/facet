@@ -5,6 +5,7 @@ module Facet.Pattern.Column
 , RowIndex
   -- * Constructors
 , singleton
+, fromList
 ) where
 
 import qualified Data.IntMap as IntMap
@@ -39,3 +40,7 @@ instance At (Column a) where
 singleton :: RowIndex -> a -> Column a
 singleton row a = Column (IntMap.singleton row a)
 {-# INLINE singleton #-}
+
+-- | Construct a dense 'Column' from a list of values.
+fromList :: [a] -> Column a
+fromList = Column . IntMap.fromList . zipWith (\ a b -> (a, b)) [0..]
