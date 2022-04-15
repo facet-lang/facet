@@ -3,6 +3,8 @@ module Facet.Pattern.Column
 ( Column(..)
 , column_
 , RowIndex
+  -- * Constructors
+, singleton
 ) where
 
 import qualified Data.IntMap as IntMap
@@ -29,3 +31,11 @@ instance Ixed (Column a) where
 
 instance At (Column a) where
   at i = column_.at i
+
+
+-- Constructors
+
+-- | Construct a sparse 'Column' from a single value.
+singleton :: RowIndex -> a -> Column a
+singleton row a = Column (IntMap.singleton row a)
+{-# INLINE singleton #-}
