@@ -39,7 +39,7 @@
 :seti -Wno-type-defaults
 :set -Wno-unused-packages
 
-:load Facet.CLI test/Test.hs
+:load Facet.CLI Facet.Elab.Pattern Facet.Elab.Sequent test/Test.hs
 
 import Facet.Parser
 import Facet.Print
