@@ -3,9 +3,12 @@ module Facet.Scope
 ( Scope(..)
 , decls_
 , toList_
+  -- * Eliminators
+, lookupIndex
 ) where
 
 import           Control.Monad (guard)
+import           Data.List (findIndex)
 import qualified Data.Map as Map
 import           Facet.Name
 import           Facet.Syntax
@@ -32,3 +35,9 @@ decls_ = toList_.fmapping pair_.iso Map.fromList Map.toList
 
 toList_ :: Iso (Scope a) (Scope b) [Name :=: a] [Name :=: b]
 toList_ = coerced
+
+
+-- Eliminators
+
+lookupIndex :: Name -> Scope a -> Maybe Int
+lookupIndex n = findIndex (\ (n' :=: _) -> n == n') . decls
