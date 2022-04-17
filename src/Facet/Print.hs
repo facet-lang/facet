@@ -38,6 +38,7 @@ import           Facet.Pattern
 import           Facet.Pretty (lower, upper)
 import           Facet.Print.Options
 import           Facet.Quote
+import qualified Facet.Scope as C
 import           Facet.Semiring (one, zero)
 import           Facet.Snoc
 import           Facet.Snoc.NonEmpty (NonEmpty(..))

@@ -45,6 +45,7 @@ import           Facet.Notice.Parser (rethrowParseErrors)
 import           Facet.Parser
 import           Facet.Pretty
 import           Facet.Print (Options, Print)
+import           Facet.Scope
 import           Facet.Snoc
 import           Facet.Source
 import           Facet.Source.Reference

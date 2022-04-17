@@ -9,9 +9,6 @@ module Facet.Module
 , lookupConstructor
 , lookupOperation
 , lookupDef
-, Scope(..)
-, decls_
-, toList_
 , Import(..)
 , Submodule(..)
 , _SData
@@ -24,23 +21,22 @@ module Facet.Module
 , _DModule
 ) where
 
-import           Control.Algebra
-import           Control.Effect.Choose
-import           Control.Effect.Empty
-import           Data.Coerce
-import qualified Data.Map as Map
-import           Facet.Kind
-import           Facet.Name
-import           Facet.Snoc.NonEmpty ((|>))
-import           Facet.Syntax
-import           Facet.Term.Expr
-import           Facet.Type.Norm
-import           Fresnel.Fold (folded, preview, (^?))
-import           Fresnel.Iso (Iso, coerced, fmapping, iso)
-import           Fresnel.Ixed
-import           Fresnel.Lens (Lens', lens)
-import           Fresnel.Optional (Optional', optional')
-import           Fresnel.Prism
+import Control.Algebra
+import Control.Effect.Choose
+import Control.Effect.Empty
+import Data.Coerce
+import Facet.Kind
+import Facet.Name
+import Facet.Scope
+import Facet.Snoc.NonEmpty ((|>))
+import Facet.Syntax
+import Facet.Term.Expr
+import Facet.Type.Norm
+import Fresnel.Fold (folded, preview, (^?))
+import Fresnel.Ixed
+import Fresnel.Lens (Lens', lens)
+import Fresnel.Optional (Optional')
+import Fresnel.Prism
 
 -- Modules
 
@@ -87,27 +83,6 @@ lookupOperation n Module{ name, scope } = maybe empty (pure . (name |> n :=:)) (
 
 lookupDef :: Has Empty sig m => Name -> Module -> m Def
 lookupDef n = maybe empty pure . preview (scope_.ix n)
-
-
-newtype Scope a = Scope { decls :: [Name :=: a] }
-  deriving (Functor, Monoid, Semigroup)
-
-instance Ixed (Scope a) where
-  type Index (Scope a) = Name
-  type IxValue (Scope a) = a
-  ix n = optional' prj (\ (Scope ds) d' -> Scope (replace (\ (n' :=: _) -> (n' :=: d') <$ guard (n == n')) ds))
-    where
-    prj = maybe empty pure . lookup n . map (\ (n :=: a) -> (n, a)) . decls
-    replace _ []     = []
-    replace f (v:vs) = case f v of
-      Nothing -> v:replace f vs
-      Just v' -> v':vs
-
-decls_ :: Iso (Scope a) (Scope b) (Map.Map Name a) (Map.Map Name b)
-decls_ = toList_.fmapping pair_.iso Map.fromList Map.toList
-
-toList_ :: Iso (Scope a) (Scope b) [Name :=: a] [Name :=: b]
-toList_ = coerced
 
 
 newtype Import = Import { name :: QName }

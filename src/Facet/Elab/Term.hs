@@ -66,6 +66,7 @@ import           Facet.Lens as Lens (locally, view, views, (.=), (<~))
 import           Facet.Module as Module
 import           Facet.Name
 import           Facet.Pattern
+import           Facet.Scope
 import           Facet.Semiring (Few(..), (><<))
 import           Facet.Snoc
 import           Facet.Snoc.NonEmpty as NE
