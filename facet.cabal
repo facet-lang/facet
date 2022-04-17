@@ -121,6 +121,7 @@ library
     Facet.REPL
     Facet.REPL.Parser
     Facet.Run
+    Facet.Scope
     Facet.Semialign
     Facet.Semiring
     Facet.Sequent.Class
