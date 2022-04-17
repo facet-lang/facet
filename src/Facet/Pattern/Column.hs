@@ -8,6 +8,7 @@ module Facet.Pattern.Column
 , fromList
 ) where
 
+import           Data.Functor.Classes (showsUnaryWith)
 import qualified Data.IntMap as IntMap
 import           Fresnel.At
 import           Fresnel.Iso (Iso, coerced)
@@ -32,6 +33,9 @@ instance Ixed (Column a) where
 
 instance At (Column a) where
   at i = column_.at i
+
+instance Show a => Show (Column a) where
+  showsPrec p (Column rows) = showsUnaryWith showsPrec "Column" p (IntMap.toList rows)
 
 
 -- Constructors
