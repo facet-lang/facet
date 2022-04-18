@@ -11,6 +11,7 @@ module Facet.Elab.Sequent
   -- * Elaboration
 , synthExprS
 , checkExprS
+, Clause(..)
   -- * Assertions
 , assertTacitFunction
   -- * Judgements
