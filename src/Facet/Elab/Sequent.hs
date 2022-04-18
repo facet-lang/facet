@@ -146,6 +146,7 @@ checkLamS _ = Check (\ _T -> mismatchTypes (Exp (Left "unimplemented")) (Act _T)
 
 
 data Clause a = Clause [Pattern Name] a
+  deriving (Show)
 
 
 -- Assertions
