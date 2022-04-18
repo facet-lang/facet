@@ -12,6 +12,7 @@ module Facet.Elab.Sequent
 , synthExprS
 , checkExprS
 , Clause(..)
+, partitionBy
   -- * Assertions
 , assertTacitFunction
   -- * Judgements
@@ -22,7 +23,9 @@ import           Control.Effect.Reader
 import           Control.Effect.State
 import           Control.Effect.Throw
 import           Control.Effect.Writer
+import           Data.Foldable (fold)
 import           Data.Text (Text)
+import           Data.Traversable (for)
 import           Facet.Context (level)
 import           Facet.Effect.Write
 import           Facet.Elab
@@ -36,8 +39,11 @@ import           Facet.Lens as Lens (views)
 import           Facet.Module
 import           Facet.Name
 import           Facet.Pattern
+import qualified Facet.Pattern.Column as Col
+import qualified Facet.Scope as Scope
 import           Facet.Semiring
 import           Facet.Sequent.Class as SQ
+import           Facet.Snoc.NonEmpty
 import           Facet.Subst
 import qualified Facet.Surface.Term.Expr as S
 import qualified Facet.Surface.Type.Expr as S
@@ -45,6 +51,7 @@ import           Facet.Syntax as S hiding (context_)
 import           Facet.Type.Norm as T
 import           Facet.Unify
 import           Facet.Usage
+import           Fresnel.Getter (view)
 import           GHC.Stack (HasCallStack, callStack, popCallStack, withFrozenCallStack)
 
 -- Variables
@@ -148,6 +155,17 @@ checkLamS _ = Check (\ _T -> mismatchTypes (Exp (Left "unimplemented")) (Act _T)
 
 data Clause a = Clause [Pattern Name] a
   deriving (Show)
+
+partitionBy :: [Clause a] -> Scope.Scope Type -> Maybe (Col.Column [Clause a])
+partitionBy clauses ctors = fold <$> for clauses (\case
+  Clause (p:ps) b -> case p of
+    PWildcard       -> pure (Col.fromList ([Clause (PWildcard:ps) b] <$ view Scope.toList_ ctors))
+    PVar n          -> pure (Col.fromList ([Clause (PVar n   :ps) b] <$ view Scope.toList_ ctors))
+    PCon (_:|>n) fs -> case Scope.lookupIndex n ctors of
+      Nothing -> Nothing
+      Just ix -> pure (Col.singleton ix [Clause (fs <> ps) b])
+    _               -> Nothing
+  _ -> Nothing)
 
 
 -- Assertions
