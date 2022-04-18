@@ -13,7 +13,6 @@ module Facet.Elab.Term
 , app
 , string
 , let'
-, comp
   -- * Pattern combinators
 , wildcardP
 , varP
@@ -47,7 +46,7 @@ import           Data.Bifunctor (first)
 import           Data.Either (partitionEithers)
 import           Data.Foldable
 import           Data.Functor
-import           Data.Maybe (catMaybes, fromMaybe, listToMaybe)
+import           Data.Maybe (catMaybes, fromMaybe)
 import           Data.Monoid (Ap(..), First(..))
 import qualified Data.Set as Set
 import           Data.Text (Text)
@@ -82,7 +81,6 @@ import           Facet.Type.Norm as T hiding (global)
 import           Facet.Unify
 import           Facet.Usage hiding (restrict)
 import           Fresnel.At as At
-import           Fresnel.Fold (preview)
 import           Fresnel.Getter as Getter (view)
 import           Fresnel.Ixed
 import           Fresnel.Prism (Prism')
@@ -158,19 +156,6 @@ let' p a b = Check $ \ _B -> do
   a' :==> _A <- a
   (p', b') <- bind (p ::: (Many, _A)) (check (b ::: _B))
   pure $ Let p' a' b'
-
-
-comp :: (Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason) sig m, Has (Writer Usage) sig m) => Type <==: m Term -> Type <==: m Term
-comp b = Check $ \ _T -> do
-  (sig, _B) <- assertComp _T
-  graph <- ask
-  module' <- ask
-  let interfacePattern :: Has (Throw ErrReason) sig m => Interface Type -> m (QName :=: (Name :==> Type))
-      interfacePattern (Interface n _) = maybe (freeVariable n) (\ (n' :=: _T) -> pure ((n |> n') :=: (n' :==> _T))) (listToMaybe (maybe [] (Getter.view toList_) . preview _DInterface =<< lookupQ graph module' n))
-  p' <- traverse interfacePattern (interfaces sig)
-  -- FIXME: can we apply quantities to dictionaries? what would they mean?
-  b' <- (Many, PDict p') |- check (b ::: _B)
-  pure $ E.Comp (map (fmap proof) p') b'
 
 
 -- Pattern combinators
