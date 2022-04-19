@@ -5,6 +5,7 @@ module Facet.Pattern
 , _PWildcard
 , _PVar
 , _PCon
+, EffPattern(..)
 , fill
 ) where
 
@@ -42,6 +43,9 @@ _PCon :: Prism' (Pattern a) (QName, [Pattern a])
 _PCon = _PVal.prism' (uncurry PCon) (\case
   PCon h sp -> Just (h, sp)
   _         -> Nothing)
+
+
+data EffPattern a = POp QName [ValPattern a] (ValPattern a)
 
 
 fill :: Traversable t => (b -> (b, c)) -> b -> t a -> (b, t c)
