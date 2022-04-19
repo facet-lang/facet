@@ -149,14 +149,14 @@ unit = VCon (NE.FromList ["Data", "Unit"] NE.|> T "unit") []
 
 matchV :: (Pattern (Name :=: Value m) -> a) -> Pattern Name -> Value m -> Maybe a
 matchV k p s = case p of
-  PWildcard -> pure (k PWildcard)
-  PVar n    -> pure (k (PVar (n :=: s)))
-  PCon n ps
-    | VCon n' fs <- s -> k . PCon n' <$ guard (n == n') <*> zipWithM (matchV id) ps fs
-  PCon{}    -> Nothing
-  PDict ps
-    | VDict os <- s -> k . PDict <$> zipWithM (\ (n1 :=: p) (n2 :=: o) -> (n1 :=: (p :=: o)) <$ guard (n1 == n2)) ps os
-  PDict{}   -> Nothing
+  PVal PWildcard -> pure (k (PVal PWildcard))
+  PVal (PVar n)  -> pure (k (PVal (PVar (n :=: s))))
+  PVal (PCon n ps)
+    | VCon n' fs <- s -> k . PVal . PCon n' <$ guard (n == n') <*> zipWithM (matchV id) ps fs
+  PVal PCon{}    -> Nothing
+  PVal (PDict ps)
+    | VDict os <- s -> k . PVal . PDict <$> zipWithM (\ (n1 :=: p) (n2 :=: o) -> (n1 :=: (p :=: o)) <$ guard (n1 == n2)) ps os
+  PVal PDict{}   -> Nothing
 
 
 -- Quotation

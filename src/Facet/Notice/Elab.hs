@@ -46,8 +46,8 @@ rethrowElabErrors opts = L.runThrow (pure . rethrow)
     sig' = getPrint . print opts printCtx . fmap (apply subst (toEnv context)) <$> (interfaces =<< sig)
     combine (d, env, prints, ctx) (C.Kind (n :==> _K)) =
       ( succ d
-      , env Env.|> PVar (n :=: free (LName d n))
-      , prints Env.|> PVar (n :=: intro n d)
+      , env Env.|> PVal (PVar (n :=: free (LName d n)))
+      , prints Env.|> PVal (PVar (n :=: intro n d))
       , ctx :> getPrint (print opts prints (ann (intro n d ::: print opts prints _K))) )
     combine (d, env, prints, ctx) (C.Type m _ p) =
       ( succ d

@@ -23,6 +23,7 @@ import qualified Facet.Snoc as S
 import           Facet.Syntax
 import           Facet.Type.Norm
 import           Facet.Usage
+import           Fresnel.Review (review)
 import           GHC.Stack
 import           Prelude hiding (lookup)
 
@@ -69,6 +70,6 @@ toEnv c = Env.Env (S.fromList (zipWith toType (toList (elems c)) [0..pred (level
   where
   toType b d = case b of
     Type _ _ p      -> (\ b -> proof b :=: bind d (proof b)) <$> p
-    Kind (n :==> _) -> PVar (n :=: bind d n)
+    Kind (n :==> _) -> review _PVar (n :=: bind d n)
 
   bind d b = free (LName d b)

@@ -174,7 +174,7 @@ instance Printable TX.Type where
       TX.Var (Global n)       -> qvar n
       TX.Var (Free (Right n)) -> fromMaybe (lname (toLeveled d n)) $ Env.lookup env n
       TX.Var (Free (Left m))  -> meta m
-      TX.ForAll      n    t b -> braces (ann (intro n d ::: print opts env t)) --> go (env |> PVar (n :=: intro n d)) b
+      TX.ForAll      n    t b -> braces (ann (intro n d ::: print opts env t)) --> go (env |> PVal (PVar (n :=: intro n d))) b
       TX.Arrow Nothing  q a b -> mult q (go env a) --> go env b
       TX.Arrow (Just n) q a b -> parens (ann (intro n d ::: mult q (go env a))) --> go env b
       TX.Comp s t             -> if s == mempty then go env t else sig s <+> go env t
@@ -204,7 +204,7 @@ instance Printable C.Term where
       C.String s       -> annotate Lit $ pretty (show s)
       C.Dict os        -> brackets (flatAlt space line <> commaSep (map (\ (n :=: v) -> qname n <+> equals <+> group (go env v)) os) <> flatAlt space line)
       C.Let p v b      -> let p' = snd (mapAccumL (\ d n -> (succ d, n :=: local n d)) (level env) p) in pretty "let" <+> braces (print opts env (view def_ <$> p') </> equals <+> group (go env v)) <+> pretty "in" <+> go (env |> p') b
-      C.Comp p b       -> comp (clause env (PDict p, b))
+      C.Comp p b       -> comp (clause env (PVal (PDict p), b))
       where
       d = level env
     qvar = group . setPrec Var . qname
@@ -249,10 +249,10 @@ instance Printable1 Pattern where
   printWith with opts@Options{ qname } env = go
     where
     go = \case
-      PWildcard -> pretty '_'
-      PVar n    -> with opts env n
-      PCon n ps -> parens (annotate Con (qname n) $$* map go (toList ps))
-      PDict os  -> brackets (flatAlt space line <> commaSep (map (\ (n :=: v) -> qname n <+> equals <+> group (with opts env v)) os) <> flatAlt space line)
+      PVal PWildcard   -> pretty '_'
+      PVal (PVar n)    -> with opts env n
+      PVal (PCon n ps) -> parens (annotate Con (qname n) $$* map go (toList ps))
+      PVal (PDict os)  -> brackets (flatAlt space line <> commaSep (map (\ (n :=: v) -> qname n <+> equals <+> group (with opts env v)) os) <> flatAlt space line)
 
 
 print1 :: (Printable1 f, Printable a) => Options Print -> Env Print -> f a -> Print

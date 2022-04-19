@@ -158,9 +158,9 @@ data Clause a = Clause [Pattern Name] a
 
 partitionBy :: [Clause a] -> Scope.Scope Type -> Maybe (Col.Column [Clause a])
 partitionBy clauses ctors = fold <$> for clauses (\case
-  Clause (p:ps) b -> case p of
-    PWildcard       -> pure (Col.fromList ([Clause (PWildcard:ps) b] <$ view Scope.toList_ ctors))
-    PVar n          -> pure (Col.fromList ([Clause (PVar n   :ps) b] <$ view Scope.toList_ ctors))
+  Clause (PVal p:ps) b -> case p of
+    PWildcard       -> pure (Col.fromList ([Clause (PVal PWildcard:ps) b] <$ view Scope.toList_ ctors))
+    PVar n          -> pure (Col.fromList ([Clause (PVal (PVar n) :ps) b] <$ view Scope.toList_ ctors))
     PCon (_:|>n) fs -> case Scope.lookupIndex n ctors of
       Nothing -> Nothing
       Just ix -> pure (Col.singleton ix [Clause (fs <> ps) b])

@@ -36,6 +36,7 @@ import qualified Facet.Type.Class as C
 import qualified Facet.Type.Expr as TX
 import           Facet.Usage hiding (singleton)
 import           Fresnel.Prism (Prism', prism')
+import           Fresnel.Review (review)
 import           GHC.Stack
 import           Prelude hiding (lookup)
 
@@ -140,7 +141,7 @@ eval subst = go where
     TX.Var (Global n)       -> global n
     TX.Var (Free (Right n)) -> index env n
     TX.Var (Free (Left m))  -> fromMaybe (metavar m) (lookupMeta m subst)
-    TX.ForAll n t b         -> ForAll n t (\ _T -> go (env |> PVar (n :=: _T)) b)
+    TX.ForAll n t b         -> ForAll n t (\ _T -> go (env |> review _PVar (n :=: _T)) b)
     TX.Arrow n q a b        -> Arrow n q (go env a) (go env b)
     TX.Comp s t             -> Comp (mapSignature (go env) s) (go env t)
     TX.App  f a             -> go env f $$  go env a

@@ -34,7 +34,7 @@ instance Quote Term X.Term where
     Lam cs   -> X.Lam <$> traverse (uncurry clause) cs
     Ne v sp  -> foldl' (\ h t -> X.App <$> h <*> quote t) (Quoter (\ d -> X.Var (toIndexed d v))) sp
     Dict os  -> X.Dict <$> traverse (traverse quote) os
-    Comp p b -> X.Comp p . snd <$> clause (PDict p) b
+    Comp p b -> X.Comp p . snd <$> clause (PVal (PDict p)) b
     where
     clause :: Traversable t => t Name -> (t (Name :=: Term) -> Term) -> Quoter (t Name, X.Term)
     clause p b = Quoter (\ d -> let (d', p') = mapAccumL (\ d n -> (succ d, n :=: Ne (Free (LName d n)) Nil)) d p in (p, runQuoter d' (quote (b p'))))
@@ -61,13 +61,13 @@ napp f a = case f of
 
 match :: Term -> Pattern Name -> Maybe (Pattern (Name :=: Term))
 match s = \case
-  PWildcard -> Just PWildcard
-  PVar n    -> Just (PVar (n :=: s))
-  PCon n ps -> case s of
-    Con n' fs -> PCon n' <$ guard (n == n') <*> zipWithM match fs ps
+  PVal PWildcard   -> Just (PVal PWildcard)
+  PVal (PVar n)    -> Just (PVal (PVar (n :=: s)))
+  PVal (PCon n ps) -> case s of
+    Con n' fs -> PVal . PCon n' <$ guard (n == n') <*> zipWithM match fs ps
     _         -> Nothing
-  PDict ps  -> case s of
-    Dict os -> PDict <$> zipWithM (\ (n1 :=: o) (n2 :=: p) -> (n1 :=: (p :=: o)) <$ guard (n1 == n2)) os ps
+  PVal (PDict ps)  -> case s of
+    Dict os -> PVal . PDict <$> zipWithM (\ (n1 :=: o) (n2 :=: p) -> (n1 :=: (p :=: o)) <$ guard (n1 == n2)) os ps
     _       -> Nothing
 
 -- ninst :: Term -> T.Type -> Term
