@@ -18,5 +18,4 @@ data Term
   | String Text
   | Dict [QName :=: Term]
   | Let (Pattern Name) Term Term
-  | Comp [QName :=: Name] Term -- ^ NB: the first argument is a specialization of @'Pattern' 'Name'@ to the 'PDict' constructor
   deriving (Eq, Ord, Show)

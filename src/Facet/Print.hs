@@ -204,7 +204,6 @@ instance Printable C.Term where
       C.String s       -> annotate Lit $ pretty (show s)
       C.Dict os        -> brackets (flatAlt space line <> commaSep (map (\ (n :=: v) -> qname n <+> equals <+> group (go env v)) os) <> flatAlt space line)
       C.Let p v b      -> let p' = snd (mapAccumL (\ d n -> (succ d, n :=: local n d)) (level env) p) in pretty "let" <+> braces (print opts env (view def_ <$> p') </> equals <+> group (go env v)) <+> pretty "in" <+> go (env |> p') b
-      C.Comp p b       -> comp (clause env (PVal (PDict p), b))
       where
       d = level env
     qvar = group . setPrec Var . qname

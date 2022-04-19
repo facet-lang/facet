@@ -58,7 +58,6 @@ eval = \case
   String s       -> string s
   Dict os        -> VDict <$> traverse (traverse eval) os
   Let p v b      -> eval v >>= \ v' -> local (|> fromMaybe (error "eval: non-exhaustive pattern in let") (matchV id p v')) (eval b)
-  Comp p b       -> comp p b
 
 global :: Has (Reader Graph :+: Reader Module) sig m => QName -> ReaderC (Env (Value (Eval m))) (Eval m) Term
 global n = do
@@ -86,9 +85,6 @@ string = pure . VString
 
 con :: QName -> [ReaderC (Env (Value (Eval m))) (Eval m) (Value (Eval m))] -> ReaderC (Env (Value (Eval m))) (Eval m) (Value (Eval m))
 con n fs = VCon n <$> sequenceA fs
-
-comp :: [QName :=: Name] -> Term -> ReaderC (Env (Value (Eval m))) (Eval m) (Value (Eval m))
-comp p b = pure $ VComp p b
 
 
 -- Machinery
@@ -129,7 +125,6 @@ data Value m
   -- | Computation; continuations, used in effect handlers.
   | VCont (Value m -> m (Value m))
   | VDict [QName :=: Value m]
-  | VComp [QName :=: Name] Term
 
 instance Monad m => Quote (Value m) (m Term) where
   quote = \case
@@ -139,7 +134,6 @@ instance Monad m => Quote (Value m) (m Term) where
     VCon n fs -> fmap (Con n) . sequenceA <$> traverse quote fs
     VString s -> pure . pure $ String s
     VDict os  -> fmap Dict . traverse sequenceA <$> traverse (traverse quote) os
-    VComp p b -> pure . pure $ Comp p b
 
 unit :: Value m
 unit = VCon (NE.FromList ["Data", "Unit"] NE.|> T "unit") []

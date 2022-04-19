@@ -24,7 +24,6 @@ data Term
   | Lam [(Pattern Name, Pattern (Name :=: Term) -> Term)]
   | Ne (Var (LName Level)) (Snoc Term)
   | Dict [QName :=: Term]
-  | Comp [QName :=: Name] (Pattern (Name :=: Term) -> Term)
   deriving (Eq, Ord, Show) via Quoting X.Term Term
 
 instance Quote Term X.Term where
@@ -34,7 +33,6 @@ instance Quote Term X.Term where
     Lam cs   -> X.Lam <$> traverse (uncurry clause) cs
     Ne v sp  -> foldl' (\ h t -> X.App <$> h <*> quote t) (Quoter (\ d -> X.Var (toIndexed d v))) sp
     Dict os  -> X.Dict <$> traverse (traverse quote) os
-    Comp p b -> X.Comp p . snd <$> clause (PVal (PDict p)) b
     where
     clause :: Traversable t => t Name -> (t (Name :=: Term) -> Term) -> Quoter (t Name, X.Term)
     clause p b = Quoter (\ d -> let (d', p') = mapAccumL (\ d n -> (succ d, n :=: Ne (Free (LName d n)) Nil)) d p in (p, runQuoter d' (quote (b p'))))
@@ -48,7 +46,6 @@ norm env = \case
   X.Lam cs    -> Lam (map (\ (p, b) -> (p, \ p' -> norm (env |> p') b)) cs)
   X.Dict os   -> Dict (map (fmap (norm env)) os)
   X.Let p v b -> norm (env |> fromMaybe (error "norm: non-exhaustive pattern in let") (match (norm env v) p)) b
-  X.Comp p b  -> Comp p (\ p' -> norm (env |> p') b)
 
 
 napp :: Term -> Term -> Term
