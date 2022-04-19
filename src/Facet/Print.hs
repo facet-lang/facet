@@ -202,7 +202,6 @@ instance Printable C.Term where
       C.App f a        -> go env f $$ go env a
       C.Con n p        -> qvar n $$* (group . go env <$> p)
       C.String s       -> annotate Lit $ pretty (show s)
-      C.Dict os        -> brackets (flatAlt space line <> commaSep (map (\ (n :=: v) -> qname n <+> equals <+> group (go env v)) os) <> flatAlt space line)
       C.Let p v b      -> let p' = snd (mapAccumL (\ d n -> (succ d, n :=: local n d)) (level env) p) in pretty "let" <+> braces (print opts env (view def_ <$> p') </> equals <+> group (go env v)) <+> pretty "in" <+> go (env |> p') b
       where
       d = level env
@@ -251,7 +250,6 @@ instance Printable1 Pattern where
       PVal PWildcard   -> pretty '_'
       PVal (PVar n)    -> with opts env n
       PVal (PCon n ps) -> parens (annotate Con (qname n) $$* map go (toList ps))
-      PVal (PDict os)  -> brackets (flatAlt space line <> commaSep (map (\ (n :=: v) -> qname n <+> equals <+> group (with opts env v)) os) <> flatAlt space line)
 
 
 print1 :: (Printable1 f, Printable a) => Options Print -> Env Print -> f a -> Print

@@ -164,7 +164,6 @@ partitionBy clauses ctors = fold <$> for clauses (\case
     PCon (_:|>n) fs -> case Scope.lookupIndex n ctors of
       Nothing -> Nothing
       Just ix -> pure (Col.singleton ix [Clause (fs <> ps) b])
-    _               -> Nothing
   _ -> Nothing)
 
 

@@ -10,7 +10,6 @@ module Facet.Pattern
 
 import Data.Traversable (mapAccumL)
 import Facet.Name
-import Facet.Syntax
 import Fresnel.Prism (Prism, Prism', prism, prism')
 
 -- Patterns
@@ -27,7 +26,6 @@ data ValPattern a
   = PWildcard
   | PVar a
   | PCon QName [Pattern a]
-  | PDict [QName :=: a]
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
 _PWildcard :: Prism' (Pattern a) ()

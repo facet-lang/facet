@@ -23,7 +23,6 @@ data Term
   | Con QName [Term]
   | Lam [(Pattern Name, Pattern (Name :=: Term) -> Term)]
   | Ne (Var (LName Level)) (Snoc Term)
-  | Dict [QName :=: Term]
   deriving (Eq, Ord, Show) via Quoting X.Term Term
 
 instance Quote Term X.Term where
@@ -32,7 +31,6 @@ instance Quote Term X.Term where
     Con n sp -> X.Con n <$> traverse quote sp
     Lam cs   -> X.Lam <$> traverse (uncurry clause) cs
     Ne v sp  -> foldl' (\ h t -> X.App <$> h <*> quote t) (Quoter (\ d -> X.Var (toIndexed d v))) sp
-    Dict os  -> X.Dict <$> traverse (traverse quote) os
     where
     clause :: Traversable t => t Name -> (t (Name :=: Term) -> Term) -> Quoter (t Name, X.Term)
     clause p b = Quoter (\ d -> let (d', p') = mapAccumL (\ d n -> (succ d, n :=: Ne (Free (LName d n)) Nil)) d p in (p, runQuoter d' (quote (b p'))))
@@ -44,7 +42,6 @@ norm env = \case
   X.Con n sp  -> Con n (norm env <$> sp)
   X.App f a   -> norm env f `napp`  norm env a
   X.Lam cs    -> Lam (map (\ (p, b) -> (p, \ p' -> norm (env |> p') b)) cs)
-  X.Dict os   -> Dict (map (fmap (norm env)) os)
   X.Let p v b -> norm (env |> fromMaybe (error "norm: non-exhaustive pattern in let") (match (norm env v) p)) b
 
 
@@ -63,9 +60,6 @@ match s = \case
   PVal (PCon n ps) -> case s of
     Con n' fs -> PVal . PCon n' <$ guard (n == n') <*> zipWithM match fs ps
     _         -> Nothing
-  PVal (PDict ps)  -> case s of
-    Dict os -> PVal . PDict <$> zipWithM (\ (n1 :=: o) (n2 :=: p) -> (n1 :=: (p :=: o)) <$ guard (n1 == n2)) os ps
-    _       -> Nothing
 
 -- ninst :: Term -> T.Type -> Term
 -- ninst f t = case f of

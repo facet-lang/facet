@@ -16,6 +16,5 @@ data Term
   | App Term Term
   | Con QName [Term]
   | String Text
-  | Dict [QName :=: Term]
   | Let (Pattern Name) Term Term
   deriving (Eq, Ord, Show)

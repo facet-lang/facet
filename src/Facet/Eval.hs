@@ -56,7 +56,6 @@ eval = \case
   App  f a       -> app (eval f) a
   Con n fs       -> con n (eval <$> fs)
   String s       -> string s
-  Dict os        -> VDict <$> traverse (traverse eval) os
   Let p v b      -> eval v >>= \ v' -> local (|> fromMaybe (error "eval: non-exhaustive pattern in let") (matchV id p v')) (eval b)
 
 global :: Has (Reader Graph :+: Reader Module) sig m => QName -> ReaderC (Env (Value (Eval m))) (Eval m) Term
@@ -124,7 +123,6 @@ data Value m
   | VLam (Env (Value m)) [(Pattern Name, Term)]
   -- | Computation; continuations, used in effect handlers.
   | VCont (Value m -> m (Value m))
-  | VDict [QName :=: Value m]
 
 instance Monad m => Quote (Value m) (m Term) where
   quote = \case
@@ -133,7 +131,6 @@ instance Monad m => Quote (Value m) (m Term) where
     VVar v    -> Quoter (\ d -> pure (Var (toIndexed d v)))
     VCon n fs -> fmap (Con n) . sequenceA <$> traverse quote fs
     VString s -> pure . pure $ String s
-    VDict os  -> fmap Dict . traverse sequenceA <$> traverse (traverse quote) os
 
 unit :: Value m
 unit = VCon (NE.FromList ["Data", "Unit"] NE.|> T "unit") []
@@ -148,9 +145,6 @@ matchV k p s = case p of
   PVal (PCon n ps)
     | VCon n' fs <- s -> k . PVal . PCon n' <$ guard (n == n') <*> zipWithM (matchV id) ps fs
   PVal PCon{}    -> Nothing
-  PVal (PDict ps)
-    | VDict os <- s -> k . PVal . PDict <$> zipWithM (\ (n1 :=: p) (n2 :=: o) -> (n1 :=: (p :=: o)) <$ guard (n1 == n2)) ps os
-  PVal PDict{}   -> Nothing
 
 
 -- Quotation
