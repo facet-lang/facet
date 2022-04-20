@@ -12,6 +12,8 @@ module Facet.Elab.Sequent
 , synthExprS
 , checkExprS
 , Clause(..)
+, patterns_
+, body_
 , partitionBy
   -- * Assertions
 , assertTacitFunction
@@ -52,6 +54,7 @@ import           Facet.Type.Norm as T
 import           Facet.Unify
 import           Facet.Usage
 import           Fresnel.Getter (view)
+import           Fresnel.Lens (Lens, Lens', lens)
 import           GHC.Stack (HasCallStack, callStack, popCallStack, withFrozenCallStack)
 
 -- Variables
@@ -158,6 +161,13 @@ data Clause a = Clause
   , body     :: a
   }
   deriving (Show)
+
+patterns_ :: Lens' (Clause a) [Pattern Name]
+patterns_ = lens patterns (\ c patterns -> c{ patterns })
+
+body_ :: Lens (Clause a) (Clause b) a b
+body_ = lens body (\ c body -> c{ body })
+
 
 partitionBy :: [Clause a] -> Scope.Scope Type -> Maybe (Col.Column [Clause a])
 partitionBy clauses ctors = fold <$> for clauses (\case
