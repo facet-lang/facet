@@ -153,7 +153,10 @@ checkLamS
 checkLamS _ = Check (\ _T -> mismatchTypes (Exp (Left "unimplemented")) (Act _T))
 
 
-data Clause a = Clause [Pattern Name] a
+data Clause a = Clause
+  { patterns :: [Pattern Name]
+  , body     :: a
+  }
   deriving (Show)
 
 partitionBy :: [Clause a] -> Scope.Scope Type -> Maybe (Col.Column [Clause a])
