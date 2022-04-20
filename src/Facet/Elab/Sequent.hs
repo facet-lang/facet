@@ -143,15 +143,21 @@ synthAs t _T = as (checkExprS t ::: do { _T :==> _K <- Type.synthType _T ; (:==>
 checkExprS :: (HasCallStack, Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (State (Subst Type)) sig m, Has (Throw ErrReason) sig m, Has (Write Warn) sig m, Has (Writer Usage) sig m, SQ.Sequent t c d, Applicative i) => S.Ann S.Expr -> Type <==: m (i t)
 checkExprS expr = let ?callStack = popCallStack GHC.Stack.callStack in withSpanC expr $ \case
   S.Hole n   -> hole n
-  S.Lam cs   -> checkLamS (Check (\ _T -> map (\ (S.Clause (S.Ann _ _ p) b) -> (p, check (checkExprS b ::: _T))) cs))
+  S.Lam cs   -> checkLamS (Check (\ _T -> map (\ (S.Clause (S.Ann _ _ p) b) -> Clause [pattern p] (check (checkExprS b ::: _T))) cs))
   S.Var{}    -> switch (synthExprS expr)
   S.App{}    -> switch (synthExprS expr)
   S.As{}     -> switch (synthExprS expr)
   S.String{} -> switch (synthExprS expr)
+  where
+  pattern (S.PVal (Ann _ _ p))                        = PVal (valPattern p)
+  pattern (S.PEff (Ann _ _ (S.POp n fs (Ann _ _ k)))) = PEff (POp n (map (valPattern . out) fs) (valPattern k))
+  valPattern (S.PWildcard) = PWildcard
+  valPattern (S.PVar n)    = PVar n
+  valPattern (S.PCon n fs) = PCon n (map (valPattern . out) fs)
 
 checkLamS
   :: Has (Throw ErrReason) sig m
-  => Type <==: [(S.Pattern, m (i t))]
+  => Type <==: [Clause (m (i t))]
   -> Type <==: m (i t)
 checkLamS _ = Check (\ _T -> mismatchTypes (Exp (Left "unimplemented")) (Act _T))
 
