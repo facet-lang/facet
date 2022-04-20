@@ -160,22 +160,22 @@ let' p a b = Check $ \ _B -> do
 
 -- Pattern combinators
 
-wildcardP :: Bind m (Pattern (Name :==> Type))
-wildcardP = Bind $ \ _T k -> k (PVal PWildcard)
+wildcardP :: Bind m (ValPattern (Name :==> Type))
+wildcardP = Bind $ \ _T k -> k PWildcard
 
-varP :: Name -> Bind m (Pattern (Name :==> Type))
-varP n = Bind $ \ _A k -> k (PVal (PVar (n :==> wrap _A)))
+varP :: Name -> Bind m (ValPattern (Name :==> Type))
+varP n = Bind $ \ _A k -> k (PVar (n :==> wrap _A))
   where
   wrap = \case
     T.Comp sig _A -> T.Arrow Nothing Many (T.Ne (Global (NE.FromList ["Data", "Unit"] |> T "Unit")) Nil) (T.Comp sig _A)
     _T            -> _T
 
-conP :: (Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason) sig m, Has (Writer Usage) sig m) => QName -> [Bind m (Pattern (Name :==> Type))] -> Bind m (Pattern (Name :==> Type))
+conP :: (Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason) sig m, Has (Writer Usage) sig m) => QName -> [Bind m (ValPattern (Name :==> Type))] -> Bind m (ValPattern (Name :==> Type))
 conP n fs = Bind $ \ _A k -> do
   n' :=: _T <- resolveC n
   _T' <- maybe (pure _T) (foldl' (\ _T _A -> do t <- _T ; (_, _, b) <- assertQuantifier t ; pure (b _A)) (pure _T) . snd) (unNeutral _A)
   fs' <- runBind (fieldsP fs) _T' (\ (fs, _T) -> fs <$ unify (Exp _A) (Act _T))
-  k $ PVal (PCon n' (fromList fs'))
+  k $ PCon n' (fromList fs')
 
 fieldsP :: Has (Throw ErrReason) sig m => [Bind m a] -> Bind m ([a], Type)
 fieldsP = foldr cons nil
@@ -230,10 +230,13 @@ checkLam cs = lam (snd vs)
 
 -- FIXME: check for unique variable names
 bindPattern :: (HasCallStack, Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (State (Subst Type)) sig m, Has (Throw ErrReason :+: Write Warn) sig m, Has (Writer Usage) sig m) => S.Ann S.ValPattern -> Bind m (Pattern (Name :==> Type))
-bindPattern = withSpanB $ \case
+bindPattern p = PVal <$> bindValPattern p
+
+bindValPattern :: (HasCallStack, Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (State (Subst Type)) sig m, Has (Throw ErrReason :+: Write Warn) sig m, Has (Writer Usage) sig m) => S.Ann S.ValPattern -> Bind m (ValPattern (Name :==> Type))
+bindValPattern = withSpanB $ \case
   S.PWildcard -> wildcardP
   S.PVar n    -> varP n
-  S.PCon n ps -> conP n (map bindPattern ps)
+  S.PCon n ps -> conP n (map bindValPattern ps)
 
 
 -- | Elaborate a type abstracted over a kind’s parameters.
@@ -261,7 +264,7 @@ abstractTerm body = go Nil Nil
 patternForArgType :: Has (Throw ErrReason :+: Write Warn) sig m => Type -> Name -> Bind m (Pattern (Name :==> Type))
 patternForArgType = \case
   T.Comp{} -> allP
-  _        -> varP
+  _        -> fmap PVal . varP
 
 
 -- Declarations
@@ -297,7 +300,7 @@ elabTermDef expr@(S.Ann s _ _) = Check $ \ _T -> do
   where
   go k = Check $ \ _T -> case _T of
     T.ForAll{}               -> check (tlam (go k) ::: _T)
-    T.Arrow (Just n) q _A _B -> check (lam [(varP n, go k)] ::: T.Arrow Nothing q _A _B)
+    T.Arrow (Just n) q _A _B -> check (lam [(PVal <$> varP n, go k)] ::: T.Arrow Nothing q _A _B)
     -- FIXME: this doesn’t do what we want for tacit definitions, i.e. where _T is itself a telescope.
     -- FIXME: eta-expanding here doesn’t help either because it doesn’t change the way elaboration of the surface term occurs.
     -- we’ve exhausted the named parameters; the rest is up to the body.

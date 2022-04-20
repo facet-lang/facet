@@ -163,7 +163,7 @@ partitionBy clauses ctors = fold <$> for clauses (\case
     PVar n          -> pure (Col.fromList ([Clause (PVal (PVar n) :ps) b] <$ view Scope.toList_ ctors))
     PCon (_:|>n) fs -> case Scope.lookupIndex n ctors of
       Nothing -> Nothing
-      Just ix -> pure (Col.singleton ix [Clause (fs <> ps) b])
+      Just ix -> pure (Col.singleton ix [Clause (map PVal fs <> ps) b])
   _ -> Nothing)
 
 

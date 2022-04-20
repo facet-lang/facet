@@ -25,7 +25,7 @@ module Facet.Print
 , print1
 ) where
 
-import           Data.Foldable (foldl', toList)
+import           Data.Foldable (foldl')
 import           Data.Maybe (fromMaybe)
 import qualified Data.Text as T
 import           Data.Traversable (mapAccumL)
@@ -243,13 +243,21 @@ class Printable1 f where
 instance Printable1 Interface where
   printWith with opts@Options{ qname } env (Interface h sp) = qname h $$* fmap (with opts env) sp
 
-instance Printable1 Pattern where
+instance Printable1 ValPattern where
   printWith with opts@Options{ qname } env = go
     where
     go = \case
-      PVal PWildcard   -> pretty '_'
-      PVal (PVar n)    -> with opts env n
-      PVal (PCon n ps) -> parens (annotate Con (qname n) $$* map go (toList ps))
+      PWildcard -> pretty '_'
+      PVar n    -> with opts env n
+      PCon n ps -> parens (annotate Con (qname n) $$* map go ps)
+
+instance Printable1 EffPattern where
+  printWith with opts@Options{ qname } env (POp n ps k) = brackets (qname n $$* map (printWith with opts env) ps <+> pretty ';' <+> printWith with opts env k)
+
+instance Printable1 Pattern where
+  printWith with opts env = \case
+    PVal p -> printWith with opts env p
+    PEff p -> printWith with opts env p
 
 
 print1 :: (Printable1 f, Printable a) => Options Print -> Env Print -> f a -> Print

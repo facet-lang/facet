@@ -55,11 +55,15 @@ napp f a = case f of
 
 match :: Term -> Pattern Name -> Maybe (Pattern (Name :=: Term))
 match s = \case
-  PVal PWildcard   -> Just (PVal PWildcard)
-  PVal (PVar n)    -> Just (PVal (PVar (n :=: s)))
-  PVal (PCon n ps) -> case s of
-    Con n' fs -> PVal . PCon n' <$ guard (n == n') <*> zipWithM match fs ps
-    _         -> Nothing
+  PVal p -> PVal <$> val s p
+  PEff _ -> Nothing
+  where
+  val s = \case
+    PWildcard -> Just PWildcard
+    PVar n    -> Just (PVar (n :=: s))
+    PCon n ps -> case s of
+      Con n' fs -> PCon n' <$ guard (n == n') <*> zipWithM val fs ps
+      _         -> Nothing
 
 -- ninst :: Term -> T.Type -> Term
 -- ninst f t = case f of
