@@ -45,6 +45,7 @@ compileClauses _ _T heads
 compileClausesBody :: Has Empty sig m => [X.Term] -> Type -> Type -> [Clause X.Term] -> QuoterT m X.Term -> QuoterT m X.Coterm -> QuoterT m X.Command
 compileClausesBody ctx _A _T heads v k = case _A of
   String   -> (match (_Var._Nothing.to (const [])) heads >>= compileClauses ctx _T) C..|. k
+  ForAll{} -> (match (_Var._Nothing.to (const [])) heads >>= compileClauses ctx _T) C..|. k
   Arrow{}  -> (match (_Var._Nothing.to (const [])) heads >>= compileClauses ctx _T) C..|. k
   One      -> (match (_Unit.to (const [])) heads >>= compileClauses ctx _T) C..|. k
   _A :* _B -> match (getUnion (Union (_Pair.to (\ (p, q) -> [p, q])) <> Union (_Var._Nothing.to (const [Var Nothing, Var Nothing])))) heads >>= \ heads' ->
