@@ -37,7 +37,7 @@ instantiateHead p              = p
 
 
 compileClauses :: Has Empty sig m => [X.Term] -> Type -> [Clause X.Term] -> QuoterT m X.Term
-compileClauses ctx (_A :-> _T) heads = C.lamR (compileClausesBody ctx _A _T heads)
+compileClauses ctx (Arrow Nothing _ _A _T) heads = C.lamR (compileClausesBody ctx _A _T heads)
 compileClauses _ _T heads
   | Just (Clause [] b) <- preview folded heads = pure b
   | otherwise                                  = empty
@@ -45,7 +45,7 @@ compileClauses _ _T heads
 compileClausesBody :: Has Empty sig m => [X.Term] -> Type -> Type -> [Clause X.Term] -> QuoterT m X.Term -> QuoterT m X.Coterm -> QuoterT m X.Command
 compileClausesBody ctx _A _T heads v k = case _A of
   String   -> (match (_Var._Nothing.to (const [])) heads >>= compileClauses ctx _T) C..|. k
-  _ :-> _  -> (match (_Var._Nothing.to (const [])) heads >>= compileClauses ctx _T) C..|. k
+  Arrow{}  -> (match (_Var._Nothing.to (const [])) heads >>= compileClauses ctx _T) C..|. k
   One      -> (match (_Unit.to (const [])) heads >>= compileClauses ctx _T) C..|. k
   _A :* _B -> match (getUnion (Union (_Pair.to (\ (p, q) -> [p, q])) <> Union (_Var._Nothing.to (const [Var Nothing, Var Nothing])))) heads >>= \ heads' ->
     C.let' (C.µR (\ k -> v C..|. C.prdL1 k)) (\ _ ->
