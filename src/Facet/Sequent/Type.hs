@@ -8,7 +8,6 @@ import Facet.Usage (Quantity)
 
 data Type
   = String
-  | One
   | Type :+ Type
   | Type :* Type
   | ForAll Name Kind (Type -> Type)

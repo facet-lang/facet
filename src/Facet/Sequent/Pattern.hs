@@ -2,7 +2,6 @@ module Facet.Sequent.Pattern
 ( -- * Patterns
   Pattern(..)
 , _Var
-, _Unit
 , _InL
 , _InR
 , _Pair
@@ -17,7 +16,6 @@ import Fresnel.Prism (Prism', prism')
 
 data Pattern a
   = Var (Maybe a)
-  | Unit
   | InL (Pattern a)
   | InR (Pattern a)
   | Pair (Pattern a) (Pattern a)
@@ -31,7 +29,6 @@ instance Monad Pattern where
   m >>= f = case m of
     Var (Just a) -> f a
     Var Nothing  -> Var Nothing
-    Unit         -> Unit
     InL p        -> InL (p >>= f)
     InR q        -> InR (q >>= f)
     Pair p q     -> Pair (p >>= f) (q >>= f)
@@ -41,11 +38,6 @@ _Var :: Prism' (Pattern a) (Maybe a)
 _Var = prism' Var (\case
   Var a -> Just a
   _     -> Nothing)
-
-_Unit :: Prism' (Pattern a) ()
-_Unit = prism' (const Unit) (\case
-  Unit -> Just ()
-  _    -> Nothing)
 
 _InL :: Prism' (Pattern a) (Pattern a)
 _InL = prism' InL (\case
