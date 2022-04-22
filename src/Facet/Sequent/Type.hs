@@ -3,7 +3,7 @@ module Facet.Sequent.Type
 ) where
 
 data Type
-  = Opaque
+  = String
   | One
   | Type :+ Type
   | Type :* Type
