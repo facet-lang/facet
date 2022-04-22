@@ -190,7 +190,7 @@ partitionBy clauses ctors = fold <$> for clauses (\case
 
 -- | Expect a tacit (non-variable-binding) function type.
 assertTacitFunction :: Has (Throw ErrReason) sig m => Type -> m (Maybe Name, Quantity, Type, Type)
-assertTacitFunction = assertMatch mismatchTypes _Arrow "_ -> _"
+assertTacitFunction = assertTypesMatch _Arrow "_ -> _"
 
 
 -- Judgements

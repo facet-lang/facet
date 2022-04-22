@@ -350,15 +350,15 @@ letrec setter key projection initial final = do
 -- Errors
 
 assertQuantifier :: Has (Throw ErrReason) sig m => Type -> m (Name, Kind, Type -> Type)
-assertQuantifier = assertMatch mismatchTypes _ForAll "{_} -> _"
+assertQuantifier = assertTypesMatch _ForAll "{_} -> _"
 
 -- | Expect a tacit (non-variable-binding) function type.
 assertTacitFunction :: Has (Throw ErrReason) sig m => Type -> m (Maybe Name, Quantity, Type, Type)
-assertTacitFunction = assertMatch mismatchTypes _Arrow "_ -> _"
+assertTacitFunction = assertTypesMatch _Arrow "_ -> _"
 
 -- | Expect a computation type with effects.
 assertComp :: Has (Throw ErrReason) sig m => Type -> m (Signature Type, Type)
-assertComp = assertMatch mismatchTypes _Comp "[_] _"
+assertComp = assertTypesMatch _Comp "[_] _"
 
 
 -- Elaboration

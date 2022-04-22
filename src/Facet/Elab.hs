@@ -341,7 +341,7 @@ assertTypesMatch :: Has (Throw ErrReason) sig m => Prism' Type a -> String -> Ty
 assertTypesMatch pat exp _T = maybe (mismatchTypes (Exp (Left exp)) (Act _T)) pure (_T ^? pat)
 
 assertFunction :: Has (Throw ErrReason) sig m => Type -> m (Maybe Name, Quantity, Type, Type)
-assertFunction = assertMatch mismatchTypes _Arrow "_ -> _"
+assertFunction = assertTypesMatch _Arrow "_ -> _"
 
 
 -- Unification
