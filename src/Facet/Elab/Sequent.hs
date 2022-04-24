@@ -24,7 +24,6 @@ module Facet.Elab.Sequent
 import           Control.Effect.Reader
 import           Control.Effect.State
 import           Control.Effect.Throw
-import           Control.Effect.Writer
 import           Data.Foldable (fold)
 import           Data.Text (Text)
 import           Data.Traversable (for)
@@ -43,7 +42,6 @@ import           Facet.Name
 import           Facet.Pattern
 import qualified Facet.Pattern.Column as Col
 import qualified Facet.Scope as Scope
-import           Facet.Semiring
 import           Facet.Sequent.Class as SQ
 import           Facet.Snoc.NonEmpty
 import           Facet.Subst
@@ -97,11 +95,11 @@ stringS s = SQ.stringRA s ==> pure T.String
 
 -- Eliminators
 
-appS :: (HasCallStack, Has (Reader ElabContext) sig m, Has (Throw ErrReason) sig m, Has (Writer Usage) sig m, SQ.Term t c d, SQ.Coterm t c d, SQ.Command t c d, Applicative i) => (HasCallStack => m (i t :==> Type)) -> (HasCallStack => Type <==: m (i t)) -> m (i t :==> Type)
+appS :: (HasCallStack, Has (Reader ElabContext) sig m, Has (Throw ErrReason) sig m, SQ.Term t c d, SQ.Coterm t c d, SQ.Command t c d, Applicative i) => (HasCallStack => m (i t :==> Type)) -> (HasCallStack => Type <==: m (i t)) -> m (i t :==> Type)
 appS f a = do
   f' :==> _F <- f
-  (_, q, _A, _B) <- assertFunction _F
-  a' <- censor @Usage (q ><<) $ check (a ::: _A)
+  (_, _, _A, _B) <- assertFunction _F
+  a' <- check (a ::: _A)
   (:==> _B) <$> SQ.µRA (\ wk k -> pure (wk f') SQ..||. SQ.lamLA (pure (wk a')) (pure k))
 
 
@@ -121,7 +119,7 @@ as (m ::: _T) = do
 
 -- Elaboration
 
-synthExprS :: (HasCallStack, Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (State (Subst Type)) sig m, Has (Throw ErrReason) sig m, Has (Write Warn) sig m, Has (Writer Usage) sig m, SQ.Term t c d, SQ.Coterm t c d, SQ.Command t c d, Applicative i) => S.Ann S.Expr -> m (i t :==> Type)
+synthExprS :: (HasCallStack, Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (State (Subst Type)) sig m, Has (Throw ErrReason) sig m, Has (Write Warn) sig m, SQ.Term t c d, SQ.Coterm t c d, SQ.Command t c d, Applicative i) => S.Ann S.Expr -> m (i t :==> Type)
 synthExprS = let ?callStack = popCallStack GHC.Stack.callStack in withSpan $ \case
   S.Var n    -> varS n
   S.App f a  -> synthApp f a
@@ -132,14 +130,14 @@ synthExprS = let ?callStack = popCallStack GHC.Stack.callStack in withSpan $ \ca
   where
   nope = couldNotSynthesize
 
-synthApp :: (Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (State (Subst Type)) sig m, Has (Throw ErrReason) sig m, Has (Write Warn) sig m, Has (Writer Usage) sig m, SQ.Term t c d, SQ.Coterm t c d, SQ.Command t c d, Applicative i) => S.Ann S.Expr -> S.Ann S.Expr -> m (i t :==> Type)
+synthApp :: (Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (State (Subst Type)) sig m, Has (Throw ErrReason) sig m, Has (Write Warn) sig m, SQ.Term t c d, SQ.Coterm t c d, SQ.Command t c d, Applicative i) => S.Ann S.Expr -> S.Ann S.Expr -> m (i t :==> Type)
 synthApp f a = appS (synthExprS f) (checkExprS a)
 
-synthAs :: (HasCallStack, Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (State (Subst Type)) sig m, Has (Throw ErrReason) sig m, Has (Write Warn) sig m, Has (Writer Usage) sig m, SQ.Term t c d, SQ.Coterm t c d, SQ.Command t c d, Applicative i) => S.Ann S.Expr -> S.Ann S.Type -> m (i t :==> Type)
+synthAs :: (HasCallStack, Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (State (Subst Type)) sig m, Has (Throw ErrReason) sig m, Has (Write Warn) sig m, SQ.Term t c d, SQ.Coterm t c d, SQ.Command t c d, Applicative i) => S.Ann S.Expr -> S.Ann S.Type -> m (i t :==> Type)
 synthAs t _T = as (checkExprS t ::: do { _T :==> _K <- Type.synthType _T ; (:==> _K) <$> evalTExpr _T })
 
 
-checkExprS :: (HasCallStack, Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (State (Subst Type)) sig m, Has (Throw ErrReason) sig m, Has (Write Warn) sig m, Has (Writer Usage) sig m, SQ.Term t c d, SQ.Coterm t c d, SQ.Command t c d, Applicative i) => S.Ann S.Expr -> Type <==: m (i t)
+checkExprS :: (HasCallStack, Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (State (Subst Type)) sig m, Has (Throw ErrReason) sig m, Has (Write Warn) sig m, SQ.Term t c d, SQ.Coterm t c d, SQ.Command t c d, Applicative i) => S.Ann S.Expr -> Type <==: m (i t)
 checkExprS expr = let ?callStack = popCallStack GHC.Stack.callStack in withSpanC expr $ \case
   S.Hole n   -> hole n
   S.Lam cs   -> checkLamS (Check (\ _T -> map (\ (S.Clause (S.Ann _ _ p) b) -> Clause [pattern p] (check (checkExprS b ::: _T))) cs))

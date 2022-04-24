@@ -40,7 +40,6 @@ module Facet.Elab.Term
 import           Control.Algebra
 import           Control.Carrier.Reader
 import           Control.Carrier.State.Church
-import           Control.Carrier.Writer.Church
 import           Control.Effect.Throw
 import           Data.Bifunctor (first)
 import           Data.Either (partitionEithers)
@@ -57,6 +56,7 @@ import           Facet.Elab.Type hiding (switch)
 import qualified Facet.Elab.Type as Type
 import           Facet.Functor.Check
 
+import           Control.Effect.Writer
 import           Facet.Functor.Synth
 import           Facet.Graph
 import           Facet.Interface
@@ -66,7 +66,7 @@ import           Facet.Module as Module
 import           Facet.Name
 import           Facet.Pattern
 import           Facet.Scope
-import           Facet.Semiring (Few(..), (><<))
+import           Facet.Semiring (Few(..))
 import           Facet.Snoc
 import           Facet.Snoc.NonEmpty as NE
 import           Facet.Source (Source)
@@ -139,11 +139,11 @@ lam cs = Check $ \ _T -> do
 lam1 :: (Has (Reader ElabContext) sig m, Has (Throw ErrReason) sig m, Has (Writer Usage) sig m) => Bind m (Pattern (Name :==> Type)) -> Type <==: m Term -> Type <==: m Term
 lam1 p b = lam [(p, b)]
 
-app :: (Has (Reader ElabContext) sig m, Has (Throw ErrReason) sig m, Has (Writer Usage) sig m) => (a -> b -> c) -> (HasCallStack => m (a :==> Type)) -> (HasCallStack => Type <==: m b) -> m (c :==> Type)
+app :: (Has (Reader ElabContext) sig m, Has (Throw ErrReason) sig m) => (a -> b -> c) -> (HasCallStack => m (a :==> Type)) -> (HasCallStack => Type <==: m b) -> m (c :==> Type)
 app mk operator operand = do
   f' :==> _F <- operator
-  (_, q, _A, _B) <- assertFunction _F
-  a' <- censor @Usage (q ><<) $ check (operand ::: _A)
+  (_, _, _A, _B) <- assertFunction _F
+  a' <- check (operand ::: _A)
   pure $ mk f' a' :==> _B
 
 
@@ -229,10 +229,10 @@ checkLam cs = lam (snd vs)
 
 
 -- FIXME: check for unique variable names
-bindPattern :: (HasCallStack, Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (State (Subst Type)) sig m, Has (Throw ErrReason :+: Write Warn) sig m, Has (Writer Usage) sig m) => S.Ann S.ValPattern -> Bind m (Pattern (Name :==> Type))
+bindPattern :: (HasCallStack, Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (State (Subst Type)) sig m, Has (Throw ErrReason :+: Write Warn) sig m) => S.Ann S.ValPattern -> Bind m (Pattern (Name :==> Type))
 bindPattern p = PVal <$> bindValPattern p
 
-bindValPattern :: (HasCallStack, Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (State (Subst Type)) sig m, Has (Throw ErrReason :+: Write Warn) sig m, Has (Writer Usage) sig m) => S.Ann S.ValPattern -> Bind m (ValPattern (Name :==> Type))
+bindValPattern :: (HasCallStack, Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (State (Subst Type)) sig m, Has (Throw ErrReason :+: Write Warn) sig m) => S.Ann S.ValPattern -> Bind m (ValPattern (Name :==> Type))
 bindValPattern = withSpanB $ \case
   S.PWildcard -> wildcardP
   S.PVar n    -> varP n
