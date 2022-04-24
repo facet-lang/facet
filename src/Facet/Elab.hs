@@ -188,12 +188,13 @@ withSpan k (S.Ann s _ a) = pushSpan s (k a)
 
 
 data Err = Err
-  { source    :: Source
-  , reason    :: ErrReason
-  , context   :: Context
-  , subst     :: Subst Type
-  , sig       :: [Signature Type]
-  , callStack :: CallStack
+  { source      :: Source
+  , reason      :: ErrReason
+  , context     :: Context
+  , typeContext :: TypeContext.TypeContext
+  , subst       :: Subst Type
+  , sig         :: [Signature Type]
+  , callStack   :: CallStack
   }
 
 -- FIXME: not all of these need contexts/metacontexts.
@@ -282,9 +283,9 @@ instance (Has (Reader ElabContext) sig m, Has (Reader Source) sig m, Has (State 
   alg hdl sig ctx = case sig of
     L (Throw reason) -> do
       source <- ask
-      ElabContext{ context, sig, spans } <- ask
+      ElabContext{ context, typeContext, sig, spans } <- ask
       subst <- get
-      throwError $ Err (maybe source (slice source) (peek spans)) (applySubst context subst reason) context subst sig GHC.Stack.callStack
+      throwError $ Err (maybe source (slice source) (peek spans)) (applySubst context subst reason) context typeContext subst sig GHC.Stack.callStack
     R other     -> ErrC (alg (runErr . hdl) other ctx)
 
 
