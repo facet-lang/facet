@@ -133,8 +133,8 @@ tlam b = Check $ \ _T -> do
 
 lam :: (Has (Reader ElabContext) sig m, Has (Throw ErrReason) sig m, Has (Writer Usage) sig m) => [(Bind m (Pattern (Name :==> Type)), Type <==: m Term)] -> Type <==: m Term
 lam cs = Check $ \ _T -> do
-  (_, q, _A, _B) <- assertTacitFunction _T
-  Lam <$> traverse (\ (p, b) -> bind (p ::: (q, _A)) (check (b ::: _B))) cs
+  (_, _, _A, _B) <- assertTacitFunction _T
+  Lam <$> traverse (\ (p, b) -> bind (p ::: _A) (check (b ::: _B))) cs
 
 lam1 :: (Has (Reader ElabContext) sig m, Has (Throw ErrReason) sig m, Has (Writer Usage) sig m) => Bind m (Pattern (Name :==> Type)) -> Type <==: m Term -> Type <==: m Term
 lam1 p b = lam [(p, b)]
@@ -154,7 +154,7 @@ string s = pure $ E.String s :==> T.String
 let' :: (Has (Reader ElabContext) sig m, Has (Throw ErrReason) sig m, Has (Writer Usage) sig m) => Bind m (Pattern (Name :==> Type)) -> m (Term :==> Type) -> Type <==: m Term -> Type <==: m Term
 let' p a b = Check $ \ _B -> do
   a' :==> _A <- a
-  (p', b') <- bind (p ::: (Many, _A)) (check (b ::: _B))
+  (p', b') <- bind (p ::: _A) (check (b ::: _B))
   pure $ Let p' a' b'
 
 
@@ -396,8 +396,8 @@ check (m ::: _T) = case _T of
   _T            -> m <==: _T
 
 
-bind :: (Has (Reader ElabContext) sig m, Has (Throw ErrReason) sig m, Has (Writer Usage) sig m) => Bind m (Pattern (Name :==> Type)) ::: (Quantity, Type) -> m b -> m (Pattern Name, b)
-bind (p ::: (_, _T)) m = runBind p _T (\ p' -> (proof <$> p',) <$> (p' |- m))
+bind :: (Has (Reader ElabContext) sig m, Has (Throw ErrReason) sig m, Has (Writer Usage) sig m) => Bind m (Pattern (Name :==> Type)) ::: Type -> m b -> m (Pattern Name, b)
+bind (p ::: _T) m = runBind p _T (\ p' -> (proof <$> p',) <$> (p' |- m))
 
 newtype Bind m a = Bind { runBind :: forall x . Type -> (a -> m x) -> m x }
   deriving (Functor)
