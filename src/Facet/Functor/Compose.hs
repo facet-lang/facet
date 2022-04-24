@@ -18,7 +18,7 @@ import Data.Functor.Identity (Identity(..))
 -- Composition functor
 
 newtype (i . j) a = C { runC :: i (j a) }
-  deriving (Functor)
+  deriving (Foldable, Functor)
 
 instance (Applicative i, Applicative j) => Applicative (i . j) where
   pure = liftCInner . pure
