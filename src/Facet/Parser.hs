@@ -236,7 +236,7 @@ clause = S.Clause <$> try (compPattern <* arrow) <*> expr <?> "clause"
 
 evar :: (Has Parser sig p, Has (Writer Comments) sig p, TokenParsing p) => p (S.Ann S.Expr)
 evar = choice
-  [ token (anned (runUnspaced (S.Var <$> try ((|>) . fromList <$> many (comp <* dot) <*> ename))))
+  [ token (anned (runUnspaced (S.Var <$> try (fromSnoc <$> ((:>) . fromList <$> many (comp <* dot) <*> ename)))))
     -- FIXME: would be better to commit once we see a placeholder, but try doesn’t really let us express that
   , try (anned (parens (S.Var <$> qname (N.O <$> oname))))
   ]
