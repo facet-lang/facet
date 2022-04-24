@@ -397,7 +397,7 @@ check (m ::: _T) = case _T of
 
 
 bind :: (Has (Reader ElabContext) sig m, Has (Throw ErrReason) sig m, Has (Writer Usage) sig m) => Bind m (Pattern (Name :==> Type)) ::: (Quantity, Type) -> m b -> m (Pattern Name, b)
-bind (p ::: (q, _T)) m = runBind p _T (\ p' -> (proof <$> p',) <$> ((q, p') |- m))
+bind (p ::: (_, _T)) m = runBind p _T (\ p' -> (proof <$> p',) <$> (p' |- m))
 
 newtype Bind m a = Bind { runBind :: forall x . Type -> (a -> m x) -> m x }
   deriving (Functor)
