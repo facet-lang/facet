@@ -64,8 +64,6 @@ import           Control.Carrier.Reader
 import           Control.Carrier.State.Church
 import           Control.Carrier.Writer.Church
 import           Control.Effect.Choose
-import           Control.Monad (unless)
-import           Data.Foldable (for_)
 import           Facet.Context hiding (empty)
 import qualified Facet.Context as Context (empty)
 import           Facet.Effect.Write
@@ -80,7 +78,6 @@ import           Facet.Module
 import           Facet.Name hiding (L, R)
 import           Facet.Pattern
 import           Facet.Quote
-import           Facet.Semiring
 import           Facet.Snoc
 import           Facet.Snoc.NonEmpty (NonEmpty(..))
 import           Facet.Source (Source, slice)
@@ -92,7 +89,6 @@ import           Facet.Term.Expr as E
 import qualified Facet.Type.Expr as TX
 import           Facet.Type.Norm as TN
 import           Facet.Usage as Usage
-import           Facet.Vars as Vars
 import           Fresnel.Fold ((^?))
 import           Fresnel.Ixed (ix)
 import           Fresnel.Lens (Lens', lens)
@@ -156,16 +152,8 @@ lookupInSig (m :|> n) mod graph = foldMapC $ foldMapC (\ (Interface q@(m':|>_) _
   interfaceScope = \case { DSubmodule (SInterface defs) _K -> pure defs ; _ -> empty }
 
 
-(|-) :: Has (Reader ElabContext :+: Throw ErrReason :+: Writer Usage) sig m => Pattern (Name :==> Type) -> m a -> m a
-p |- b = do
-  d <- depth
-  (u, a) <- censor (`Usage.withoutVars` Vars.singleton d) $ listen $ locally context_ (|> Type p) b
-  for_ p $ \ (n :==> _T) -> do
-    let exp = Many
-        act = Usage.lookup (LName d n) u
-    unless (act `sat` exp)
-      $ resourceMismatch n exp act
-  pure a
+(|-) :: Has (Reader ElabContext) sig m => Pattern (Name :==> Type) -> m a -> m a
+p |- b = locally context_ (|> Type p) b
 
 infix 1 |-
 
@@ -173,13 +161,6 @@ infix 1 |-
 k ||- b = locally context_ (|> Kind k) b
 
 infix 1 ||-
-
--- | Test whether the first quantity suffices to satisfy a requirement of the second.
-sat :: Quantity -> Quantity -> Bool
-sat a b
-  | b == zero = a == b
-  | b == one  = a == b
-  | otherwise = True
 
 
 evalTExpr :: Has (Reader ElabContext :+: State (Subst Type)) sig m => TX.Type -> m Type
