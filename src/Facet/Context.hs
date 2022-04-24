@@ -9,8 +9,6 @@ module Facet.Context
 , (!)
 , lookupIndex
 , toEnv
-  -- * Type contexts
-, TypeContext(..)
 ) where
 
 import qualified Control.Effect.Empty as E
@@ -73,6 +71,3 @@ toEnv c = Env.Env (S.fromList (zipWith toType (toList (elems c)) [0..pred (level
     Kind (n :==> _) -> review _PVar (n :=: bind d n)
 
   bind d b = free (LName d b)
-
-
-newtype TypeContext = TypeContext { getTypeContext :: S.Snoc (Name :==> Kind) }
