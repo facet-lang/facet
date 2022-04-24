@@ -107,7 +107,7 @@ appS f a = do
 
 -- General combinators
 
-switch :: (Has (Reader ElabContext) sig m, Has (Throw ErrReason) sig m, Has (Writer Usage) sig m) => m (a :==> Type) -> Type <==: m a
+switch :: (Has (Reader ElabContext) sig m, Has (Throw ErrReason) sig m) => m (a :==> Type) -> Type <==: m a
 switch m = Check $ \ _Exp -> do
   a :==> _Act <- m
   a <$ unify (Exp _Exp) (Act _Act)

@@ -91,7 +91,7 @@ import           GHC.Stack
 
 -- General combinators
 
-switch :: (Has (Reader ElabContext) sig m, Has (Throw ErrReason) sig m, Has (Writer Usage) sig m) => m (a :==> Type) -> Type <==: m a
+switch :: (Has (Reader ElabContext) sig m, Has (Throw ErrReason) sig m) => m (a :==> Type) -> Type <==: m a
 switch m = Check $ \ _Exp -> m >>= \case
   a :==> T.Comp req _Act -> require req >> unify (Exp _Exp) (Act _Act) $> a
   a :==>            _Act -> unify (Exp _Exp) (Act _Act) $> a
@@ -170,7 +170,7 @@ varP n = Bind $ \ _A k -> k (PVar (n :==> wrap _A))
     T.Comp sig _A -> T.Arrow Nothing Many (T.Ne (Global (NE.FromList ["Data", "Unit"] |> T "Unit")) Nil) (T.Comp sig _A)
     _T            -> _T
 
-conP :: (Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason) sig m, Has (Writer Usage) sig m) => QName -> [Bind m (ValPattern (Name :==> Type))] -> Bind m (ValPattern (Name :==> Type))
+conP :: (Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason) sig m) => QName -> [Bind m (ValPattern (Name :==> Type))] -> Bind m (ValPattern (Name :==> Type))
 conP n fs = Bind $ \ _A k -> do
   n' :=: _T <- resolveC n
   _T' <- maybe (pure _T) (foldl' (\ _T _A -> do t <- _T ; (_, _, b) <- assertQuantifier t ; pure (b _A)) (pure _T) . snd) (unNeutral _A)
@@ -377,7 +377,7 @@ withCallStack cs with = let ?callStack = cs in with
 provide :: Has (Reader ElabContext) sig m => Signature Type -> m a -> m a
 provide sig m = locally sig_ (sig :) m
 
-require :: (Has (Reader ElabContext) sig m, Has (Throw ErrReason) sig m, Has (Writer Usage) sig m) => Signature Type -> m ()
+require :: (Has (Reader ElabContext) sig m, Has (Throw ErrReason) sig m) => Signature Type -> m ()
 require req = do
   prv <- Lens.view sig_
   for_ (interfaces req) $ \ i -> findMaybeA (findMaybeA (runUnifyMaybe . runState (const pure) (mempty :: Subst Type) . unifyInterface i) . interfaces) prv >>= \case
