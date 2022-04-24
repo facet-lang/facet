@@ -1,8 +1,7 @@
 {-# LANGUAGE ExistentialQuantification #-}
 module Facet.Context
 ( -- * Contexts
-  Quantity
-, Context(..)
+  Context(..)
 , Binding(..)
 , empty
 , (|>)
@@ -22,7 +21,6 @@ import           Facet.Pattern
 import qualified Facet.Snoc as S
 import           Facet.Syntax
 import           Facet.Type.Norm
-import           Facet.Usage
 import           Fresnel.Review (review)
 import           GHC.Stack
 import           Prelude hiding (lookup)
