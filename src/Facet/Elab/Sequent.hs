@@ -27,12 +27,10 @@ import           Control.Effect.Throw
 import           Data.Foldable (fold)
 import           Data.Text (Text)
 import           Data.Traversable (for)
-import           Facet.Context (level)
 import           Facet.Effect.Write
 import           Facet.Elab
 import qualified Facet.Elab.Type as Type
 import           Facet.Functor.Check
-import           Facet.Functor.Compose
 import           Facet.Functor.Synth
 import           Facet.Graph
 import           Facet.Kind
@@ -42,7 +40,7 @@ import           Facet.Name
 import           Facet.Pattern
 import qualified Facet.Pattern.Column as Col
 import qualified Facet.Scope as Scope
-import           Facet.Sequent.Class as SQ
+import           Facet.Sequent.Expr as SQ
 import           Facet.Snoc.NonEmpty
 import           Facet.Subst
 import qualified Facet.Surface.Term.Expr as S
@@ -57,20 +55,18 @@ import           GHC.Stack (HasCallStack, callStack, popCallStack, withFrozenCal
 -- Variables
 
 -- FIXME: we’re instantiating when inspecting types in the REPL.
-globalS :: (Has (State (Subst Type)) sig m, SQ.Term t c d, Applicative i) => QName ::: Type -> m (i t :==> Type)
+globalS :: Has (State (Subst Type)) sig m => QName ::: Type -> m (SQ.Term :==> Type)
 globalS (q ::: _T) = do
-  v <- SQ.varA (Global q)
+  let v = SQ.Var (Global q)
   (\ (v ::: _T) -> v :==> _T) <$> instantiate const (v ::: _T)
 
 -- FIXME: do we need to instantiate here to deal with rank-n applications?
 -- FIXME: effect ops not in the sig are reported as not in scope
 -- FIXME: effect ops in the sig are available whether or not they’re in scope
-varS :: (Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (State (Subst Type)) sig m, Has (Throw ErrReason) sig m, SQ.Term t c d, Applicative i) => QName -> m (i t :==> Type)
+varS :: (Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (State (Subst Type)) sig m, Has (Throw ErrReason) sig m) => QName -> m (SQ.Term :==> Type)
 varS n = views context_ (lookupInContext n) >>= \case
-  [(n', _T)] -> do
-    d <- views context_ level
-    SQ.varA (Free (toLeveled d (ident n'))) ==> pure _T
-  _                     -> resolveDef n >>= \case
+  [(n', _T)] -> pure $ SQ.Var (Free (ident n')) :==> _T
+  _          -> resolveDef n >>= \case
     DTerm _ _T -> globalS (n ::: _T)
     _          -> freeVariable n
 
@@ -81,25 +77,25 @@ hole n = Check $ \ _T -> withFrozenCallStack $ throwError $ Hole n _T
 -- Constructors
 
 lamS
-  :: (Has (Throw ErrReason) sig m, SQ.Term t c d, Applicative i)
-  => (forall j . Applicative j => (i ~> j) -> j t :==> Type -> j c :==> Type -> Type <==: m (j d))
-  -> Type <==: m (i t)
-lamS f = runC $ SQ.lamRA $ \ wk a k -> C $ Check $ \ _T -> do
+  :: Has (Throw ErrReason) sig m
+  => Type <==: m SQ.Command
+  -> Type <==: m SQ.Term
+lamS b = Check $ \ _T -> do
   (_, _A, _B) <- assertTacitFunction _T
-  check (f wk (a :==> _A) (k :==> _B) ::: _B)
+  SQ.LamR <$> check (b ::: _B)
 
-stringS :: (Applicative m, SQ.Term t c d, Applicative i) => Text -> m (i t :==> Type)
-stringS s = SQ.stringRA s ==> pure T.String
+stringS :: Applicative m => Text -> m (SQ.Term :==> Type)
+stringS s = pure $ SQ.StringR s :==> T.String
 
 
 -- Eliminators
 
-appS :: (HasCallStack, Has (Reader ElabContext) sig m, Has (Throw ErrReason) sig m, SQ.Term t c d, SQ.Coterm t c d, SQ.Command t c d, Applicative i) => (HasCallStack => m (i t :==> Type)) -> (HasCallStack => Type <==: m (i t)) -> m (i t :==> Type)
+appS :: (HasCallStack, Has (Reader ElabContext) sig m, Has (Throw ErrReason) sig m) => (HasCallStack => m (SQ.Term :==> Type)) -> (HasCallStack => Type <==: m SQ.Term) -> m (SQ.Term :==> Type)
 appS f a = do
   f' :==> _F <- f
   (_, _A, _B) <- assertFunction _F
   a' <- check (a ::: _A)
-  (:==> _B) <$> SQ.µRA (\ wk k -> pure (wk f') SQ..||. SQ.lamLA (pure (wk a')) (pure k))
+  pure $ SQ.MuR (f' SQ.:|: SQ.LamL a' (SQ.Covar (Free (Index 0)))) :==> _B
 
 
 -- General combinators
@@ -118,7 +114,7 @@ as (m ::: _T) = do
 
 -- Elaboration
 
-synthExprS :: (HasCallStack, Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (State (Subst Type)) sig m, Has (Throw ErrReason) sig m, Has (Write Warn) sig m, SQ.Term t c d, SQ.Coterm t c d, SQ.Command t c d, Applicative i) => S.Ann S.Expr -> m (i t :==> Type)
+synthExprS :: (HasCallStack, Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (State (Subst Type)) sig m, Has (Throw ErrReason) sig m, Has (Write Warn) sig m) => S.Ann S.Expr -> m (SQ.Term :==> Type)
 synthExprS = let ?callStack = popCallStack GHC.Stack.callStack in withSpan $ \case
   S.Var n    -> varS n
   S.App f a  -> synthApp f a
@@ -129,14 +125,14 @@ synthExprS = let ?callStack = popCallStack GHC.Stack.callStack in withSpan $ \ca
   where
   nope = couldNotSynthesize
 
-synthApp :: (Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (State (Subst Type)) sig m, Has (Throw ErrReason) sig m, Has (Write Warn) sig m, SQ.Term t c d, SQ.Coterm t c d, SQ.Command t c d, Applicative i) => S.Ann S.Expr -> S.Ann S.Expr -> m (i t :==> Type)
+synthApp :: (Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (State (Subst Type)) sig m, Has (Throw ErrReason) sig m, Has (Write Warn) sig m) => S.Ann S.Expr -> S.Ann S.Expr -> m (SQ.Term :==> Type)
 synthApp f a = appS (synthExprS f) (checkExprS a)
 
-synthAs :: (HasCallStack, Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (State (Subst Type)) sig m, Has (Throw ErrReason) sig m, Has (Write Warn) sig m, SQ.Term t c d, SQ.Coterm t c d, SQ.Command t c d, Applicative i) => S.Ann S.Expr -> S.Ann S.Type -> m (i t :==> Type)
+synthAs :: (HasCallStack, Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (State (Subst Type)) sig m, Has (Throw ErrReason) sig m, Has (Write Warn) sig m) => S.Ann S.Expr -> S.Ann S.Type -> m (SQ.Term :==> Type)
 synthAs t _T = as (checkExprS t ::: do { _T :==> _K <- Type.synthType _T ; (:==> _K) <$> evalTExpr _T })
 
 
-checkExprS :: (HasCallStack, Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (State (Subst Type)) sig m, Has (Throw ErrReason) sig m, Has (Write Warn) sig m, SQ.Term t c d, SQ.Coterm t c d, SQ.Command t c d, Applicative i) => S.Ann S.Expr -> Type <==: m (i t)
+checkExprS :: (HasCallStack, Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (State (Subst Type)) sig m, Has (Throw ErrReason) sig m, Has (Write Warn) sig m) => S.Ann S.Expr -> Type <==: m SQ.Term
 checkExprS expr = let ?callStack = popCallStack GHC.Stack.callStack in withSpanC expr $ \case
   S.Hole n   -> hole n
   S.Lam cs   -> checkLamS (Check (\ _T -> map (\ (S.Clause (S.Ann _ _ p) b) -> Clause [pattern p] (check (checkExprS b ::: _T))) cs))
@@ -153,8 +149,8 @@ checkExprS expr = let ?callStack = popCallStack GHC.Stack.callStack in withSpanC
 
 checkLamS
   :: Has (Throw ErrReason) sig m
-  => Type <==: [Clause (m (i t))]
-  -> Type <==: m (i t)
+  => Type <==: [Clause (m SQ.Term)]
+  -> Type <==: m SQ.Term
 checkLamS _ = Check (\ _T -> mismatchTypes (Exp (Left "unimplemented")) (Act _T))
 
 
@@ -186,7 +182,7 @@ partitionBy clauses ctors = fold <$> for clauses (\case
 
 -- | Expect a tacit (non-variable-binding) function type.
 assertTacitFunction :: Has (Throw ErrReason) sig m => Type -> m (Maybe Name, Type, Type)
-assertTacitFunction = assertTypesMatch _Arrow "_ -> _"
+assertTacitFunction = assertTypesMatch _Arrow "_ -> _" -- FIXME: this binds non-tacit functions
 
 
 -- Judgements
