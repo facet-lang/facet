@@ -43,6 +43,7 @@ module Facet.Elab
   -- * Unification
 , ElabContext(..)
 , context_
+, typeContext_
 , sig_
   -- * Machinery
 , evalTExpr
@@ -85,6 +86,7 @@ import qualified Facet.Syntax as S
 import           Facet.Term.Expr as E
 import qualified Facet.Type.Expr as TX
 import           Facet.Type.Norm as TN
+import qualified Facet.TypeContext as TypeContext
 import           Fresnel.Fold ((^?))
 import           Fresnel.Ixed (ix)
 import           Fresnel.Lens (Lens', lens)
@@ -314,16 +316,20 @@ assertFunction = assertTypesMatch _Arrow "_ -> _"
 -- Unification
 
 data ElabContext = ElabContext
-  { context :: Context
-  , sig     :: [Signature Type]
-  , spans   :: Snoc Span
+  { context     :: Context
+  , typeContext :: TypeContext.TypeContext
+  , sig         :: [Signature Type]
+  , spans       :: Snoc Span
   }
 
 context_ :: Lens' ElabContext Context
-context_ = lens (\ ElabContext{ context } -> context) (\ ElabContext{ sig, spans } context -> ElabContext{ context, sig, spans })
+context_ = lens (\ ElabContext{ context } -> context) (\ ElabContext{ typeContext, sig, spans } context -> ElabContext{ context, typeContext, sig, spans })
+
+typeContext_ :: Lens' ElabContext TypeContext.TypeContext
+typeContext_ = lens (\ ElabContext{ typeContext } -> typeContext) (\ ElabContext{ context, sig, spans } typeContext -> ElabContext{ context, typeContext, sig, spans })
 
 sig_ :: Lens' ElabContext [Signature Type]
-sig_ = lens (\ ElabContext{ sig } -> sig) (\ ElabContext{ context, spans } sig -> ElabContext{ context, sig, spans })
+sig_ = lens (\ ElabContext{ sig } -> sig) (\ ElabContext{ context, typeContext, spans } sig -> ElabContext{ context, typeContext, sig, spans })
 
 spans_ :: Lens' ElabContext (Snoc Span)
 spans_ = lens spans (\ e spans -> e{ spans })
@@ -333,7 +339,7 @@ spans_ = lens spans (\ e spans -> e{ spans })
 
 elabWith :: (Subst Type -> a -> m b) -> ReaderC ElabContext (StateC (Subst Type) m) a -> m b
 elabWith k m = runState k mempty $ do
-  let ctx  = ElabContext{ context = Context.empty, sig = mempty, spans = Nil }
+  let ctx  = ElabContext{ context = Context.empty, typeContext = TypeContext.empty, sig = mempty, spans = Nil }
   runReader ctx m
 
 elabKind :: Applicative m => ReaderC ElabContext (StateC (Subst Type) m) Kind -> m Kind
