@@ -19,7 +19,6 @@ import           Facet.Functor.Synth
 import           Facet.Kind (Kind)
 import           Facet.Name
 import           Facet.Pattern
-import           Facet.Semiring
 import qualified Facet.Snoc as S
 import           Facet.Syntax
 import           Facet.Type.Norm
@@ -54,13 +53,13 @@ Context es' ! Index i' = withFrozenCallStack $ go es' i'
     | otherwise    = go es (i - 1)
   go _           _ = error $ "Facet.Context.!: index (" <> show i' <> ") out of bounds (" <> show (length es') <> ")"
 
-lookupIndex :: E.Has E.Empty sig m => Name -> Context -> m (LName Index, Either Kind (Quantity, Type))
+lookupIndex :: E.Has E.Empty sig m => Name -> Context -> m (LName Index, Either Kind Type)
 lookupIndex n = go (Index 0) . elems
   where
   go _ S.Nil       = E.empty
   go i (cs S.:> b) = case b of
     Type p
-      | Just (n' :==> t) <- find ((== n) . proof) p -> pure (LName i n', Right (Many, t))
+      | Just (n' :==> t) <- find ((== n) . proof) p -> pure (LName i n', Right t)
     Kind (n' :==> k)
       | n == n'                                     -> pure (LName i n', Left k)
     _                                               -> go (succ i) cs

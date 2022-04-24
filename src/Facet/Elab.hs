@@ -139,7 +139,7 @@ resolveC = resolveWith lookupConstructor
 resolveDef :: (Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason) sig m) => QName -> m Def
 resolveDef = resolveWith lookupDef
 
-lookupInContext :: Has (Choose :+: Empty) sig m => QName -> Context -> m (LName Index, Either Kind (Quantity, Type))
+lookupInContext :: Has (Choose :+: Empty) sig m => QName -> Context -> m (LName Index, Either Kind Type)
 lookupInContext (m:|>n)
   | m == Nil  = lookupIndex n
   | otherwise = const empty

@@ -68,10 +68,9 @@ globalS (q ::: _T) = do
 -- FIXME: do we need to instantiate here to deal with rank-n applications?
 -- FIXME: effect ops not in the sig are reported as not in scope
 -- FIXME: effect ops in the sig are available whether or not they’re in scope
-varS :: (Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (State (Subst Type)) sig m, Has (Throw ErrReason) sig m, Has (Writer Usage) sig m, SQ.Term t c d, Applicative i) => QName -> m (i t :==> Type)
+varS :: (Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (State (Subst Type)) sig m, Has (Throw ErrReason) sig m, SQ.Term t c d, Applicative i) => QName -> m (i t :==> Type)
 varS n = views context_ (lookupInContext n) >>= \case
-  [(n', Right (q, _T))] -> do
-    use n' q
+  [(n', Right _T)] -> do
     d <- views context_ level
     SQ.varA (Free (toLeveled d (ident n'))) ==> pure _T
   _                     -> resolveDef n >>= \case

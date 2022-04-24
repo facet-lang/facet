@@ -113,10 +113,10 @@ global (q ::: _T) = (\ (v ::: _T) -> v :==> _T) <$> instantiate const (Var (Glob
 -- FIXME: do we need to instantiate here to deal with rank-n applications?
 -- FIXME: effect ops not in the sig are reported as not in scope
 -- FIXME: effect ops in the sig are available whether or not they’re in scope
-var :: (Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (State (Subst Type)) sig m, Has (Throw ErrReason) sig m, Has (Writer Usage) sig m) => QName -> m (Term :==> Type)
+var :: (Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (State (Subst Type)) sig m, Has (Throw ErrReason) sig m) => QName -> m (Term :==> Type)
 var n = views context_ (lookupInContext n) >>= \case
-  [(n', Right (q, _T))] -> use n' q $> (Var (Free n') :==> _T)
-  _                     -> resolveDef n >>= \case
+  [(n', Right _T)] -> pure (Var (Free n') :==> _T)
+  _                -> resolveDef n >>= \case
     DTerm _ _T -> global (n ::: _T)
     _          -> freeVariable n
 
