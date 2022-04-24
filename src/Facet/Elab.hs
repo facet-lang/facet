@@ -48,7 +48,6 @@ module Facet.Elab
   -- * Machinery
 , evalTExpr
 , depth
-, use
 , elabWith
 , elabKind
 , elabType
@@ -168,11 +167,6 @@ evalTExpr texpr = TN.eval <$> get <*> views context_ toEnv <*> pure texpr
 
 depth :: Has (Reader ElabContext) sig m => m Level
 depth = views context_ level
-
-use :: Has (Reader ElabContext :+: Writer Usage) sig m => LName Index -> Quantity -> m ()
-use n q = do
-  d <- depth
-  tell (Usage.singleton (toLeveled d n) q)
 
 
 -- Errors
