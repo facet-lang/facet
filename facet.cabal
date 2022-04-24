@@ -148,6 +148,7 @@ library
     Facet.Type.Class
     Facet.Type.Expr
     Facet.Type.Norm
+    Facet.TypeContext
     Facet.Unify
     Facet.Vars
   other-modules:
