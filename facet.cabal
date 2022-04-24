@@ -123,7 +123,6 @@ library
     Facet.Run
     Facet.Scope
     Facet.Semialign
-    Facet.Semiring
     Facet.Sequent.Class
     Facet.Sequent.Expr
     Facet.Sequent.Norm
