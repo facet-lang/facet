@@ -5,18 +5,11 @@ module Facet.Sequent.Expr
 , Coterm(..)
   -- * Commands
 , Command(..)
-  -- * Interpretation
-, interpretTerm
-, interpretCoterm
-, interpretCommand
 ) where
 
-import           Control.Applicative (liftA2)
-import           Data.Text (Text)
-import           Facet.Name
-import           Facet.Quote
-import qualified Facet.Sequent.Class as C
-import           Facet.Syntax
+import Data.Text (Text)
+import Facet.Name
+import Facet.Syntax
 
 -- Terms
 
@@ -48,89 +41,3 @@ data Coterm
 data Command
   = Term :|: Coterm
   | Let Term Command
-
-
-instance Applicative m => C.Term (QuoterT m Term) (QuoterT m Coterm) (QuoterT m Command) where
-  var inner = QuoterT (\ outer -> pure (Var (toIndexed outer inner)))
-  µR body = MuR <$> binderT (C.covar . Free) body
-  lamR body = LamR <$> binderT (C.var . Free) (binderT (C.covar . Free) . body)
-  sumR = fmap . SumR
-  bottomR = fmap BottomR
-  unitR = pure UnitR
-  prdR = liftA2 PrdR
-  stringR = pure . StringR
-
-instance Applicative m => C.Coterm (QuoterT m Term) (QuoterT m Coterm) (QuoterT m Command) where
-  covar inner = QuoterT (\ outer -> pure (Covar (toIndexed outer inner)))
-  µL body = MuL <$> binderT (C.var . Free) body
-  lamL = liftA2 LamL
-  sumL = fmap SumL . sequenceA
-  unitL = pure UnitL
-  prdL1 = fmap PrdL1
-  prdL2 = fmap PrdL2
-
-instance Applicative m => C.Command (QuoterT m Term) (QuoterT m Coterm) (QuoterT m Command) where
-  (.|.) = liftA2 (:|:)
-  let' t b = Let <$> t <*> binderT (C.var . Free) b
-
-instance C.Term (Quoter Term) (Quoter Coterm) (Quoter Command) where
-  var v = Quoter (\ d -> Var (toIndexed d v))
-  µR b = MuR <$> binder (\ d' -> Quoter (\ d -> covar (toIndexed d d'))) b
-  lamR b = LamR <$> binder (\ d' -> Quoter (\ d -> var (toIndexed d d'))) (binder (\ d'' -> Quoter (\ d -> covar (toIndexed d d''))) . b)
-  sumR = fmap . SumR
-  bottomR = fmap BottomR
-  unitR = pure UnitR
-  prdR = liftA2 PrdR
-  stringR = pure . StringR
-
-instance C.Coterm (Quoter Term) (Quoter Coterm) (Quoter Command) where
-  covar v = Quoter (\ d -> Covar (toIndexed d v))
-  µL b = MuL <$> binder (\ d' -> Quoter (\ d -> var (toIndexed d d'))) b
-  lamL = liftA2 LamL
-  sumL = fmap SumL . sequenceA
-  unitL = pure UnitL
-  prdL1 = fmap PrdL1
-  prdL2 = fmap PrdL2
-
-instance C.Command (Quoter Term) (Quoter Coterm) (Quoter Command) where
-  (.|.) = liftA2 (:|:)
-  let' t b = Let <$> t <*> binder (\ d' -> Quoter (\ d -> var (toIndexed d d'))) b
-
-var :: Index -> Term
-var = Var . Free
-
-covar :: Index -> Coterm
-covar = Covar . Free
-
-
--- Interpreters
-
-interpretTerm :: (C.Term t c d, C.Coterm t c d, C.Command t c d) => [t] -> [c] -> Term -> t
-interpretTerm _G _D = \case
-  Var (Free n)   -> _G `index` n
-  Var (Global n) -> C.var (Global n)
-  MuR b          -> C.µR (\ k -> interpretCommand _G (k:_D) b)
-  LamR b         -> C.lamR (\ a k -> interpretCommand (a:_G) (k:_D) b)
-  SumR i t       -> C.sumR i (interpretTerm _G _D t)
-  BottomR c      -> C.bottomR (interpretCommand _G _D c)
-  UnitR          -> C.unitR
-  PrdR l r       -> C.prdR (interpretTerm _G _D l) (interpretTerm _G _D r)
-  StringR s      -> C.stringR s
-
-interpretCoterm :: (C.Term t c d, C.Coterm t c d, C.Command t c d) => [t] -> [c] -> Coterm -> c
-interpretCoterm _G _D = \case
-  Covar (Free n)   -> _D `index` n
-  Covar (Global n) -> C.covar (Global n)
-  MuL b            -> C.µL (\ t -> interpretCommand (t:_G) _D b)
-  LamL a k         -> C.lamL (interpretTerm _G _D a) (interpretCoterm _G _D k)
-  SumL cs          -> C.sumL (interpretCoterm _G _D <$> cs)
-  UnitL            -> C.unitL
-  PrdL1 c          -> C.prdL1 (interpretCoterm _G _D c)
-  PrdL2 c          -> C.prdL2 (interpretCoterm _G _D c)
-
-interpretCommand :: (C.Term t c d, C.Coterm t c d, C.Command t c d) => [t] -> [c] -> Command -> d
-interpretCommand _G _D (t :|: c) = interpretTerm _G _D t C..|. interpretCoterm _G _D c
-interpretCommand _G _D (Let t b) = C.let' (interpretTerm _G _D t) (\ t -> interpretCommand (t:_G) _D b)
-
-index :: [a] -> Index -> a
-index as (Index i) = as !! i

@@ -88,7 +88,6 @@ library
     Facet.Effect.Time.System
     Facet.Effect.Write
     Facet.Elab
-    Facet.Elab.Pattern
     Facet.Elab.Sequent
     Facet.Elab.Term
     Facet.Elab.Type
@@ -122,11 +121,8 @@ library
     Facet.Run
     Facet.Scope
     Facet.Semialign
-    Facet.Sequent.Class
     Facet.Sequent.Expr
-    Facet.Sequent.Norm
     Facet.Sequent.Pattern
-    Facet.Sequent.Print
     Facet.Sequent.Type
     Facet.Snoc
     Facet.Snoc.NonEmpty
