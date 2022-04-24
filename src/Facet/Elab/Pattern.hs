@@ -36,21 +36,21 @@ instantiateHead (Var (Just _)) = Var Nothing -- FIXME: let-bind any variables fi
 instantiateHead p              = p
 
 
-compileClauses :: Has Empty sig m => [X.Term] -> Type -> [Clause X.Term] -> QuoterT m X.Term
-compileClauses ctx (Arrow Nothing _A _T) heads = C.lamR (compileClausesBody ctx _A _T heads)
-compileClauses _ _T heads
+compileClauses :: Has Empty sig m => Type -> [Clause X.Term] -> QuoterT m X.Term
+compileClauses (Arrow Nothing _A _T) heads = C.lamR (compileClausesBody _A _T heads)
+compileClauses _T heads
   | Just (Clause [] b) <- preview folded heads = pure b
   | otherwise                                  = empty
 
-compileClausesBody :: Has Empty sig m => [X.Term] -> Type -> Type -> [Clause X.Term] -> QuoterT m X.Term -> QuoterT m X.Coterm -> QuoterT m X.Command
-compileClausesBody ctx _A _T heads v k = case _A of
-  String   -> (match (_Var._Nothing.to (const [])) heads >>= compileClauses ctx _T) C..|. k
-  ForAll{} -> (match (_Var._Nothing.to (const [])) heads >>= compileClauses ctx _T) C..|. k
-  Arrow{}  -> (match (_Var._Nothing.to (const [])) heads >>= compileClauses ctx _T) C..|. k
+compileClausesBody :: Has Empty sig m => Type -> Type -> [Clause X.Term] -> QuoterT m X.Term -> QuoterT m X.Coterm -> QuoterT m X.Command
+compileClausesBody _A _T heads v k = case _A of
+  String   -> (match (_Var._Nothing.to (const [])) heads >>= compileClauses _T) C..|. k
+  ForAll{} -> (match (_Var._Nothing.to (const [])) heads >>= compileClauses _T) C..|. k
+  Arrow{}  -> (match (_Var._Nothing.to (const [])) heads >>= compileClauses _T) C..|. k
   _A :* _B -> match (getUnion (Union (_Pair.to (\ (p, q) -> [p, q])) <> Union (_Var._Nothing.to (const [Var Nothing, Var Nothing])))) heads >>= \ heads' ->
     C.let' (C.µR (\ k -> v C..|. C.prdL1 k)) (\ _ ->
     C.let' (C.µR (\ k -> v C..|. C.prdL2 k)) (\ _ ->
-      compileClauses ctx _T heads' C..|. k))
+      compileClauses _T heads' C..|. k))
   _A :+ _B -> do
     heads' <- fold <$> for heads (\case
       Clause (p:ps) b -> case instantiateHead p of
@@ -60,8 +60,8 @@ compileClausesBody ctx _A _T heads v k = case _A of
         _           -> empty
       _    -> empty)
     v C..|. C.sumL
-      [ C.µL (\ v -> compileClausesBody ctx _A _T (fromJust (heads' ^? ix 0)) v k)
-      , C.µL (\ v -> compileClausesBody ctx _B _T (fromJust (heads' ^? ix 1)) v k) ]
+      [ C.µL (\ v -> compileClausesBody _A _T (fromJust (heads' ^? ix 0)) v k)
+      , C.µL (\ v -> compileClausesBody _B _T (fromJust (heads' ^? ix 1)) v k) ]
 
 
 match :: Has Empty sig m => Fold (Pattern Name) [Pattern Name] -> [Clause X.Term] -> m [Clause X.Term]
