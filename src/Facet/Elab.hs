@@ -61,7 +61,6 @@ import           Control.Carrier.Empty.Church
 import           Control.Carrier.Error.Church
 import           Control.Carrier.Reader
 import           Control.Carrier.State.Church
-import           Control.Carrier.Writer.Church
 import           Control.Effect.Choose
 import           Facet.Context hiding (empty)
 import qualified Facet.Context as Context (empty)
@@ -87,7 +86,6 @@ import qualified Facet.Syntax as S
 import           Facet.Term.Expr as E
 import qualified Facet.Type.Expr as TX
 import           Facet.Type.Norm as TN
-import           Facet.Usage as Usage
 import           Fresnel.Fold ((^?))
 import           Fresnel.Ixed (ix)
 import           Fresnel.Lens (Lens', lens)
@@ -339,22 +337,22 @@ spans_ = lens spans (\ e spans -> e{ spans })
 
 -- Machinery
 
-elabWith :: (Subst Type -> a -> m b) -> ReaderC ElabContext (WriterC Usage (StateC (Subst Type) m)) a -> m b
-elabWith k m = runState k mempty . runWriter (const pure) $ do
+elabWith :: (Subst Type -> a -> m b) -> ReaderC ElabContext (StateC (Subst Type) m) a -> m b
+elabWith k m = runState k mempty $ do
   let ctx  = ElabContext{ context = Context.empty, sig = mempty, spans = Nil }
   runReader ctx m
 
-elabKind :: Applicative m => ReaderC ElabContext (WriterC Usage (StateC (Subst Type) m)) Kind -> m Kind
+elabKind :: Applicative m => ReaderC ElabContext (StateC (Subst Type) m) Kind -> m Kind
 elabKind = elabWith (const pure)
 
-elabType :: (HasCallStack, Applicative m) => ReaderC ElabContext (WriterC Usage (StateC (Subst Type) m)) TX.Type -> m Type
+elabType :: (HasCallStack, Applicative m) => ReaderC ElabContext (StateC (Subst Type) m) TX.Type -> m Type
 elabType = elabWith (\ subst t -> pure (TN.eval subst Env.empty t))
 
-elabTerm :: Applicative m => ReaderC ElabContext (WriterC Usage (StateC (Subst Type) m)) Term -> m Term
+elabTerm :: Applicative m => ReaderC ElabContext (StateC (Subst Type) m) Term -> m Term
 elabTerm = elabWith (const pure)
 
-elabSynthTerm :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source) sig m) => ReaderC ElabContext (WriterC Usage (StateC (Subst Type) m)) (Term :==> Type) -> m (Term :==> Type)
+elabSynthTerm :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source) sig m) => ReaderC ElabContext (StateC (Subst Type) m) (Term :==> Type) -> m (Term :==> Type)
 elabSynthTerm = elabWith (\ subst (e :==> _T) -> pure (e :==> TN.eval subst Env.empty (runQuoter 0 (quote _T))))
 
-elabSynthType :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source) sig m) => ReaderC ElabContext (WriterC Usage (StateC (Subst Type) m)) (TX.Type :==> Kind) -> m (Type :==> Kind)
+elabSynthType :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source) sig m) => ReaderC ElabContext (StateC (Subst Type) m) (TX.Type :==> Kind) -> m (Type :==> Kind)
 elabSynthType = elabWith (\ subst (_T :==> _K) -> pure (TN.eval subst Env.empty _T :==> _K))
