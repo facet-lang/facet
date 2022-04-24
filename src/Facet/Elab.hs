@@ -313,7 +313,7 @@ assertMatch mismatch pat exp _T = maybe (mismatch (Exp (Left exp)) (Act _T)) pur
 assertTypesMatch :: Has (Throw ErrReason) sig m => Prism' Type a -> String -> Type -> m a
 assertTypesMatch pat exp _T = maybe (mismatchTypes (Exp (Left exp)) (Act _T)) pure (_T ^? pat)
 
-assertFunction :: Has (Throw ErrReason) sig m => Type -> m (Maybe Name, Quantity, Type, Type)
+assertFunction :: Has (Throw ErrReason) sig m => Type -> m (Maybe Name, Type, Type)
 assertFunction = assertTypesMatch _Arrow "_ -> _"
 
 

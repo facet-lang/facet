@@ -65,7 +65,6 @@ import           Facet.Module as Module
 import           Facet.Name
 import           Facet.Pattern
 import           Facet.Scope
-import           Facet.Semiring (Few(..))
 import           Facet.Snoc
 import           Facet.Snoc.NonEmpty as NE
 import           Facet.Source (Source)
@@ -78,7 +77,6 @@ import           Facet.Term.Expr as E
 import qualified Facet.Type.Expr as TX
 import           Facet.Type.Norm as T hiding (global)
 import           Facet.Unify
-import           Facet.Usage hiding (restrict)
 import           Fresnel.At as At
 import           Fresnel.Getter as Getter (view)
 import           Fresnel.Ixed
@@ -132,7 +130,7 @@ tlam b = Check $ \ _T -> do
 
 lam :: (Has (Reader ElabContext) sig m, Has (Throw ErrReason) sig m) => [(Bind m (Pattern (Name :==> Type)), Type <==: m Term)] -> Type <==: m Term
 lam cs = Check $ \ _T -> do
-  (_, _, _A, _B) <- assertTacitFunction _T
+  (_, _A, _B) <- assertTacitFunction _T
   Lam <$> traverse (\ (p, b) -> bind (p ::: _A) (check (b ::: _B))) cs
 
 lam1 :: (Has (Reader ElabContext) sig m, Has (Throw ErrReason) sig m) => Bind m (Pattern (Name :==> Type)) -> Type <==: m Term -> Type <==: m Term
@@ -141,7 +139,7 @@ lam1 p b = lam [(p, b)]
 app :: (Has (Reader ElabContext) sig m, Has (Throw ErrReason) sig m) => (a -> b -> c) -> (HasCallStack => m (a :==> Type)) -> (HasCallStack => Type <==: m b) -> m (c :==> Type)
 app mk operator operand = do
   f' :==> _F <- operator
-  (_, _, _A, _B) <- assertFunction _F
+  (_, _A, _B) <- assertFunction _F
   a' <- check (operand ::: _A)
   pure $ mk f' a' :==> _B
 
@@ -166,7 +164,7 @@ varP :: Name -> Bind m (ValPattern (Name :==> Type))
 varP n = Bind $ \ _A k -> k (PVar (n :==> wrap _A))
   where
   wrap = \case
-    T.Comp sig _A -> T.Arrow Nothing Many (T.Ne (Global (NE.FromList ["Data", "Unit"] |> T "Unit")) Nil) (T.Comp sig _A)
+    T.Comp sig _A -> T.Arrow Nothing (T.Ne (Global (NE.FromList ["Data", "Unit"] |> T "Unit")) Nil) (T.Comp sig _A)
     _T            -> _T
 
 conP :: (Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason) sig m) => QName -> [Bind m (ValPattern (Name :==> Type))] -> Bind m (ValPattern (Name :==> Type))
@@ -180,7 +178,7 @@ fieldsP :: Has (Throw ErrReason) sig m => [Bind m a] -> Bind m ([a], Type)
 fieldsP = foldr cons nil
   where
   cons p ps = Bind $ \ _A k -> do
-    (_, _, _A', _A'') <- assertFunction _A
+    (_, _A', _A'') <- assertFunction _A
     runBind p _A' $ \ p' -> runBind ps _A'' (k . first (p' :))
   nil = Bind $ \ _T k -> k ([], _T)
 
@@ -188,7 +186,7 @@ fieldsP = foldr cons nil
 allP :: Has (Throw ErrReason :+: Write Warn) sig m => Name -> Bind m (Pattern (Name :==> Type))
 allP n = Bind $ \ _A k -> do
   (sig, _T) <- assertComp _A
-  k (PVal (PVar (n :==> T.Arrow Nothing Many (T.Ne (Global (NE.FromList ["Data", "Unit"] |> T "Unit")) Nil) (T.Comp sig _T))))
+  k (PVal (PVar (n :==> T.Arrow Nothing (T.Ne (Global (NE.FromList ["Data", "Unit"] |> T "Unit")) Nil) (T.Comp sig _T))))
 
 
 -- Expression elaboration
@@ -253,9 +251,9 @@ abstractTerm body = go Nil Nil
     T.ForAll n   _T _B -> do
       d <- depth
       check (tlam (go (ts :> LName d n) fs) ::: T.ForAll n _T _B)
-    T.Arrow  n q _A _B -> do
+    T.Arrow  n _A _B -> do
       d <- depth
-      check (lam [(patternForArgType _A (fromMaybe __ n), go ts (fs :> \ d' -> Var (Free (LName (toIndexed d' d) (fromMaybe __ n)))))] ::: T.Arrow n q _A _B)
+      check (lam [(patternForArgType _A (fromMaybe __ n), go ts (fs :> \ d' -> Var (Free (LName (toIndexed d' d) (fromMaybe __ n)))))] ::: T.Arrow n _A _B)
     _T                 -> do
       d <- depth
       pure $ body (TX.Var . Free . Right . toIndexed d <$> ts) (fs <*> pure d)
@@ -298,12 +296,12 @@ elabTermDef expr@(S.Ann s _ _) = Check $ \ _T -> do
   elabTerm $ runErr $ pushSpan s $ check (go (checkExpr expr) ::: _T)
   where
   go k = Check $ \ _T -> case _T of
-    T.ForAll{}               -> check (tlam (go k) ::: _T)
-    T.Arrow (Just n) q _A _B -> check (lam [(PVal <$> varP n, go k)] ::: T.Arrow Nothing q _A _B)
+    T.ForAll{}             -> check (tlam (go k) ::: _T)
+    T.Arrow (Just n) _A _B -> check (lam [(PVal <$> varP n, go k)] ::: T.Arrow Nothing _A _B)
     -- FIXME: this doesn’t do what we want for tacit definitions, i.e. where _T is itself a telescope.
     -- FIXME: eta-expanding here doesn’t help either because it doesn’t change the way elaboration of the surface term occurs.
     -- we’ve exhausted the named parameters; the rest is up to the body.
-    _                        -> check (k ::: _T)
+    _                      -> check (k ::: _T)
 
 
 -- Modules
@@ -352,7 +350,7 @@ assertQuantifier :: Has (Throw ErrReason) sig m => Type -> m (Name, Kind, Type -
 assertQuantifier = assertTypesMatch _ForAll "{_} -> _"
 
 -- | Expect a tacit (non-variable-binding) function type.
-assertTacitFunction :: Has (Throw ErrReason) sig m => Type -> m (Maybe Name, Quantity, Type, Type)
+assertTacitFunction :: Has (Throw ErrReason) sig m => Type -> m (Maybe Name, Type, Type)
 assertTacitFunction = assertTypesMatch _Arrow "_ -> _"
 
 -- | Expect a computation type with effects.

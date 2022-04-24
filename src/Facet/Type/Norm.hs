@@ -34,7 +34,6 @@ import           Facet.Subst
 import           Facet.Syntax
 import qualified Facet.Type.Class as C
 import qualified Facet.Type.Expr as TX
-import           Facet.Usage hiding (singleton)
 import           Fresnel.Prism (Prism', prism')
 import           Fresnel.Review (review)
 import           GHC.Stack
@@ -45,7 +44,7 @@ import           Prelude hiding (lookup)
 data Type
   = String
   | ForAll Name Kind (Type -> Type)
-  | Arrow (Maybe Name) Quantity Type Type
+  | Arrow (Maybe Name) Type Type
   | Ne (Var (Either Meta (LName Level))) (Snoc Type)
   | Comp (Signature Type) Type
   deriving (Eq, Ord, Show) via Quoting TX.Type Type
@@ -61,11 +60,11 @@ instance C.Type Type where
 
 instance Quote Type TX.Type where
   quote = \case
-    String        -> pure TX.String
-    ForAll n t b  -> Quoter (\ d -> TX.ForAll n t (runQuoter (succ d) (quote (b (free (LName d n))))))
-    Arrow n q a b -> TX.Arrow n q <$> quote a <*> quote b
-    Comp s t      -> TX.Comp <$> traverseSignature quote s <*> quote t
-    Ne n sp       -> foldl' (\ h t -> TX.App <$> h <*> quote t) (Quoter (\ d -> TX.Var (toIndexed d n))) sp
+    String       -> pure TX.String
+    ForAll n t b -> Quoter (\ d -> TX.ForAll n t (runQuoter (succ d) (quote (b (free (LName d n))))))
+    Arrow n a b  -> TX.Arrow n <$> quote a <*> quote b
+    Comp s t     -> TX.Comp <$> traverseSignature quote s <*> quote t
+    Ne n sp      -> foldl' (\ h t -> TX.App <$> h <*> quote t) (Quoter (\ d -> TX.Var (toIndexed d n))) sp
 
 
 _String :: Prism' Type ()
@@ -74,8 +73,8 @@ _String = prism' (const String) (\case{ String -> Just () ; _ -> Nothing })
 _ForAll :: Prism' Type (Name, Kind, Type -> Type)
 _ForAll = prism' (\ (n, k, b) -> ForAll n k b) (\case{ ForAll n k b -> Just (n, k, b) ; _ -> Nothing })
 
-_Arrow :: Prism' Type (Maybe Name, Quantity, Type, Type)
-_Arrow = prism' (\ (n, q, a, b) -> Arrow n q a b) (\case{ Arrow n q a b -> Just (n, q, a, b) ; _ -> Nothing })
+_Arrow :: Prism' Type (Maybe Name, Type, Type)
+_Arrow = prism' (\ (n, a, b) -> Arrow n a b) (\case{ Arrow n a b -> Just (n, a, b) ; _ -> Nothing })
 
 _Ne :: Prism' Type (Var (Either Meta (LName Level)), Snoc Type)
 _Ne = prism' (uncurry Ne) (\case{ Ne c ts -> Just (c, ts) ; _ -> Nothing })
@@ -113,11 +112,11 @@ occursIn :: Meta -> Level -> Type -> Bool
 occursIn p = go
   where
   go d = \case
-    ForAll n _ b  -> go (succ d) (b (free (LName d n)))
-    Arrow _ _ a b -> go d a || go d b
-    Comp s t      -> any (go d) s || go d t
-    Ne h sp       -> any (either (== p) (const False)) h || any (go d) sp
-    String        -> False
+    ForAll n _ b -> go (succ d) (b (free (LName d n)))
+    Arrow _ a b  -> go d a || go d b
+    Comp s t     -> any (go d) s || go d t
+    Ne h sp      -> any (either (== p) (const False)) h || any (go d) sp
+    String       -> False
 
 
 -- Elimination
@@ -142,7 +141,7 @@ eval subst = go where
     TX.Var (Free (Right n)) -> index env n
     TX.Var (Free (Left m))  -> fromMaybe (metavar m) (lookupMeta m subst)
     TX.ForAll n t b         -> ForAll n t (\ _T -> go (env |> review _PVar (n :=: _T)) b)
-    TX.Arrow n q a b        -> Arrow n q (go env a) (go env b)
+    TX.Arrow n a b          -> Arrow n (go env a) (go env b)
     TX.Comp s t             -> Comp (mapSignature (go env) s) (go env t)
     TX.App  f a             -> go env f $$  go env a
 

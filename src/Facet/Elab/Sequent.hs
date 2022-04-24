@@ -50,7 +50,6 @@ import qualified Facet.Surface.Type.Expr as S
 import           Facet.Syntax as S hiding (context_)
 import           Facet.Type.Norm as T
 import           Facet.Unify
-import           Facet.Usage
 import           Fresnel.Getter (view)
 import           Fresnel.Lens (Lens, Lens', lens)
 import           GHC.Stack (HasCallStack, callStack, popCallStack, withFrozenCallStack)
@@ -83,11 +82,11 @@ hole n = Check $ \ _T -> withFrozenCallStack $ throwError $ Hole n _T
 
 lamS
   :: (Has (Throw ErrReason) sig m, SQ.Term t c d, Applicative i)
-  => (forall j . Applicative j => (i ~> j) -> j t :@ Quantity :==> Type -> j c :@ Quantity :==> Type -> Type <==: m (j d))
+  => (forall j . Applicative j => (i ~> j) -> j t :==> Type -> j c :==> Type -> Type <==: m (j d))
   -> Type <==: m (i t)
 lamS f = runC $ SQ.lamRA $ \ wk a k -> C $ Check $ \ _T -> do
-  (_, q, _A, _B) <- assertTacitFunction _T
-  check (f wk (a :@ q :==> _A) (k :@ q :==> _B) ::: _B)
+  (_, _A, _B) <- assertTacitFunction _T
+  check (f wk (a :==> _A) (k :==> _B) ::: _B)
 
 stringS :: (Applicative m, SQ.Term t c d, Applicative i) => Text -> m (i t :==> Type)
 stringS s = SQ.stringRA s ==> pure T.String
@@ -98,7 +97,7 @@ stringS s = SQ.stringRA s ==> pure T.String
 appS :: (HasCallStack, Has (Reader ElabContext) sig m, Has (Throw ErrReason) sig m, SQ.Term t c d, SQ.Coterm t c d, SQ.Command t c d, Applicative i) => (HasCallStack => m (i t :==> Type)) -> (HasCallStack => Type <==: m (i t)) -> m (i t :==> Type)
 appS f a = do
   f' :==> _F <- f
-  (_, _, _A, _B) <- assertFunction _F
+  (_, _A, _B) <- assertFunction _F
   a' <- check (a ::: _A)
   (:==> _B) <$> SQ.µRA (\ wk k -> pure (wk f') SQ..||. SQ.lamLA (pure (wk a')) (pure k))
 
@@ -186,7 +185,7 @@ partitionBy clauses ctors = fold <$> for clauses (\case
 -- Assertions
 
 -- | Expect a tacit (non-variable-binding) function type.
-assertTacitFunction :: Has (Throw ErrReason) sig m => Type -> m (Maybe Name, Quantity, Type, Type)
+assertTacitFunction :: Has (Throw ErrReason) sig m => Type -> m (Maybe Name, Type, Type)
 assertTacitFunction = assertTypesMatch _Arrow "_ -> _"
 
 

@@ -39,7 +39,6 @@ import           Facet.Pretty (lower, upper)
 import           Facet.Print.Options
 import           Facet.Quote
 import qualified Facet.Scope as C
-import           Facet.Semiring (one, zero)
 import           Facet.Snoc
 import           Facet.Snoc.NonEmpty (NonEmpty(..))
 import           Facet.Style
@@ -174,9 +173,9 @@ instance Printable TX.Type where
       TX.Var (Global n)       -> qvar n
       TX.Var (Free (Right n)) -> fromMaybe (lname (toLeveled d n)) $ Env.lookup env n
       TX.Var (Free (Left m))  -> meta m
-      TX.ForAll      n    t b -> braces (ann (intro n d ::: print opts env t)) --> go (env |> PVal (PVar (n :=: intro n d))) b
-      TX.Arrow Nothing  q a b -> mult q (go env a) --> go env b
-      TX.Arrow (Just n) q a b -> parens (ann (intro n d ::: mult q (go env a))) --> go env b
+      TX.ForAll      n  t b   -> braces (ann (intro n d ::: print opts env t)) --> go (env |> PVal (PVar (n :=: intro n d))) b
+      TX.Arrow Nothing  a b   -> go env a --> go env b
+      TX.Arrow (Just n) a b   -> parens (ann (intro n d ::: go env a)) --> go env b
       TX.Comp s t             -> if s == mempty then go env t else sig s <+> go env t
       TX.App f a              -> group (go env f) $$ group (go env a)
       TX.String               -> annotate Type $ pretty "String"
@@ -184,10 +183,6 @@ instance Printable TX.Type where
       d = level env
       sig s = brackets (commaSep (map (interface env) (interfaces s)))
     interface = printWith print opts
-    mult q = if
-      | q == zero -> (pretty '0' <+>)
-      | q == one  -> (pretty '1' <+>)
-      | otherwise -> id
 
 deriving via (Quoting TX.Type TN.Type) instance Printable TN.Type
 

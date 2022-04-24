@@ -1,7 +1,6 @@
 module Facet.Surface.Type.Expr
 ( Type(..)
 , Interface(..)
-, Mul(..)
 ) where
 
 import Facet.Kind
@@ -15,7 +14,7 @@ data Type
   = TVar QName
   | TString
   | TForAll Name Kind (Ann Type)
-  | TArrow (Maybe Name) (Maybe Mul) (Ann Type) (Ann Type)
+  | TArrow (Maybe Name) (Ann Type) (Ann Type)
   | TComp [Ann (Interface (Ann Type))] (Ann Type)
   | TApp (Ann Type) (Ann Type)
   deriving (Eq, Show)
@@ -23,7 +22,3 @@ data Type
 
 data Interface a = Interface QName (Snoc a)
   deriving (Eq, Show)
-
-
-data Mul = Zero | One
-  deriving (Bounded, Enum, Eq, Ord, Show)

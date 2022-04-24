@@ -58,7 +58,7 @@ unifyType = curry $ \case
   (t1, TN.Ne (Free (Left v2)) Nil)                         -> solve v2 t1
   (TN.ForAll _ t1 b1, TN.ForAll n t2 b2)                   -> depth >>= \ d -> evalTExpr =<< mkForAll d n <$> unifyKind t1 t2 <*> (n :==> t2 ||- unifyType (b1 (free (LName d n))) (b2 (free (LName d n))))
   (TN.ForAll{}, _)                                         -> mismatch
-  (TN.Arrow _ _ a1 b1, TN.Arrow n q a2 b2)                 -> TN.Arrow n q <$> unifyType a1 a2 <*> unifyType b1 b2
+  (TN.Arrow _ a1 b1, TN.Arrow n a2 b2)                     -> TN.Arrow n <$> unifyType a1 a2 <*> unifyType b1 b2
   (TN.Arrow{}, _)                                          -> mismatch
   (TN.Ne v1 sp1, TN.Ne v2 sp2)                             -> TN.Ne <$> unifyVar v1 v2 <*> unifySpine unifyType sp1 sp2
   (TN.Ne{}, _)                                             -> mismatch

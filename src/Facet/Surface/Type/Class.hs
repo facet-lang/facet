@@ -8,7 +8,6 @@ import Facet.Functor.Compose
 import Facet.Kind
 import Facet.Name
 import Facet.Snoc
-import Facet.Surface.Type.Expr (Mul)
 import Facet.Syntax (type (~>))
 
 -- FIXME: interface for annotating types/terms
@@ -16,7 +15,7 @@ class Type r where
   var :: QName -> r
   string :: r
   forAll :: Name -> Kind -> (r -> r) -> r
-  arrow :: Maybe Name -> Maybe Mul -> r -> r -> r
+  arrow :: Maybe Name -> r -> r -> r
   comp :: [r] -> r -> r
   tapp :: r -> r -> r
 

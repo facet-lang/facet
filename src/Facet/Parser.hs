@@ -178,13 +178,10 @@ forAll k = make <$> anned (try (((,,) <$ lbrace <*> commaSep1 ((,) <$> position 
   make (S.Ann s cs (ns, t, b)) = S.Ann s cs (S.out (foldr (\ (p, n) b -> S.Ann (Span p (end s)) Nil (S.TForAll n t b)) b ns))
 
 bindArrow :: (Has Parser sig p, Has (Writer Comments) sig p, TokenParsing p) => p N.Name -> p (S.Ann S.Type) -> p (S.Ann S.Type)
-bindArrow name k = anned (try (S.TArrow . Just <$ lparen <*> (name <|> N.__ <$ wildcard) <* colon) <*> optional mul <*> type' <* rparen <* arrow <*> k)
+bindArrow name k = anned (try (S.TArrow . Just <$ lparen <*> (name <|> N.__ <$ wildcard) <* colon) <*> type' <* rparen <* arrow <*> k)
 
 functionType :: (Has Parser sig p, Has (Writer Comments) sig p, TokenParsing p) => p (S.Ann S.Type) -> p (S.Ann S.Type) -> p (S.Ann S.Type)
-functionType self next = anned (try (S.TArrow Nothing <$> optional mul <*> next <* arrow) <*> self) <|> next
-
-mul :: TokenParsing p => p S.Mul
-mul = choice [ S.Zero <$ token (char '0'), S.One <$ token (char '1') ]
+functionType self next = anned (try (S.TArrow Nothing <$> next <* arrow) <*> self) <|> next
 
 
 retType :: (Has Parser sig p, Has (Writer Comments) sig p, TokenParsing p) => p (S.Ann S.Type) -> p (S.Ann S.Type) -> p (S.Ann S.Type)

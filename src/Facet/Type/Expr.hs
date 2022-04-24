@@ -9,13 +9,12 @@ import           Facet.Name
 import           Facet.Quote
 import           Facet.Syntax
 import qualified Facet.Type.Class as C
-import           Facet.Usage
 
 data Type
   = String
   | Var (Var (Either Meta (LName Index)))
   | ForAll Name Kind Type
-  | Arrow (Maybe Name) Quantity Type Type
+  | Arrow (Maybe Name) Type Type
   | Comp (Signature Type) Type
   | App Type Type
   deriving (Eq, Ord, Show)
@@ -23,7 +22,7 @@ data Type
 instance C.Type (Quoter Type) where
   string = pure String
   forAll n k b = ForAll n k <$> binder (\ d' -> Quoter (\ d -> lvar n (toIndexed d d'))) b
-  arrow n q = liftA2 (Arrow n q)
+  arrow n = liftA2 (Arrow n)
   var v = Quoter (\ d -> Var (toIndexed d v))
   ($$) = liftA2 App
   sig |- t = Comp <$> sequenceSignature sig <*> t

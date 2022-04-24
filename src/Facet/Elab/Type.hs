@@ -24,7 +24,6 @@ import           Facet.Kind
 import           Facet.Lens (views)
 import           Facet.Module
 import           Facet.Name
-import           Facet.Semiring (Few(..), one, zero)
 import           Facet.Snoc
 import qualified Facet.Surface.Type.Expr as S
 import           Facet.Syntax as S hiding (context_)
@@ -78,16 +77,12 @@ comp s t = do
 
 synthType :: (Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason) sig m) => S.Ann S.Type -> m (TX.Type :==> Kind)
 synthType (S.Ann s _ e) = pushSpan s $ case e of
-  S.TVar n          -> tvar n
-  S.TString         -> Facet.Elab.Type._String
-  S.TForAll n t b   -> forAll (n ::: t) (synthType b)
-  S.TArrow  n q a b -> arrow (TX.Arrow n (maybe Many interpretMul q)) (synthType a) (synthType b)
-  S.TComp s t       -> comp (map synthInterface s) (synthType t)
-  S.TApp f a        -> app TX.App (synthType f) (synthType a)
-  where
-  interpretMul = \case
-    S.Zero -> zero
-    S.One  -> one
+  S.TVar n        -> tvar n
+  S.TString       -> Facet.Elab.Type._String
+  S.TForAll n t b -> forAll (n ::: t) (synthType b)
+  S.TArrow  n a b -> arrow (TX.Arrow n) (synthType a) (synthType b)
+  S.TComp s t     -> comp (map synthInterface s) (synthType t)
+  S.TApp f a      -> app TX.App (synthType f) (synthType a)
 
 synthInterface :: (Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason) sig m) => S.Ann (S.Interface (S.Ann S.Type)) -> m (Interface TX.Type :==> Kind)
 synthInterface (S.Ann s _ (S.Interface h sp)) = pushSpan s $ do
