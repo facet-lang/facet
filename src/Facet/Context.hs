@@ -30,7 +30,7 @@ import           Prelude hiding (lookup)
 newtype Context = Context { elems :: S.Snoc Binding }
 
 data Binding
-  = forall i j . Type Quantity (i ~> j) (Pattern (Name :==> Type))
+  = Type Quantity (Pattern (Name :==> Type))
   | Kind (Name :==> Kind)
 
 
@@ -58,7 +58,7 @@ lookupIndex n = go (Index 0) . elems
   where
   go _ S.Nil       = E.empty
   go i (cs S.:> b) = case b of
-    Type q _ p
+    Type q p
       | Just (n' :==> t) <- find ((== n) . proof) p -> pure (LName i n', Right (q, t))
     Kind (n' :==> k)
       | n == n'                                     -> pure (LName i n', Left k)
@@ -69,7 +69,7 @@ toEnv :: Context -> Env.Env Type
 toEnv c = Env.Env (S.fromList (zipWith toType (toList (elems c)) [0..pred (level c)]))
   where
   toType b d = case b of
-    Type _ _ p      -> (\ b -> proof b :=: bind d (proof b)) <$> p
+    Type _ p        -> (\ b -> proof b :=: bind d (proof b)) <$> p
     Kind (n :==> _) -> review _PVar (n :=: bind d n)
 
   bind d b = free (LName d b)
