@@ -37,7 +37,7 @@ instantiateHead p              = p
 
 
 compileClauses :: Has Empty sig m => [X.Term] -> Type -> [Clause X.Term] -> QuoterT m X.Term
-compileClauses ctx (Arrow Nothing _ _A _T) heads = C.lamR (compileClausesBody ctx _A _T heads)
+compileClauses ctx (Arrow Nothing _A _T) heads = C.lamR (compileClausesBody ctx _A _T heads)
 compileClauses _ _T heads
   | Just (Clause [] b) <- preview folded heads = pure b
   | otherwise                                  = empty

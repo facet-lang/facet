@@ -4,14 +4,13 @@ module Facet.Sequent.Type
 
 import Facet.Kind (Kind)
 import Facet.Name (Name)
-import Facet.Usage (Quantity)
 
 data Type
   = String
   | Type :+ Type
   | Type :* Type
   | ForAll Name Kind (Type -> Type)
-  | Arrow (Maybe Name) Quantity Type Type
+  | Arrow (Maybe Name) Type Type
 
 infixl 6 :+
 infixl 7 :*
