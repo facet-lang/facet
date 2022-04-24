@@ -150,7 +150,6 @@ library
     Facet.Type.Expr
     Facet.Type.Norm
     Facet.Unify
-    Facet.Usage
     Facet.Vars
   other-modules:
     Paths_facet
