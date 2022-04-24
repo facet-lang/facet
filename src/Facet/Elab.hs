@@ -30,7 +30,6 @@ module Facet.Elab
 , mismatchKinds
 , couldNotUnifyKinds
 , couldNotSynthesize
-, resourceMismatch
 , freeVariable
 , missingInterface
 , assertMatch
@@ -195,7 +194,6 @@ data ErrReason
   -- FIXME: add source references for the imports, definition sites, and any re-exports.
   | AmbiguousName QName
   | CouldNotSynthesize
-  | ResourceMismatch Name Quantity Quantity
   | UnifyType UnifyErrReason (Exp (Either String Type)) (Act Type)
   | UnifyKind (Exp (Either String Kind)) (Act Kind)
   | Hole Name Type
@@ -236,7 +234,6 @@ applySubst ctx subst r = case r of
   FreeVariable{}       -> r
   AmbiguousName{}      -> r
   CouldNotSynthesize{} -> r
-  ResourceMismatch{}   -> r
   -- NB: not substituting in @r@ because we want to retain the cyclic occurrence (and finitely)
   UnifyType r exp act  -> UnifyType r (fmap roundtrip <$> exp) (roundtrip <$> act)
   UnifyKind{}          -> r
@@ -258,9 +255,6 @@ couldNotUnifyKinds t1 t2 = withFrozenCallStack $ mismatchKinds (Right <$> t1) t2
 
 couldNotSynthesize :: Has (Throw ErrReason) sig m => m a
 couldNotSynthesize = withFrozenCallStack $ throwError CouldNotSynthesize
-
-resourceMismatch :: Has (Throw ErrReason) sig m => Name -> Quantity -> Quantity -> m a
-resourceMismatch n exp act = withFrozenCallStack $ throwError $ ResourceMismatch n exp act
 
 freeVariable :: Has (Throw ErrReason) sig m => QName -> m a
 freeVariable n = withFrozenCallStack $ throwError $ FreeVariable n

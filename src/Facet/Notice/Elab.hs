@@ -19,7 +19,6 @@ import           Facet.Notice as Notice hiding (level)
 import           Facet.Pattern
 import           Facet.Pretty
 import           Facet.Print as Print
-import           Facet.Semiring (Few(..))
 import           Facet.Snoc
 import           Facet.Style
 import           Facet.Subst (metas)
@@ -61,14 +60,6 @@ printErrReason opts ctx = group . \case
   FreeVariable n               -> fillSep [reflow "variable not in scope:", prettyQName n]
   AmbiguousName n              -> fillSep [reflow "ambiguous name", prettyQName n] -- <\> nest 2 (reflow "alternatives:" <\> unlines (map prettyQName qs))
   CouldNotSynthesize           -> reflow "could not synthesize a type; try a type annotation"
-  ResourceMismatch n e a       -> fillSep [reflow "uses of variable", pretty n, reflow "didn’t match requirements"]
-    <> hardline <> pretty "expected:" <+> prettyQ e
-    <> hardline <> pretty "  actual:" <+> prettyQ a
-    where
-    prettyQ = \case
-      Zero -> pretty "0"
-      One  -> pretty "1"
-      Many -> pretty "arbitrarily many"
   UnifyType r (Exp exp) (Act act) -> reason r
     <> hardline <> pretty "expected:" <> align exp'
     <> hardline <> pretty "  actual:" <> align act'
