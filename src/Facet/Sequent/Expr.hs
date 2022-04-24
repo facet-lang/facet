@@ -50,7 +50,7 @@ data Command
   | Let Term Command
 
 
-instance Applicative m => C.Sequent (QuoterT m Term) (QuoterT m Coterm) (QuoterT m Command) where
+instance Applicative m => C.Term (QuoterT m Term) (QuoterT m Coterm) (QuoterT m Command) where
   var inner = QuoterT (\ outer -> pure (Var (toIndexed outer inner)))
   µR body = MuR <$> binderT (C.covar . Free) body
   lamR body = LamR <$> binderT (C.var . Free) (binderT (C.covar . Free) . body)
@@ -60,6 +60,7 @@ instance Applicative m => C.Sequent (QuoterT m Term) (QuoterT m Coterm) (QuoterT
   prdR = liftA2 PrdR
   stringR = pure . StringR
 
+instance Applicative m => C.Coterm (QuoterT m Term) (QuoterT m Coterm) (QuoterT m Command) where
   covar inner = QuoterT (\ outer -> pure (Covar (toIndexed outer inner)))
   µL body = MuL <$> binderT (C.var . Free) body
   lamL = liftA2 LamL
@@ -68,10 +69,11 @@ instance Applicative m => C.Sequent (QuoterT m Term) (QuoterT m Coterm) (QuoterT
   prdL1 = fmap PrdL1
   prdL2 = fmap PrdL2
 
+instance Applicative m => C.Command (QuoterT m Term) (QuoterT m Coterm) (QuoterT m Command) where
   (.|.) = liftA2 (:|:)
   let' t b = Let <$> t <*> binderT (C.var . Free) b
 
-instance C.Sequent (Quoter Term) (Quoter Coterm) (Quoter Command) where
+instance C.Term (Quoter Term) (Quoter Coterm) (Quoter Command) where
   var v = Quoter (\ d -> Var (toIndexed d v))
   µR b = MuR <$> binder (\ d' -> Quoter (\ d -> covar (toIndexed d d'))) b
   lamR b = LamR <$> binder (\ d' -> Quoter (\ d -> var (toIndexed d d'))) (binder (\ d'' -> Quoter (\ d -> covar (toIndexed d d''))) . b)
@@ -81,6 +83,7 @@ instance C.Sequent (Quoter Term) (Quoter Coterm) (Quoter Command) where
   prdR = liftA2 PrdR
   stringR = pure . StringR
 
+instance C.Coterm (Quoter Term) (Quoter Coterm) (Quoter Command) where
   covar v = Quoter (\ d -> Covar (toIndexed d v))
   µL b = MuL <$> binder (\ d' -> Quoter (\ d -> var (toIndexed d d'))) b
   lamL = liftA2 LamL
@@ -89,6 +92,7 @@ instance C.Sequent (Quoter Term) (Quoter Coterm) (Quoter Command) where
   prdL1 = fmap PrdL1
   prdL2 = fmap PrdL2
 
+instance C.Command (Quoter Term) (Quoter Coterm) (Quoter Command) where
   (.|.) = liftA2 (:|:)
   let' t b = Let <$> t <*> binder (\ d' -> Quoter (\ d -> var (toIndexed d d'))) b
 
@@ -101,7 +105,7 @@ covar = Covar . Free
 
 -- Interpreters
 
-interpretTerm :: C.Sequent t c d => [t] -> [c] -> Term -> t
+interpretTerm :: (C.Term t c d, C.Coterm t c d, C.Command t c d) => [t] -> [c] -> Term -> t
 interpretTerm _G _D = \case
   Var (Free n)   -> _G `index` n
   Var (Global n) -> C.var (Global n)
@@ -113,7 +117,7 @@ interpretTerm _G _D = \case
   PrdR l r       -> C.prdR (interpretTerm _G _D l) (interpretTerm _G _D r)
   StringR s      -> C.stringR s
 
-interpretCoterm :: C.Sequent t c d => [t] -> [c] -> Coterm -> c
+interpretCoterm :: (C.Term t c d, C.Coterm t c d, C.Command t c d) => [t] -> [c] -> Coterm -> c
 interpretCoterm _G _D = \case
   Covar (Free n)   -> _D `index` n
   Covar (Global n) -> C.covar (Global n)
@@ -124,7 +128,7 @@ interpretCoterm _G _D = \case
   PrdL1 c          -> C.prdL1 (interpretCoterm _G _D c)
   PrdL2 c          -> C.prdL2 (interpretCoterm _G _D c)
 
-interpretCommand :: C.Sequent t c d => [t] -> [c] -> Command -> d
+interpretCommand :: (C.Term t c d, C.Coterm t c d, C.Command t c d) => [t] -> [c] -> Command -> d
 interpretCommand _G _D (t :|: c) = interpretTerm _G _D t C..|. interpretCoterm _G _D c
 interpretCommand _G _D (Let t b) = C.let' (interpretTerm _G _D t) (\ t -> interpretCommand (t:_G) _D b)
 

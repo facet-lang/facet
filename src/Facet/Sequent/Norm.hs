@@ -47,7 +47,7 @@ data Command
   | Let Term (Term -> Command)
 
 
-instance Class.Sequent Term Coterm Command where
+instance Class.Term Term Coterm Command where
   var = Var
   µR = MuR
   lamR = LamR
@@ -57,6 +57,7 @@ instance Class.Sequent Term Coterm Command where
   prdR = PrdR
   stringR = StringR
 
+instance Class.Coterm Term Coterm Command where
   covar = Covar
   µL = MuL
   lamL = LamL
@@ -65,6 +66,7 @@ instance Class.Sequent Term Coterm Command where
   prdL1 = PrdL1
   prdL2 = PrdL2
 
+instance Class.Command Term Coterm Command where
   (.|.) = (:|:)
   let' = Let
 

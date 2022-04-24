@@ -24,7 +24,7 @@ instance Show Print where
   showsPrec p = showsPrec p . getPrint quietOptions
 
 
-instance S.Sequent Print Print Print where
+instance S.Term Print Print Print where
   var = var
   µR b = P.pretty "µ" <> P.braces (fresh (\ v -> anon v P.<+> P.dot P.<+> b (anon v)))
   lamR c = P.pretty "λ" <> P.braces (fresh (\ u -> fresh (\ v -> anon u <> P.comma P.<+> anon v P.<+> P.pretty "." P.<+> c (anon u) (anon v))))
@@ -34,6 +34,7 @@ instance S.Sequent Print Print Print where
   prdR l r = P.tupled [l, r]
   stringR = P.pretty . show
 
+instance S.Coterm Print Print Print where
   covar = var
   µL b = µ̃ <> P.braces (fresh (\ v -> anon v P.<+> P.dot P.<+> b (anon v)))
   lamL a k = a P.<+> P.dot P.<+> k
@@ -42,6 +43,7 @@ instance S.Sequent Print Print Print where
   prdL1 k = P.parens (µ̃ <> P.braces (P.pretty "πl" P.<+> k))
   prdL2 k = P.parens (µ̃ <> P.braces (P.pretty "πr" P.<+> k))
 
+instance S.Command Print Print Print where
   (.|.) = fmap (P.enclose P.langle P.rangle) . P.surround P.pipe
   let' v b = P.pretty "let" P.<+> withLevel anon P.<+> P.pretty '=' P.<+> v P.<+> P.pretty "in" P.<+> fresh (b . anon)
 
