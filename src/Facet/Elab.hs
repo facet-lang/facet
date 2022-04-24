@@ -159,7 +159,7 @@ lookupInSig (m :|> n) mod graph = foldMapC $ foldMapC (\ (Interface q@(m':|>_) _
 (|-) :: Has (Reader ElabContext :+: Throw ErrReason :+: Writer Usage) sig m => (Quantity, Pattern (Name :==> Type)) -> m a -> m a
 (q, p) |- b = do
   d <- depth
-  (u, a) <- censor (`Usage.withoutVars` Vars.singleton d) $ listen $ locally context_ (|> Type q p) b
+  (u, a) <- censor (`Usage.withoutVars` Vars.singleton d) $ listen $ locally context_ (|> Type p) b
   for_ p $ \ (n :==> _T) -> do
     let exp = q
         act = Usage.lookup (LName d n) u

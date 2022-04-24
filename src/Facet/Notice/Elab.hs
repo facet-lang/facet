@@ -19,7 +19,7 @@ import           Facet.Notice as Notice hiding (level)
 import           Facet.Pattern
 import           Facet.Pretty
 import           Facet.Print as Print
-import           Facet.Semiring (Few(..), one, zero)
+import           Facet.Semiring (Few(..))
 import           Facet.Snoc
 import           Facet.Style
 import           Facet.Subst (metas)
@@ -49,15 +49,11 @@ rethrowElabErrors opts = L.runThrow (pure . rethrow)
       , env Env.|> PVal (PVar (n :=: free (LName d n)))
       , prints Env.|> PVal (PVar (n :=: intro n d))
       , ctx :> getPrint (print opts prints (ann (intro n d ::: print opts prints _K))) )
-    combine (d, env, prints, ctx) (C.Type m p) =
+    combine (d, env, prints, ctx) (C.Type p) =
       ( succ d
       , env Env.|> ((\ (n :==> _T) -> n :=: free (LName d n)) <$> p)
       , prints Env.|> ((\ (n :==> _) -> n :=: intro n d) <$> p)
-      , ctx :> getPrint (print opts prints ((\ (n :==> _T) -> ann (intro n d ::: mult m (print opts prints (apply subst env _T)))) <$> p)) )
-  mult m
-    | m == zero = (pretty "0" <+>)
-    | m == one  = (pretty "1" <+>)
-    | otherwise = id
+      , ctx :> getPrint (print opts prints ((\ (n :==> _T) -> ann (intro n d ::: print opts prints (apply subst env _T))) <$> p)) )
 
 
 printErrReason :: Options Print -> Env.Env Print -> ErrReason -> Doc Style

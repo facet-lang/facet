@@ -19,6 +19,7 @@ import           Facet.Functor.Synth
 import           Facet.Kind (Kind)
 import           Facet.Name
 import           Facet.Pattern
+import           Facet.Semiring
 import qualified Facet.Snoc as S
 import           Facet.Syntax
 import           Facet.Type.Norm
@@ -30,7 +31,7 @@ import           Prelude hiding (lookup)
 newtype Context = Context { elems :: S.Snoc Binding }
 
 data Binding
-  = Type Quantity (Pattern (Name :==> Type))
+  = Type (Pattern (Name :==> Type))
   | Kind (Name :==> Kind)
 
 
@@ -58,8 +59,8 @@ lookupIndex n = go (Index 0) . elems
   where
   go _ S.Nil       = E.empty
   go i (cs S.:> b) = case b of
-    Type q p
-      | Just (n' :==> t) <- find ((== n) . proof) p -> pure (LName i n', Right (q, t))
+    Type p
+      | Just (n' :==> t) <- find ((== n) . proof) p -> pure (LName i n', Right (Many, t))
     Kind (n' :==> k)
       | n == n'                                     -> pure (LName i n', Left k)
     _                                               -> go (succ i) cs
@@ -69,7 +70,7 @@ toEnv :: Context -> Env.Env Type
 toEnv c = Env.Env (S.fromList (zipWith toType (toList (elems c)) [0..pred (level c)]))
   where
   toType b d = case b of
-    Type _ p        -> (\ b -> proof b :=: bind d (proof b)) <$> p
+    Type p          -> (\ b -> proof b :=: bind d (proof b)) <$> p
     Kind (n :==> _) -> review _PVar (n :=: bind d n)
 
   bind d b = free (LName d b)
