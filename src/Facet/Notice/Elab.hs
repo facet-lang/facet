@@ -9,14 +9,12 @@ import           Data.Semigroup (stimes)
 import qualified Facet.Carrier.Throw.Inject as L
 import qualified Facet.Carrier.Write.Inject as L
 import           Facet.Context (elems, toEnv)
-import qualified Facet.Context as C
 import           Facet.Elab as Elab
 import qualified Facet.Env as Env
 import           Facet.Functor.Synth
 import           Facet.Interface (interfaces)
 import           Facet.Name
 import           Facet.Notice as Notice hiding (level)
-import           Facet.Pattern
 import           Facet.Pretty
 import           Facet.Print as Print
 import           Facet.Snoc
@@ -43,12 +41,12 @@ rethrowElabErrors opts = L.runThrow (pure . rethrow)
     (_, _, printCtx, ctx) = foldl' combine (0, Env.empty, Env.empty, Nil) (elems context)
     subst' = map (\ (m :=: v) -> getPrint (Print.meta m <+> pretty '=' <+> maybe (pretty '?') (print opts printCtx) v)) (metas subst)
     sig' = getPrint . print opts printCtx . fmap (apply subst (toEnv context)) <$> (interfaces =<< sig)
-    combine (d, env, prints, ctx) (C.Kind (n :==> _K)) =
-      ( succ d
-      , env Env.|> PVal (PVar (n :=: free (LName d n)))
-      , prints Env.|> PVal (PVar (n :=: intro n d))
-      , ctx :> getPrint (print opts prints (ann (intro n d ::: print opts prints _K))) )
-    combine (d, env, prints, ctx) (C.Type p) =
+    -- combine (d, env, prints, ctx) (n :==> _K) =
+    --   ( succ d
+    --   , env Env.|> PVal (PVar (n :=: free (LName d n)))
+    --   , prints Env.|> PVal (PVar (n :=: intro n d))
+    --   , ctx :> getPrint (print opts prints (ann (intro n d ::: print opts prints _K))) )
+    combine (d, env, prints, ctx) p =
       ( succ d
       , env Env.|> ((\ (n :==> _T) -> n :=: free (LName d n)) <$> p)
       , prints Env.|> ((\ (n :==> _) -> n :=: intro n d) <$> p)

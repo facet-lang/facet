@@ -30,9 +30,9 @@ import           Facet.Syntax as S hiding (context_)
 import qualified Facet.Type.Expr as TX
 
 tvar :: (Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason) sig m) => QName -> m (TX.Type :==> Kind)
-tvar n = views context_ (lookupInContext n) >>= \case
-  [(n', Left _K)] -> pure (TX.Var (Free (Right n')) :==> _K)
-  _               -> resolveDef n >>= \case
+tvar n = views typeContext_ (lookupInTypeContext n) >>= \case
+  [(n', _K)] -> pure (TX.Var (Free (Right n')) :==> _K)
+  _          -> resolveDef n >>= \case
     DSubmodule _ _K -> pure $ TX.Var (Global n) :==> _K
     _               -> freeVariable n
 

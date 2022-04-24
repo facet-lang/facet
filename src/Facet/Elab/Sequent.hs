@@ -67,7 +67,7 @@ globalS (q ::: _T) = do
 -- FIXME: effect ops in the sig are available whether or not they’re in scope
 varS :: (Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (State (Subst Type)) sig m, Has (Throw ErrReason) sig m, SQ.Term t c d, Applicative i) => QName -> m (i t :==> Type)
 varS n = views context_ (lookupInContext n) >>= \case
-  [(n', Right _T)] -> do
+  [(n', _T)] -> do
     d <- views context_ level
     SQ.varA (Free (toLeveled d (ident n'))) ==> pure _T
   _                     -> resolveDef n >>= \case

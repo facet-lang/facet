@@ -7,6 +7,7 @@
 module Facet.Elab
 ( -- * General
   lookupInContext
+, lookupInTypeContext
 , lookupInSig
 , resolveDef
 , resolveC
@@ -133,9 +134,14 @@ resolveC = resolveWith lookupConstructor
 resolveDef :: (Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason) sig m) => QName -> m Def
 resolveDef = resolveWith lookupDef
 
-lookupInContext :: Has (Choose :+: Empty) sig m => QName -> Context -> m (LName Index, Either Kind Type)
+lookupInContext :: Has (Choose :+: Empty) sig m => QName -> Context -> m (LName Index, Type)
 lookupInContext (m:|>n)
   | m == Nil  = lookupIndex n
+  | otherwise = const empty
+
+lookupInTypeContext :: Has (Choose :+: Empty) sig m => QName -> TypeContext.TypeContext -> m (LName Index, Kind)
+lookupInTypeContext (m:|>n)
+  | m == Nil  = TypeContext.lookupIndex n
   | otherwise = const empty
 
 -- FIXME: probably we should instead look up the effect op globally, then check for membership in the sig
@@ -151,12 +157,12 @@ lookupInSig (m :|> n) mod graph = foldMapC $ foldMapC (\ (Interface q@(m':|>_) _
 
 
 (|-) :: Has (Reader ElabContext) sig m => Pattern (Name :==> Type) -> m a -> m a
-p |- b = locally context_ (|> Type p) b
+p |- b = locally context_ (|> p) b
 
 infix 1 |-
 
 (||-) :: Has (Reader ElabContext) sig m => (Name :==> Kind) -> m a -> m a
-k ||- b = locally context_ (|> Kind k) b
+k ||- b = locally typeContext_ (TypeContext.|> k) b
 
 infix 1 ||-
 
