@@ -28,7 +28,6 @@ module Facet.Print
 import           Data.Foldable (foldl')
 import           Data.Maybe (fromMaybe)
 import qualified Data.Text as T
-import           Data.Traversable (mapAccumL)
 import           Facet.Env as Env
 import           Facet.Interface
 import           Facet.Kind
@@ -197,13 +196,13 @@ instance Printable C.Term where
       C.App f a        -> go env f $$ go env a
       C.Con n p        -> qvar n $$* (group . go env <$> p)
       C.String s       -> annotate Lit $ pretty (show s)
-      C.Let p v b      -> let p' = snd (mapAccumL (\ d n -> (succ d, n :=: local n d)) (level env) p) in pretty "let" <+> braces (print opts env (view def_ <$> p') </> equals <+> group (go env v)) <+> pretty "in" <+> go (env |> p') b
+      C.Let p v b      -> let p' = snd (mapAccumLevels (\ d n -> n :=: local n d) (level env) p) in pretty "let" <+> braces (print opts env (view def_ <$> p') </> equals <+> group (go env v)) <+> pretty "in" <+> go (env |> p') b
       where
       d = level env
     qvar = group . setPrec Var . qname
     clause env (p, b) = print opts env (view def_ <$> p') <+> arrow <+> go (env |> p') b
       where
-      p' = snd (mapAccumL (\ d n -> (succ d, n :=: local n d)) (level env) p)
+      p' = snd (mapAccumLevels (\ d n -> n :=: local n d) (level env) p)
 
 deriving via (Quoting C.Term N.Term) instance Printable N.Term
 
