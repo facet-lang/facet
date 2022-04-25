@@ -7,6 +7,7 @@ module Facet.Pattern
 , _PCon
 , EffPattern(..)
 , fill
+, mapAccumLevels
 ) where
 
 import Data.Traversable (mapAccumL)
@@ -54,3 +55,6 @@ data EffPattern a = POp QName [ValPattern a] (ValPattern a)
 -- | Fill a container with values computed sequentially from left to right.
 fill :: Traversable t => (b -> (b, c)) -> b -> t a -> (b, t c)
 fill f = mapAccumL (const . f)
+
+mapAccumLevels :: Traversable t => (Level -> a -> b) -> Level -> (t a -> (Level, t b))
+mapAccumLevels f = mapAccumL (\ d a -> (succ d, f d a))
