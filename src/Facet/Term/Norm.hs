@@ -8,7 +8,6 @@ import           Data.Foldable (foldl')
 import           Data.Maybe (fromMaybe)
 import           Data.Monoid
 import           Data.Text (Text)
-import           Data.Traversable (mapAccumL)
 import           Facet.Env
 import           Facet.Name
 import           Facet.Pattern
@@ -33,7 +32,7 @@ instance Quote Term X.Term where
     Ne v sp  -> foldl' (\ h t -> X.App <$> h <*> quote t) (Quoter (\ d -> X.Var (toIndexed d v))) sp
     where
     clause :: Traversable t => t Name -> (t (Name :=: Term) -> Term) -> Quoter (t Name, X.Term)
-    clause p b = Quoter (\ d -> let (d', p') = mapAccumL (\ d n -> (succ d, n :=: Ne (Free (LName d n)) Nil)) d p in (p, runQuoter d' (quote (b p'))))
+    clause p b = Quoter (\ d -> let (d', p') = mapAccumLevels (\ d n -> n :=: Ne (Free (LName d n)) Nil) d p in (p, runQuoter d' (quote (b p'))))
 
 norm :: Env Term -> X.Term -> Term
 norm env = \case
