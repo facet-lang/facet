@@ -6,7 +6,7 @@ module Facet.Sequent.Expr
   -- * Commands
 , Command(..)
   -- * Scopes
-, Scope(..)
+, ScopeLR(..)
 ) where
 
 import Data.Text (Text)
@@ -47,4 +47,4 @@ data Command
 
 -- Scopes
 
-newtype Scope = Scope Command
+newtype ScopeLR = ScopeLR Command
