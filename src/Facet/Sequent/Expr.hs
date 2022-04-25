@@ -47,4 +47,4 @@ data Command
 
 -- Scopes
 
-newtype ScopeLR = ScopeLR Command
+newtype ScopeLR = ScopeLR { getScopeLR :: Command }
