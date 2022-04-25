@@ -51,5 +51,6 @@ data EffPattern a = POp QName [ValPattern a] (ValPattern a)
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
 
+-- | Fill a container with values computed sequentially from left to right.
 fill :: Traversable t => (b -> (b, c)) -> b -> t a -> (b, t c)
 fill f = mapAccumL (const . f)
