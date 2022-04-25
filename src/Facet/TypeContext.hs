@@ -20,10 +20,10 @@ empty = TypeContext S.Nil
 (|>) :: TypeContext -> Name :==> Kind -> TypeContext
 TypeContext as |> a = TypeContext (as S.:> a)
 
-lookupIndex :: E.Has E.Empty sig m => Name -> TypeContext -> m (LName Index, Kind)
+lookupIndex :: E.Has E.Empty sig m => Name -> TypeContext -> m (Index, Kind)
 lookupIndex n = go (Index 0) . getTypeContext
   where
   go _ S.Nil    = E.empty
   go i (cs S.:> (n' :==> _K))
-    | n == n'   = pure (LName i n', _K)
+    | n == n'   = pure (i, _K)
     | otherwise = go (succ i) cs

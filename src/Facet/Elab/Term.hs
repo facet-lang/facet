@@ -126,7 +126,7 @@ tlam :: (Has (Reader ElabContext) sig m, Has (Throw ErrReason) sig m) => Type <=
 tlam b = Check $ \ _T -> do
   (n, _A, _B) <- assertQuantifier _T
   d <- depth
-  n :==> _A ||- check (b ::: _B (T.free (LName d n)))
+  n :==> _A ||- check (b ::: _B (T.free d))
 
 lam :: (Has (Reader ElabContext) sig m, Has (Throw ErrReason) sig m) => [(Bind m (Pattern (Name :==> Type)), Type <==: m Term)] -> Type <==: m Term
 lam cs = Check $ \ _T -> do
@@ -250,7 +250,7 @@ abstractTerm body = go Nil Nil
   go ts fs = Check $ \case
     T.ForAll n   _T _B -> do
       d <- depth
-      check (tlam (go (ts :> LName d n) fs) ::: T.ForAll n _T _B)
+      check (tlam (go (ts :> d) fs) ::: T.ForAll n _T _B)
     T.Arrow  n _A _B -> do
       d <- depth
       check (lam [(patternForArgType _A (fromMaybe __ n), go ts (fs :> \ d' -> Var (Free (LName (toIndexed d' d) (fromMaybe __ n)))))] ::: T.Arrow n _A _B)

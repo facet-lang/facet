@@ -12,7 +12,7 @@ import qualified Facet.Type.Class as C
 
 data Type
   = String
-  | Var (Var (Either Meta (LName Index)))
+  | Var (Var (Either Meta Index))
   | ForAll Name Kind Type
   | Arrow (Maybe Name) Type Type
   | Comp (Signature Type) Type
@@ -21,12 +21,8 @@ data Type
 
 instance C.Type (Quoter Type) where
   string = pure String
-  forAll n k b = ForAll n k <$> binder (\ d' -> Quoter (\ d -> lvar n (toIndexed d d'))) b
+  forAll n k b = ForAll n k <$> binder (\ d' -> Quoter (\ d -> Var (Free (Right (toIndexed d d'))))) b
   arrow n = liftA2 (Arrow n)
   var v = Quoter (\ d -> Var (toIndexed d v))
   ($$) = liftA2 App
   sig |- t = Comp <$> sequenceSignature sig <*> t
-
-
-lvar :: Name -> Index -> Type
-lvar n i = Var (Free (Right (LName i n)))

@@ -66,7 +66,6 @@ import           Control.Effect.Choose
 import           Facet.Context hiding (empty)
 import qualified Facet.Context as Context (empty)
 import           Facet.Effect.Write
-import qualified Facet.Env as Env
 import           Facet.Functor.Check
 import           Facet.Functor.Synth
 import           Facet.Graph as Graph
@@ -139,7 +138,7 @@ lookupInContext (m:|>n)
   | m == Nil  = lookupIndex n
   | otherwise = const empty
 
-lookupInTypeContext :: Has (Choose :+: Empty) sig m => QName -> TypeContext.TypeContext -> m (LName Index, Kind)
+lookupInTypeContext :: Has (Choose :+: Empty) sig m => QName -> TypeContext.TypeContext -> m (Index, Kind)
 lookupInTypeContext (m:|>n)
   | m == Nil  = TypeContext.lookupIndex n
   | otherwise = const empty
@@ -168,7 +167,7 @@ infix 1 ||-
 
 
 evalTExpr :: Has (Reader ElabContext :+: State (Subst Type)) sig m => TX.Type -> m Type
-evalTExpr texpr = TN.eval <$> get <*> views context_ toEnv <*> pure texpr
+evalTExpr texpr = TN.eval <$> get <*> pure Nil <*> pure texpr
 
 depth :: Has (Reader ElabContext) sig m => m Level
 depth = views context_ level
@@ -238,8 +237,8 @@ _Occurs = prism' (uncurry Occurs) (\case
   Occurs v c -> Just (v, c)
   _          -> Nothing)
 
-applySubst :: Context -> Subst Type -> ErrReason -> ErrReason
-applySubst ctx subst r = case r of
+applySubst :: Subst Type -> ErrReason -> ErrReason
+applySubst subst r = case r of
   FreeVariable{}       -> r
   AmbiguousName{}      -> r
   CouldNotSynthesize{} -> r
@@ -250,7 +249,7 @@ applySubst ctx subst r = case r of
   Invariant{}          -> r
   MissingInterface i   -> MissingInterface (roundtrip <$> i)
   where
-  roundtrip = apply subst (toEnv ctx)
+  roundtrip = apply subst Nil
 
 
 mismatchTypes :: Has (Throw ErrReason) sig m => Exp (Either String Type) -> Act Type -> m a
@@ -285,7 +284,7 @@ instance (Has (Reader ElabContext) sig m, Has (Reader Source) sig m, Has (State 
       source <- ask
       ElabContext{ context, typeContext, sig, spans } <- ask
       subst <- get
-      throwError $ Err (maybe source (slice source) (peek spans)) (applySubst context subst reason) context typeContext subst sig GHC.Stack.callStack
+      throwError $ Err (maybe source (slice source) (peek spans)) (applySubst subst reason) context typeContext subst sig GHC.Stack.callStack
     R other     -> ErrC (alg (runErr . hdl) other ctx)
 
 
@@ -353,13 +352,13 @@ elabKind :: Applicative m => ReaderC ElabContext (StateC (Subst Type) m) Kind ->
 elabKind = elabWith (const pure)
 
 elabType :: (HasCallStack, Applicative m) => ReaderC ElabContext (StateC (Subst Type) m) TX.Type -> m Type
-elabType = elabWith (\ subst t -> pure (TN.eval subst Env.empty t))
+elabType = elabWith (\ subst t -> pure (TN.eval subst Nil t))
 
 elabTerm :: Applicative m => ReaderC ElabContext (StateC (Subst Type) m) Term -> m Term
 elabTerm = elabWith (const pure)
 
 elabSynthTerm :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source) sig m) => ReaderC ElabContext (StateC (Subst Type) m) (Term :==> Type) -> m (Term :==> Type)
-elabSynthTerm = elabWith (\ subst (e :==> _T) -> pure (e :==> TN.eval subst Env.empty (runQuoter 0 (quote _T))))
+elabSynthTerm = elabWith (\ subst (e :==> _T) -> pure (e :==> TN.eval subst Nil (runQuoter 0 (quote _T))))
 
 elabSynthType :: (HasCallStack, Has (Reader Graph :+: Reader Module :+: Reader Source) sig m) => ReaderC ElabContext (StateC (Subst Type) m) (TX.Type :==> Kind) -> m (Type :==> Kind)
-elabSynthType = elabWith (\ subst (_T :==> _K) -> pure (TN.eval subst Env.empty _T :==> _K))
+elabSynthType = elabWith (\ subst (_T :==> _K) -> pure (TN.eval subst Nil _T :==> _K))

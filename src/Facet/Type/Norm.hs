@@ -23,19 +23,17 @@ module Facet.Type.Norm
 import           Control.Effect.Empty
 import           Data.Foldable (foldl')
 import           Data.Maybe (fromMaybe)
-import           Facet.Env hiding (empty)
 import           Facet.Interface
 import           Facet.Kind
 import           Facet.Name
-import           Facet.Pattern
 import           Facet.Quote
 import           Facet.Snoc
 import           Facet.Subst
 import           Facet.Syntax
 import qualified Facet.Type.Class as C
 import qualified Facet.Type.Expr as TX
+import           Fresnel.Getter ((^.))
 import           Fresnel.Prism (Prism', prism')
-import           Fresnel.Review (review)
 import           GHC.Stack
 import           Prelude hiding (lookup)
 
@@ -45,7 +43,7 @@ data Type
   = String
   | ForAll Name Kind (Type -> Type)
   | Arrow (Maybe Name) Type Type
-  | Ne (Var (Either Meta (LName Level))) (Snoc Type)
+  | Ne (Var (Either Meta Level)) (Snoc Type)
   | Comp (Signature Type) Type
   deriving (Eq, Ord, Show) via Quoting TX.Type Type
 
@@ -61,7 +59,7 @@ instance C.Type Type where
 instance Quote Type TX.Type where
   quote = \case
     String       -> pure TX.String
-    ForAll n t b -> Quoter (\ d -> TX.ForAll n t (runQuoter (succ d) (quote (b (free (LName d n))))))
+    ForAll n t b -> Quoter (\ d -> TX.ForAll n t (runQuoter (succ d) (quote (b (free d)))))
     Arrow n a b  -> TX.Arrow n <$> quote a <*> quote b
     Comp s t     -> TX.Comp <$> traverseSignature quote s <*> quote t
     Ne n sp      -> foldl' (\ h t -> TX.App <$> h <*> quote t) (Quoter (\ d -> TX.Var (toIndexed d n))) sp
@@ -76,7 +74,7 @@ _ForAll = prism' (\ (n, k, b) -> ForAll n k b) (\case{ ForAll n k b -> Just (n, 
 _Arrow :: Prism' Type (Maybe Name, Type, Type)
 _Arrow = prism' (\ (n, a, b) -> Arrow n a b) (\case{ Arrow n a b -> Just (n, a, b) ; _ -> Nothing })
 
-_Ne :: Prism' Type (Var (Either Meta (LName Level)), Snoc Type)
+_Ne :: Prism' Type (Var (Either Meta Level), Snoc Type)
 _Ne = prism' (uncurry Ne) (\case{ Ne c ts -> Just (c, ts) ; _ -> Nothing })
 
 _Comp :: Prism' Type (Signature Type, Type)
@@ -86,18 +84,18 @@ _Comp = prism' (uncurry Comp) (\case{ Comp sig t -> Just (sig, t) ; _ -> Nothing
 global :: QName -> Type
 global = var . Global
 
-free :: LName Level -> Type
+free :: Level -> Type
 free = var . Free . Right
 
 metavar :: Meta -> Type
 metavar = var . Free . Left
 
 
-var :: Var (Either Meta (LName Level)) -> Type
+var :: Var (Either Meta Level) -> Type
 var v = Ne v Nil
 
 
-unNeutral :: Has Empty sig m => Type -> m (Var (Either Meta (LName Level)), Snoc Type)
+unNeutral :: Has Empty sig m => Type -> m (Var (Either Meta Level), Snoc Type)
 unNeutral = \case
   Ne h sp -> pure (h, sp)
   _       -> empty
@@ -112,7 +110,7 @@ occursIn :: Meta -> Level -> Type -> Bool
 occursIn p = go
   where
   go d = \case
-    ForAll n _ b -> go (succ d) (b (free (LName d n)))
+    ForAll _ _ b -> go (succ d) (b (free d))
     Arrow _ a b  -> go d a || go d b
     Comp s t     -> any (go d) s || go d t
     Ne h sp      -> any (either (== p) (const False)) h || any (go d) sp
@@ -133,17 +131,17 @@ infixl 9 $$, $$*
 
 -- Quotation
 
-eval :: HasCallStack => Subst Type -> Env Type -> TX.Type -> Type
+eval :: HasCallStack => Subst Type -> Snoc (Name :=: Type) -> TX.Type -> Type
 eval subst = go where
   go env = \case
     TX.String               -> String
     TX.Var (Global n)       -> global n
-    TX.Var (Free (Right n)) -> index env n
+    TX.Var (Free (Right n)) -> (env ! getIndex n) ^. def_
     TX.Var (Free (Left m))  -> fromMaybe (metavar m) (lookupMeta m subst)
-    TX.ForAll n t b         -> ForAll n t (\ _T -> go (env |> review _PVar (n :=: _T)) b)
+    TX.ForAll n t b         -> ForAll n t (\ _T -> go (env :> (n :=: _T)) b)
     TX.Arrow n a b          -> Arrow n (go env a) (go env b)
     TX.Comp s t             -> Comp (mapSignature (go env) s) (go env t)
-    TX.App  f a             -> go env f $$  go env a
+    TX.App  f a             -> go env f $$ go env a
 
-apply :: HasCallStack => Subst Type -> Env Type -> Type -> Type
-apply subst env = eval subst env . runQuoter (level env) . quote
+apply :: HasCallStack => Subst Type -> Snoc (Name :=: Type) -> Type -> Type
+apply subst env = eval subst env . runQuoter (Level (length env)) . quote

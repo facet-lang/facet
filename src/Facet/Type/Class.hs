@@ -8,7 +8,7 @@ import Data.Foldable (foldl')
 import Facet.Functor.Compose
 import Facet.Interface (Signature)
 import Facet.Kind (Kind)
-import Facet.Name (LName, Level, Meta, Name)
+import Facet.Name (Level, Meta, Name)
 import Facet.Syntax (Var, type (~>))
 
 -- Types
@@ -17,10 +17,10 @@ class Type r where
   string :: r
   forAll :: Name -> Kind -> (r -> r) -> r
   arrow :: Maybe Name -> r -> r -> r
-  var :: Var (Either Meta (LName Level)) -> r
+  var :: Var (Either Meta Level) -> r
   ($$) :: r -> r -> r
   infixl 9 $$
-  ($$$) :: Foldable t => Var (Either Meta (LName Level)) -> t r -> r
+  ($$$) :: Foldable t => Var (Either Meta Level) -> t r -> r
   h $$$ sp = foldl' ($$) (var h) sp
   infixl 9 $$$
   (|-) :: Signature r -> r -> r
