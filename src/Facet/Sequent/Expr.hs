@@ -5,6 +5,8 @@ module Facet.Sequent.Expr
 , Coterm(..)
   -- * Commands
 , Command(..)
+  -- * Scopes
+, Scope(..)
 ) where
 
 import Data.Text (Text)
@@ -41,3 +43,8 @@ data Coterm
 data Command
   = Term :|: Coterm
   | Let Term Command
+
+
+-- Scopes
+
+newtype Scope = Scope Command
