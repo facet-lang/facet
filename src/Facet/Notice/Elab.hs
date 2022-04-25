@@ -41,7 +41,7 @@ rethrowElabErrors opts = L.runThrow (pure . rethrow)
     , pretty (prettyCallStack callStack)
     ]
     where
-    (_, _, printCtx, ctx) = foldl' combine (0, Env.empty, Env.empty, Nil) (elems context)
+    (_, _, printCtx, ctx) = foldl' combine (0, Env.empty, Env.empty, Nil) (Env.bindings (elems context))
     (_, _, _, tyCtx) = foldl' combineTyCtx (0, Env.empty, Env.empty, Nil) (getTypeContext typeContext)
     subst' = map (\ (m :=: v) -> getPrint (Print.meta m <+> pretty '=' <+> maybe (pretty '?') (print opts printCtx) v)) (metas subst)
     sig' = getPrint . print opts printCtx . fmap (apply subst (toEnv context)) <$> (interfaces =<< sig)
@@ -52,9 +52,9 @@ rethrowElabErrors opts = L.runThrow (pure . rethrow)
       , ctx :> getPrint (print opts prints (ann (intro n d ::: print opts prints _K))) )
     combine (d, env, prints, ctx) p =
       ( succ d
-      , env Env.|> ((\ (n :==> _T) -> n :=: free (LName d n)) <$> p)
-      , prints Env.|> ((\ (n :==> _) -> n :=: intro n d) <$> p)
-      , ctx :> getPrint (print opts prints ((\ (n :==> _T) -> ann (intro n d ::: print opts prints (apply subst env _T))) <$> p)) )
+      , env Env.|> ((\ (n :=: _T) -> n :=: free (LName d n)) <$> p)
+      , prints Env.|> ((\ (n :=: _) -> n :=: intro n d) <$> p)
+      , ctx :> getPrint (print opts prints ((\ (n :=: _T) -> ann (intro n d ::: print opts prints (apply subst env _T))) <$> p)) )
 
 
 printErrReason :: Options Print -> Env.Env Print -> ErrReason -> Doc Style
