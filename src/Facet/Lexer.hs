@@ -10,7 +10,7 @@ module Facet.Lexer
 import Data.Char (isSpace)
 import Data.Text (Text, pack)
 import Facet.Effect.Parser
-import Facet.Name hiding (ident)
+import Facet.Name
 import Facet.Snoc
 import Facet.Span
 import Text.Parser.Char
