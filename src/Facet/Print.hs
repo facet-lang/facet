@@ -272,6 +272,9 @@ instance Printable2 (,) where
 instance Printable2 Either where
   printWith2 f g opts env = either (f opts env) (g opts env)
 
+instance Printable2 (:=:) where
+  printWith2 f g opts env (a :=: b) = f opts env a <+> pretty '=' <+> g opts env b
+
 
 print2 :: (Printable2 p, Printable a, Printable b) => Options Print -> Env Print -> p a b -> Print
 print2 = printWith2 print print
