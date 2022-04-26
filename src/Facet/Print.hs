@@ -268,3 +268,6 @@ class Printable2 p where
 
 instance Printable2 (,) where
   printWith2 f g opts env (a, b) = tupled [f opts env a, g opts env b]
+
+instance Printable2 Either where
+  printWith2 f g opts env = either (f opts env) (g opts env)
