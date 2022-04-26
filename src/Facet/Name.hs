@@ -8,6 +8,7 @@ module Facet.Name
 , Meta(..)
 , __
 , QName
+, q
 , prettyQName
 , Name(..)
 , Assoc(..)
@@ -24,6 +25,7 @@ import           Data.String (IsString(..))
 import           Data.Text (Text)
 import qualified Data.Text as T
 import           Facet.Pretty (subscript)
+import           Facet.Snoc
 import           Facet.Snoc.NonEmpty
 import qualified Prettyprinter as P
 import           Silkscreen
@@ -73,6 +75,9 @@ __ = T T.empty
 
 -- | Qualified names, consisting of a module name and declaration name.
 type QName = NonEmpty Name
+
+q :: Name -> QName
+q = (Nil :|>)
 
 prettyQName :: Printer a => QName -> a
 prettyQName (ns:|>n) = foldr' (surround dot . pretty) (pretty n) ns
