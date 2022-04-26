@@ -8,6 +8,8 @@ module Facet.Elab.Sequent
 , stringS
   -- * Eliminators
 , appS
+  -- * General combinators
+, freshName
   -- * Elaboration
 , synthExprS
 , checkExprS
@@ -21,6 +23,7 @@ module Facet.Elab.Sequent
 , check
 ) where
 
+import           Control.Effect.Fresh
 import           Control.Effect.Reader
 import           Control.Effect.State
 import           Control.Effect.Throw
@@ -110,6 +113,9 @@ as (m ::: _T) = do
   _T' <- Type.switch _T <==: KType
   a <- check (m ::: _T')
   pure $ a :==> _T'
+
+freshName :: Has Fresh sig m => Text -> m Name
+freshName s = G s <$> fresh
 
 
 -- Elaboration
