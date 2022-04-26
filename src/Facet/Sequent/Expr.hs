@@ -18,6 +18,7 @@ import Facet.Snoc
 import Facet.Snoc.NonEmpty
 import Facet.Syntax
 import Fresnel.Lens (Lens', lens)
+import Fresnel.Maybe
 import Fresnel.Setter ((%~))
 
 -- Terms
@@ -57,7 +58,7 @@ data Command
 newtype Scope = Scope { getScope :: Command }
 
 abstractLR :: Name -> Name -> (Command -> Scope)
-abstractLR t c = Scope . replaceCommand (Replacer 0 freeL boundL) (Replacer 0 freeR boundR) where
+abstractLR t c = Scope . replaceCommand (Just (Replacer 0 freeL boundL)) (Just (Replacer 0 freeR boundR)) where
   freeR outer name
     | name == t = Var (Bound outer)
     | otherwise = Var (Free (Nil:|>name))
@@ -68,7 +69,7 @@ abstractLR t c = Scope . replaceCommand (Replacer 0 freeL boundL) (Replacer 0 fr
   boundL _ inner = Covar (Bound inner)
 
 instantiateLR :: Term -> Coterm -> (Scope -> Command)
-instantiateLR t c = replaceCommand (Replacer 0 freeL boundL) (Replacer 0 freeR boundR) . getScope where
+instantiateLR t c = replaceCommand (Just (Replacer 0 freeL boundL)) (Just (Replacer 0 freeR boundR)) . getScope where
   freeR _ name = Var   (Free (Nil:|>name))
   freeL _ name = Covar (Free (Nil:|>name))
   boundR outer inner
@@ -93,32 +94,32 @@ free' Replacer{ outer, free } = free outer
 bound' :: Replacer t -> Index -> t
 bound' Replacer{ outer, bound } = bound outer
 
-replaceTerm :: Replacer Coterm -> Replacer Term -> (Term -> Term)
+replaceTerm :: Maybe (Replacer Coterm) -> Maybe (Replacer Term) -> (Term -> Term)
 replaceTerm l r within = case within of
-  Var (Free (Nil:|>n)) -> free' r n
+  Var (Free (Nil:|>n)) -> maybe (const within) free' r n
   Var (Free _)         -> within
-  Var (Bound inner)    -> bound' r inner
-  MuR b                -> MuR (replaceCommand (l & outer_ %~ succ) r b)
-  LamR b               -> LamR (replaceCommand (l & outer_ %~ succ) (r & outer_ %~ succ) b)
+  Var (Bound inner)    -> maybe (const within) bound' r inner
+  MuR b                -> MuR (replaceCommand (l & _Just.outer_ %~ succ) r b)
+  LamR b               -> LamR (replaceCommand (l & _Just.outer_ %~ succ) (r & _Just.outer_ %~ succ) b)
   SumR i a             -> SumR i (replaceTerm l r a)
   BottomR b            -> BottomR (replaceCommand l r b)
   UnitR                -> within
   PrdR a b             -> PrdR (replaceTerm l r a) (replaceTerm l r b)
   StringR _            -> within
 
-replaceCoterm :: Replacer Coterm -> Replacer Term -> (Coterm -> Coterm)
+replaceCoterm :: Maybe (Replacer Coterm) -> Maybe (Replacer Term) -> (Coterm -> Coterm)
 replaceCoterm l r within = case within of
-  Covar (Free (Nil:|>n)) -> free' l n
+  Covar (Free (Nil:|>n)) -> maybe (const within) free' l n
   Covar (Free _)         -> within
-  Covar (Bound inner)    -> bound' l inner
-  MuL b                  -> MuL (replaceCommand l (r & outer_ %~ succ) b)
+  Covar (Bound inner)    -> maybe (const within) bound' l inner
+  MuL b                  -> MuL (replaceCommand l (r & _Just.outer_ %~ succ) b)
   LamL a k               -> LamL (replaceTerm l r a) (replaceCoterm l r k)
   SumL cs                -> SumL (map (replaceCoterm l r) cs)
   UnitL                  -> within
   PrdL1 k                -> PrdL1 (replaceCoterm l r k)
   PrdL2 k                -> PrdL2 (replaceCoterm l r k)
 
-replaceCommand :: Replacer Coterm -> Replacer Term -> (Command -> Command)
+replaceCommand :: Maybe (Replacer Coterm) -> Maybe (Replacer Term) -> (Command -> Command)
 replaceCommand l r = \case
   t :|: c -> replaceTerm l r t :|: replaceCoterm l r c
-  Let t b -> Let (replaceTerm l r t) (replaceCommand l (r & outer_ %~ succ) b)
+  Let t b -> Let (replaceTerm l r t) (replaceCommand l (r & _Just.outer_ %~ succ) b)
