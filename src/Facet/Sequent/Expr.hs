@@ -75,6 +75,12 @@ instantiateLR t c = replaceCommand (0, freeL, boundL) (0, freeR, boundR) . getSc
     | outer == inner = c
     | otherwise      = Covar (Bound inner)
 
+data Replacer t = Replacer
+  { outer :: Index
+  , free  :: Index -> Name -> t
+  , bound :: Index -> Index -> t
+  }
+
 replaceTerm :: (Index, Index -> Name -> Coterm, Index -> Index -> Coterm) -> (Index, Index -> Name -> Term, Index -> Index -> Term) -> (Term -> Term)
 replaceTerm (outerL, freeL, boundL) (outerR, freeR, boundR) within = case within of
   Var (Free (Nil:|>n)) -> freeR outerR n
