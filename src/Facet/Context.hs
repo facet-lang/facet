@@ -11,11 +11,9 @@ module Facet.Context
 ) where
 
 import qualified Control.Effect.Empty as E
-import           Data.Foldable (find)
 import qualified Facet.Env as Env
 import           Facet.Functor.Synth
 import           Facet.Name
-import           Facet.Pattern
 import qualified Facet.Snoc as S
 import           Facet.Syntax
 import           Facet.Type.Norm
@@ -28,29 +26,29 @@ newtype Context = Context { elems :: Env.Env Type }
 empty :: Context
 empty = Context Env.empty
 
-(|>) :: Context -> Pattern (Name :==> Type) -> Context
-Context as |> a = Context (as Env.|> fmap toEquation a)
+(|>) :: Context -> Name :==> Type -> Context
+Context as |> a = Context (as Env.|> toEquation a)
 
 infixl 5 |>
 
 level :: Context -> Level
 level (Context es) = Level (length es)
 
-(!) :: HasCallStack => Context -> Index -> Pattern (Name :==> Type)
+(!) :: HasCallStack => Context -> Index -> Name :==> Type
 Context (Env.Env es') ! Index i' = withFrozenCallStack $ go es' i'
   where
   go (es S.:> e) i
-    | i == 0       = fromEquation <$> e
+    | i == 0       = fromEquation e
     | otherwise    = go es (i - 1)
   go _           _ = error $ "Facet.Context.!: index (" <> show i' <> ") out of bounds (" <> show (length es') <> ")"
 
-lookupIndex :: E.Has E.Empty sig m => Name -> Context -> m (LName Index, Type)
+lookupIndex :: E.Has E.Empty sig m => Name -> Context -> m (Index, Type)
 lookupIndex n = go (Index 0) . Env.bindings . elems
   where
   go _ S.Nil       = E.empty
-  go i (cs S.:> p) = case find (\ (n' :=: _) -> n' == n) p of
-    Just (n' :=: t) -> pure (LName i n', t)
-    _               -> go (succ i) cs
+  go i (cs S.:> (n' :=: t))
+    | n == n'   = pure (i, t)
+    | otherwise = go (succ i) cs
 
 
 toEnv :: Context -> Env.Env Type

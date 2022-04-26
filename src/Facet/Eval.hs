@@ -50,13 +50,13 @@ import           Prelude hiding (zipWith)
 
 eval :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Term -> ReaderC (Env (Value (Eval m))) (Eval m) (Value (Eval m))
 eval = \case
-  Var (Global n) -> global n >>= eval
-  Var (Free n)   -> var n
-  Lam cs         -> lam cs
-  App  f a       -> app (eval f) a
-  Con n fs       -> con n (eval <$> fs)
-  String s       -> string s
-  Let p v b      -> eval v >>= \ v' -> local (|> fromMaybe (error "eval: non-exhaustive pattern in let") (matchV id p v')) (eval b)
+  Var (Free n)  -> global n >>= eval
+  Var (Bound n) -> var n
+  Lam cs        -> lam cs
+  App  f a      -> app (eval f) a
+  Con n fs      -> con n (eval <$> fs)
+  String s      -> string s
+  Let p v b     -> eval v >>= \ v' -> local (flip (foldl' (|>)) (fromMaybe (error "eval: non-exhaustive pattern in let") (matchV id p v'))) (eval b)
 
 global :: Has (Reader Graph :+: Reader Module) sig m => QName -> ReaderC (Env (Value (Eval m))) (Eval m) Term
 global n = do
@@ -66,8 +66,8 @@ global n = do
     [DTerm (Just v) _] -> pure v -- FIXME: store values in the module graph
     _                  -> error "throw a real error here"
 
-var :: (HasCallStack, Algebra sig m) => LName Index -> ReaderC (Env (Value m)) m (Value m)
-var n = asks (`index` n)
+var :: (HasCallStack, Algebra sig m) => Index -> ReaderC (Env (Value m)) m (Value m)
+var n = asks (Env.! n)
 
 lam :: Algebra sig m => [(Pattern Name, Term)] -> ReaderC (Env (Value (Eval m))) (Eval m) (Value (Eval m))
 lam cs = asks (`VLam` cs)
@@ -75,7 +75,7 @@ lam cs = asks (`VLam` cs)
 app :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => ReaderC (Env (Value (Eval m))) (Eval m) (Value (Eval m)) -> Term -> ReaderC (Env (Value (Eval m))) (Eval m) (Value (Eval m))
 app f a = ask >>= \ envCallSite -> f >>= \case
   VLam env cs -> lift (k a) where
-    k = foldl' (\ vs (p, b) -> runReader envCallSite . eval >=> fromMaybe (vs a) . matchV (\ vs -> runReader (env |> vs) (eval b)) p) (const (fail "non-exhaustive patterns in lambda")) cs
+    k = foldl' (\ vs (p, b) -> runReader envCallSite . eval >=> fromMaybe (vs a) . matchV (\ vs -> runReader (foldl' (|>) env vs) (eval b)) p) (const (fail "non-exhaustive patterns in lambda")) cs
   VCont k     -> lift (k =<< runReader envCallSite (eval a))
   _           -> fail "expected lambda/continuation"
 
@@ -114,7 +114,7 @@ instance Algebra sig m => Algebra sig (Eval m) where
 
 data Value m
   -- | Neutral; variables, only used during quotation
-  = VVar (Var (LName Level))
+  = VVar (Var Level)
   -- | Value; data constructors.
   | VCon QName [Value m]
   -- | Value; strings.
@@ -127,7 +127,7 @@ data Value m
 instance Monad m => Quote (Value m) (m Term) where
   quote = \case
     VLam _ cs -> pure . pure $ Lam cs
-    VCont k   -> Quoter (\ d -> runQuoter (succ d) . quote =<< k (VVar (Free (LName d __))))
+    VCont k   -> Quoter (\ d -> runQuoter (succ d) . quote =<< k (VVar (Bound d)))
     VVar v    -> Quoter (\ d -> pure (Var (toIndexed d v)))
     VCon n fs -> fmap (Con n) . sequenceA <$> traverse quote fs
     VString s -> pure . pure $ String s

@@ -15,14 +15,13 @@ import           Facet.Functor.Synth
 import           Facet.Interface (interfaces)
 import           Facet.Name
 import           Facet.Notice as Notice hiding (level)
-import           Facet.Pattern
 import           Facet.Pretty
 import           Facet.Print as Print
 import           Facet.Snoc
 import           Facet.Style
 import           Facet.Subst (metas)
 import           Facet.Syntax hiding (ann)
-import           Facet.Type.Norm (apply, free, metavar)
+import           Facet.Type.Norm (Type, apply, bound, metavar)
 import           Facet.TypeContext (getTypeContext)
 import           GHC.Stack (prettyCallStack)
 import           Prelude hiding (print, unlines)
@@ -45,15 +44,20 @@ rethrowElabErrors opts = L.runThrow (pure . rethrow)
     (_, _, _, tyCtx) = foldl' combineTyCtx (0, Nil, Env.empty, Nil) (getTypeContext typeContext)
     subst' = map (\ (m :=: v) -> getPrint (Print.meta m <+> pretty '=' <+> maybe (pretty '?') (print opts printCtx) v)) (metas subst)
     sig' = getPrint . print opts printCtx . fmap (apply subst Nil) <$> (interfaces =<< sig)
+    combineTyCtx
+      :: Printable k
+      => (Facet.Name.Level, Snoc (Name :=: Type), Env.Env Print, Snoc (Doc Style))
+      -> Name :==> k
+      -> (Facet.Name.Level, Snoc (Name :=: Type), Env.Env Print, Snoc (Doc Style))
     combineTyCtx (d, env, prints, ctx) (n :==> _K) =
       ( succ d
-      , env :> (n :=: free d)
-      , prints Env.|> PVal (PVar (n :=: intro n d))
+      , env :> (n :=: bound d)
+      , prints Env.|> (n :=: intro n d)
       , ctx :> getPrint (print opts prints (ann (intro n d ::: print opts prints _K))) )
-    combine (d, prints, ctx) p =
+    combine (d, prints, ctx) (n :=: _T) =
       ( succ d
-      , prints Env.|> ((\ (n :=: _) -> n :=: intro n d) <$> p)
-      , ctx :> getPrint (print opts prints ((\ (n :=: _T) -> ann (intro n d ::: print opts prints (apply subst Nil _T))) <$> p)) )
+      , prints Env.|> (n :=: intro n d)
+      , ctx :> getPrint (print opts prints (n :=: ann (intro n d ::: print opts prints (apply subst Nil _T)))) )
 
 
 printErrReason :: Options Print -> Env.Env Print -> ErrReason -> Doc Style

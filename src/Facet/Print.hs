@@ -24,6 +24,7 @@ module Facet.Print
 , Printable1(..)
 , print1
 , Printable2(..)
+, print2
 ) where
 
 import           Data.Foldable (foldl')
@@ -127,9 +128,6 @@ tintro n = name upper n . getLevel
 qvar :: (P.Level p ~ Precedence, PrecedencePrinter p) => QName -> p
 qvar (_ :|> n) = setPrec Var (pretty n)
 
-lname :: LName Level -> Print
-lname (LName d n) = intro n d
-
 meta :: Meta -> Print
 meta (Meta m) = setPrec Var $ annotate (Name m) $ pretty '?' <> upper m
 
@@ -170,15 +168,15 @@ instance Printable TX.Type where
     where
     qvar = group . setPrec Var . qname
     go env = \case
-      TX.Var (Global n)       -> qvar n
-      TX.Var (Free (Right n)) -> fromMaybe (intro __ (toLeveled d n)) $ Env.lookup env (LName n __)
-      TX.Var (Free (Left m))  -> meta m
-      TX.ForAll      n  t b   -> braces (ann (intro n d ::: print opts env t)) --> go (env |> PVal (PVar (n :=: intro n d))) b
-      TX.Arrow Nothing  a b   -> go env a --> go env b
-      TX.Arrow (Just n) a b   -> parens (ann (intro n d ::: go env a)) --> go env b
-      TX.Comp s t             -> if s == mempty then go env t else sig s <+> go env t
-      TX.App f a              -> group (go env f) $$ group (go env a)
-      TX.String               -> annotate Type $ pretty "String"
+      TX.Var (Free n)          -> qvar n
+      TX.Var (Bound (Right n)) -> fromMaybe (intro __ (toLeveled d n)) $ env Env.!? n
+      TX.Var (Bound (Left m))  -> meta m
+      TX.ForAll      n  t b    -> braces (ann (intro n d ::: print opts env t)) --> go (env |> (n :=: intro n d)) b
+      TX.Arrow Nothing  a b    -> go env a --> go env b
+      TX.Arrow (Just n) a b    -> parens (ann (intro n d ::: go env a)) --> go env b
+      TX.Comp s t              -> if s == mempty then go env t else sig s <+> go env t
+      TX.App f a               -> group (go env f) $$ group (go env a)
+      TX.String                -> annotate Type $ pretty "String"
       where
       d = level env
       sig s = brackets (commaSep (map (interface env) (interfaces s)))
@@ -191,17 +189,17 @@ instance Printable C.Term where
   print opts@Options{ qname } = go
     where
     go env = \case
-      C.Var (Global n) -> qvar n
-      C.Var (Free n)   -> fromMaybe (lname (toLeveled d n)) $ Env.lookup env n
-      C.Lam cs         -> comp (commaSep (map (clause env) cs))
-      C.App f a        -> go env f $$ go env a
-      C.Con n p        -> qvar n $$* (group . go env <$> p)
-      C.String s       -> annotate Lit $ pretty (show s)
-      C.Let p v b      -> let p' = snd (mapAccumLevels (\ d n -> n :=: local n d) (level env) p) in pretty "let" <+> braces (print opts env (view def_ <$> p') </> equals <+> group (go env v)) <+> pretty "in" <+> go (env |> p') b
+      C.Var (Free n)  -> qvar n
+      C.Var (Bound n) -> fromMaybe (intro __ (toLeveled d n)) $ env Env.!? n
+      C.Lam cs        -> comp (commaSep (map (clause env) cs))
+      C.App f a       -> go env f $$ go env a
+      C.Con n p       -> qvar n $$* (group . go env <$> p)
+      C.String s      -> annotate Lit $ pretty (show s)
+      C.Let p v b     -> let p' = snd (mapAccumLevels (\ d n -> n :=: local n d) (level env) p) in pretty "let" <+> braces (print opts env (view def_ <$> p') </> equals <+> group (go env v)) <+> pretty "in" <+> go (foldl' (|>) env p') b
       where
       d = level env
     qvar = group . setPrec Var . qname
-    clause env (p, b) = print opts env (view def_ <$> p') <+> arrow <+> go (env |> p') b
+    clause env (p, b) = print opts env (view def_ <$> p') <+> arrow <+> go (foldl' (|>) env p') b
       where
       p' = snd (mapAccumLevels (\ d n -> n :=: local n d) (level env) p)
 

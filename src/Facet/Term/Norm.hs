@@ -21,7 +21,7 @@ data Term
   = String Text
   | Con QName [Term]
   | Lam [(Pattern Name, Pattern (Name :=: Term) -> Term)]
-  | Ne (Var (LName Level)) (Snoc Term)
+  | Ne (Var Level) (Snoc Term)
   deriving (Eq, Ord, Show) via Quoting X.Term Term
 
 instance Quote Term X.Term where
@@ -32,7 +32,7 @@ instance Quote Term X.Term where
     Ne v sp  -> foldl' (\ h t -> X.App <$> h <*> quote t) (Quoter (\ d -> X.Var (toIndexed d v))) sp
     where
     clause :: Traversable t => t Name -> (t (Name :=: Term) -> Term) -> Quoter (t Name, X.Term)
-    clause p b = Quoter (\ d -> let (d', p') = mapAccumLevels (\ d n -> n :=: Ne (Free (LName d n)) Nil) d p in (p, runQuoter d' (quote (b p'))))
+    clause p b = Quoter (\ d -> let (d', p') = mapAccumLevels (\ d n -> n :=: Ne (Bound d) Nil) d p in (p, runQuoter d' (quote (b p'))))
 
 norm :: Env Term -> X.Term -> Term
 norm env = \case
@@ -40,8 +40,8 @@ norm env = \case
   X.Var v     -> Ne (toLeveled (level env) v) Nil
   X.Con n sp  -> Con n (norm env <$> sp)
   X.App f a   -> norm env f `napp`  norm env a
-  X.Lam cs    -> Lam (map (\ (p, b) -> (p, \ p' -> norm (env |> p') b)) cs)
-  X.Let p v b -> norm (env |> fromMaybe (error "norm: non-exhaustive pattern in let") (match (norm env v) p)) b
+  X.Lam cs    -> Lam (map (\ (p, b) -> (p, \ p' -> norm (foldl' (|>) env p') b)) cs)
+  X.Let p v b -> norm (foldl' (|>) env (fromMaybe (error "norm: non-exhaustive pattern in let") (match (norm env v) p))) b
 
 
 napp :: Term -> Term -> Term

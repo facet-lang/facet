@@ -75,7 +75,7 @@ import qualified Facet.Surface.Type.Expr as S
 import           Facet.Syntax as S hiding (context_)
 import           Facet.Term.Expr as E
 import qualified Facet.Type.Expr as TX
-import           Facet.Type.Norm as T hiding (global)
+import           Facet.Type.Norm as T
 import           Facet.Unify
 import           Fresnel.At as At
 import           Fresnel.Getter as Getter (view)
@@ -104,7 +104,7 @@ as (m ::: _T) = do
 
 -- FIXME: we’re instantiating when inspecting types in the REPL.
 global :: Has (State (Subst Type)) sig m => QName ::: Type -> m (Term :==> Type)
-global (q ::: _T) = (\ (v ::: _T) -> v :==> _T) <$> instantiate const (Var (Global q) ::: _T)
+global (q ::: _T) = (\ (v ::: _T) -> v :==> _T) <$> instantiate const (Var (Free q) ::: _T)
 
 
 -- FIXME: do we need to instantiate here to deal with rank-n applications?
@@ -112,7 +112,7 @@ global (q ::: _T) = (\ (v ::: _T) -> v :==> _T) <$> instantiate const (Var (Glob
 -- FIXME: effect ops in the sig are available whether or not they’re in scope
 var :: (Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (State (Subst Type)) sig m, Has (Throw ErrReason) sig m) => QName -> m (Term :==> Type)
 var n = views context_ (lookupInContext n) >>= \case
-  [(n', _T)] -> pure (Var (Free n') :==> _T)
+  [(n', _T)] -> pure (Var (Bound n') :==> _T)
   _          -> resolveDef n >>= \case
     DTerm _ _T -> global (n ::: _T)
     _          -> freeVariable n
@@ -126,7 +126,7 @@ tlam :: (Has (Reader ElabContext) sig m, Has (Throw ErrReason) sig m) => Type <=
 tlam b = Check $ \ _T -> do
   (n, _A, _B) <- assertQuantifier _T
   d <- depth
-  n :==> _A ||- check (b ::: _B (T.free d))
+  n :==> _A ||- check (b ::: _B (T.bound d))
 
 lam :: (Has (Reader ElabContext) sig m, Has (Throw ErrReason) sig m) => [(Bind m (Pattern (Name :==> Type)), Type <==: m Term)] -> Type <==: m Term
 lam cs = Check $ \ _T -> do
@@ -164,7 +164,7 @@ varP :: Name -> Bind m (ValPattern (Name :==> Type))
 varP n = Bind $ \ _A k -> k (PVar (n :==> wrap _A))
   where
   wrap = \case
-    T.Comp sig _A -> T.Arrow Nothing (T.Ne (Global (NE.FromList ["Data", "Unit"] |> T "Unit")) Nil) (T.Comp sig _A)
+    T.Comp sig _A -> T.Arrow Nothing (T.Ne (Free (NE.FromList ["Data", "Unit"] |> T "Unit")) Nil) (T.Comp sig _A)
     _T            -> _T
 
 conP :: (Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason) sig m) => QName -> [Bind m (ValPattern (Name :==> Type))] -> Bind m (ValPattern (Name :==> Type))
@@ -186,7 +186,7 @@ fieldsP = foldr cons nil
 allP :: Has (Throw ErrReason :+: Write Warn) sig m => Name -> Bind m (Pattern (Name :==> Type))
 allP n = Bind $ \ _A k -> do
   (sig, _T) <- assertComp _A
-  k (PVal (PVar (n :==> T.Arrow Nothing (T.Ne (Global (NE.FromList ["Data", "Unit"] |> T "Unit")) Nil) (T.Comp sig _T))))
+  k (PVal (PVar (n :==> T.Arrow Nothing (T.Ne (Free (NE.FromList ["Data", "Unit"] |> T "Unit")) Nil) (T.Comp sig _T))))
 
 
 -- Expression elaboration
@@ -253,10 +253,10 @@ abstractTerm body = go Nil Nil
       check (tlam (go (ts :> d) fs) ::: T.ForAll n _T _B)
     T.Arrow  n _A _B -> do
       d <- depth
-      check (lam [(patternForArgType _A (fromMaybe __ n), go ts (fs :> \ d' -> Var (Free (LName (toIndexed d' d) (fromMaybe __ n)))))] ::: T.Arrow n _A _B)
+      check (lam [(patternForArgType _A (fromMaybe __ n), go ts (fs :> \ d' -> Var (Bound (toIndexed d' d))))] ::: T.Arrow n _A _B)
     _T                 -> do
       d <- depth
-      pure $ body (TX.Var . Free . Right . toIndexed d <$> ts) (fs <*> pure d)
+      pure $ body (TX.Var . Bound . Right . toIndexed d <$> ts) (fs <*> pure d)
 
 patternForArgType :: Has (Throw ErrReason :+: Write Warn) sig m => Type -> Name -> Bind m (Pattern (Name :==> Type))
 patternForArgType = \case
@@ -394,7 +394,7 @@ check (m ::: _T) = case _T of
 
 
 bind :: Has (Reader ElabContext) sig m => Bind m (Pattern (Name :==> Type)) ::: Type -> m b -> m (Pattern Name, b)
-bind (p ::: _T) m = runBind p _T (\ p' -> (proof <$> p',) <$> (p' |- m))
+bind (p ::: _T) m = runBind p _T (\ p' -> (proof <$> p',) <$> foldr (|-) m p')
 
 newtype Bind m a = Bind { runBind :: forall x . Type -> (a -> m x) -> m x }
   deriving (Functor)

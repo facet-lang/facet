@@ -144,8 +144,8 @@ qty_ = lens (\ (_ :@ q) -> q) (\ (p :@ _) q -> p :@ q)
 -- Variables
 
 data Var a
-  = Global QName -- ^ Global variables, considered equal by 'QName'.
-  | Free a
+  = Bound a
+  | Free QName -- ^ Free variables (both local and global), considered equal by 'QName'. Unary names are locals, n>1-ary names are globals.
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
 instance DeBruijn lv ix => DeBruijn (Var lv) (Var ix) where

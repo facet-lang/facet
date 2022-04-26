@@ -50,20 +50,20 @@ occurs v t = withFrozenCallStack $ throwError $ WithCallStack GHC.Stack.callStac
 
 unifyType :: (HasCallStack, Has (Reader ElabContext) sig m, Has (State (Subst Type)) sig m, Has (Throw ErrReason) sig m, Has (Throw (WithCallStack UnifyErrReason)) sig m) => Type -> Type -> m Type
 unifyType = curry $ \case
-  (TN.Comp s1 t1, TN.Comp s2 t2)                           -> TN.Comp . fromInterfaces <$> unifySpine unifyInterface (interfaces s1) (interfaces s2) <*> unifyType t1 t2
-  (TN.Comp s1 t1, t2)                                      -> TN.Comp s1 <$> unifyType t1 t2
-  (t1, TN.Comp s2 t2)                                      -> TN.Comp s2 <$> unifyType t1 t2
-  (TN.Ne (Free (Left v1)) Nil, TN.Ne (Free (Left v2)) Nil) -> flexFlex v1 v2
-  (TN.Ne (Free (Left v1)) Nil, t2)                         -> solve v1 t2
-  (t1, TN.Ne (Free (Left v2)) Nil)                         -> solve v2 t1
-  (TN.ForAll _ t1 b1, TN.ForAll n t2 b2)                   -> depth >>= \ d -> evalTExpr =<< mkForAll d n <$> unifyKind t1 t2 <*> (n :==> t2 ||- unifyType (b1 (free d)) (b2 (free d)))
-  (TN.ForAll{}, _)                                         -> mismatch
-  (TN.Arrow _ a1 b1, TN.Arrow n a2 b2)                     -> TN.Arrow n <$> unifyType a1 a2 <*> unifyType b1 b2
-  (TN.Arrow{}, _)                                          -> mismatch
-  (TN.Ne v1 sp1, TN.Ne v2 sp2)                             -> TN.Ne <$> unifyVar v1 v2 <*> unifySpine unifyType sp1 sp2
-  (TN.Ne{}, _)                                             -> mismatch
-  (TN.String, TN.String)                                   -> pure TN.String
-  (TN.String, _)                                           -> mismatch
+  (TN.Comp s1 t1, TN.Comp s2 t2)                             -> TN.Comp . fromInterfaces <$> unifySpine unifyInterface (interfaces s1) (interfaces s2) <*> unifyType t1 t2
+  (TN.Comp s1 t1, t2)                                        -> TN.Comp s1 <$> unifyType t1 t2
+  (t1, TN.Comp s2 t2)                                        -> TN.Comp s2 <$> unifyType t1 t2
+  (TN.Ne (Bound (Left v1)) Nil, TN.Ne (Bound (Left v2)) Nil) -> flexFlex v1 v2
+  (TN.Ne (Bound (Left v1)) Nil, t2)                          -> solve v1 t2
+  (t1, TN.Ne (Bound (Left v2)) Nil)                          -> solve v2 t1
+  (TN.ForAll _ t1 b1, TN.ForAll n t2 b2)                     -> depth >>= \ d -> evalTExpr =<< mkForAll d n <$> unifyKind t1 t2 <*> (n :==> t2 ||- unifyType (b1 (bound d)) (b2 (bound d)))
+  (TN.ForAll{}, _)                                           -> mismatch
+  (TN.Arrow _ a1 b1, TN.Arrow n a2 b2)                       -> TN.Arrow n <$> unifyType a1 a2 <*> unifyType b1 b2
+  (TN.Arrow{}, _)                                            -> mismatch
+  (TN.Ne v1 sp1, TN.Ne v2 sp2)                               -> TN.Ne <$> unifyVar v1 v2 <*> unifySpine unifyType sp1 sp2
+  (TN.Ne{}, _)                                               -> mismatch
+  (TN.String, TN.String)                                     -> pure TN.String
+  (TN.String, _)                                             -> mismatch
   where
   mkForAll d n k b = TX.ForAll n k (runQuoter (succ d) (quote b))
 

@@ -57,7 +57,7 @@ import           GHC.Stack (HasCallStack, callStack, popCallStack, withFrozenCal
 -- FIXME: we’re instantiating when inspecting types in the REPL.
 globalS :: Has (State (Subst Type)) sig m => QName ::: Type -> m (SQ.Term :==> Type)
 globalS (q ::: _T) = do
-  let v = SQ.Var (Global q)
+  let v = SQ.Var (Free q)
   (\ (v ::: _T) -> v :==> _T) <$> instantiate const (v ::: _T)
 
 -- FIXME: do we need to instantiate here to deal with rank-n applications?
@@ -65,8 +65,8 @@ globalS (q ::: _T) = do
 -- FIXME: effect ops in the sig are available whether or not they’re in scope
 varS :: (Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (State (Subst Type)) sig m, Has (Throw ErrReason) sig m) => QName -> m (SQ.Term :==> Type)
 varS n = views context_ (lookupInContext n) >>= \case
-  [(n', _T)] -> pure $ SQ.Var (Free (ident n')) :==> _T
-  _          -> resolveDef n >>= \case
+  [(i, _T)] -> pure $ SQ.Var (Bound i) :==> _T
+  _         -> resolveDef n >>= \case
     DTerm _ _T -> globalS (n ::: _T)
     _          -> freeVariable n
 
@@ -95,7 +95,7 @@ appS f a = do
   f' :==> _F <- f
   (_, _A, _B) <- assertFunction _F
   a' <- check (a ::: _A)
-  pure $ SQ.MuR (f' SQ.:|: SQ.LamL a' (SQ.Covar (Free (Index 0)))) :==> _B
+  pure $ SQ.MuR (f' SQ.:|: SQ.LamL a' (SQ.Covar (Bound (Index 0)))) :==> _B
 
 
 -- General combinators

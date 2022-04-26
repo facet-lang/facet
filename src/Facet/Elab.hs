@@ -74,7 +74,6 @@ import           Facet.Kind
 import           Facet.Lens hiding (use, view)
 import           Facet.Module
 import           Facet.Name hiding (L, R)
-import           Facet.Pattern
 import           Facet.Quote
 import           Facet.Snoc
 import           Facet.Snoc.NonEmpty (NonEmpty(..))
@@ -113,7 +112,7 @@ instantiate inst = go
   go (e ::: _T) = case _T of
     TN.ForAll _ _T _B -> do
       m <- meta _T
-      go (inst e (TX.Var (Free (Left m))) ::: _B (metavar m))
+      go (inst e (TX.Var (Bound (Left m))) ::: _B (metavar m))
     _                 -> pure $ e ::: _T
 
 
@@ -133,7 +132,7 @@ resolveC = resolveWith lookupConstructor
 resolveDef :: (Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason) sig m) => QName -> m Def
 resolveDef = resolveWith lookupDef
 
-lookupInContext :: Has (Choose :+: Empty) sig m => QName -> Context -> m (LName Index, Type)
+lookupInContext :: Has (Choose :+: Empty) sig m => QName -> Context -> m (Index, Type)
 lookupInContext (m:|>n)
   | m == Nil  = lookupIndex n
   | otherwise = const empty
@@ -155,12 +154,12 @@ lookupInSig (m :|> n) mod graph = foldMapC $ foldMapC (\ (Interface q@(m':|>_) _
   interfaceScope = \case { DSubmodule (SInterface defs) _K -> pure defs ; _ -> empty }
 
 
-(|-) :: Has (Reader ElabContext) sig m => Pattern (Name :==> Type) -> m a -> m a
+(|-) :: Has (Reader ElabContext) sig m => Name :==> Type -> m a -> m a
 p |- b = locally context_ (|> p) b
 
 infix 1 |-
 
-(||-) :: Has (Reader ElabContext) sig m => (Name :==> Kind) -> m a -> m a
+(||-) :: Has (Reader ElabContext) sig m => Name :==> Kind -> m a -> m a
 k ||- b = locally typeContext_ (TypeContext.|> k) b
 
 infix 1 ||-

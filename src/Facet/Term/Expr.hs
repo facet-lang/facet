@@ -11,7 +11,7 @@ import Facet.Syntax
 -- Term expressions
 
 data Term
-  = Var (Var (LName Index))
+  = Var (Var Index)
   | Lam [(Pattern Name, Term)]
   | App Term Term
   | Con QName [Term]

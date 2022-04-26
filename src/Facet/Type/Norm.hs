@@ -6,7 +6,7 @@ module Facet.Type.Norm
 , _Arrow
 , _Ne
 , _Comp
-, global
+, bound
 , free
 , metavar
 , unNeutral
@@ -59,7 +59,7 @@ instance C.Type Type where
 instance Quote Type TX.Type where
   quote = \case
     String       -> pure TX.String
-    ForAll n t b -> Quoter (\ d -> TX.ForAll n t (runQuoter (succ d) (quote (b (free d)))))
+    ForAll n t b -> Quoter (\ d -> TX.ForAll n t (runQuoter (succ d) (quote (b (bound d)))))
     Arrow n a b  -> TX.Arrow n <$> quote a <*> quote b
     Comp s t     -> TX.Comp <$> traverseSignature quote s <*> quote t
     Ne n sp      -> foldl' (\ h t -> TX.App <$> h <*> quote t) (Quoter (\ d -> TX.Var (toIndexed d n))) sp
@@ -81,14 +81,14 @@ _Comp :: Prism' Type (Signature Type, Type)
 _Comp = prism' (uncurry Comp) (\case{ Comp sig t -> Just (sig, t) ; _ -> Nothing })
 
 
-global :: QName -> Type
-global = var . Global
+bound :: Level -> Type
+bound = var . Bound . Right
 
-free :: Level -> Type
-free = var . Free . Right
+free :: QName -> Type
+free = var . Free
 
 metavar :: Meta -> Type
-metavar = var . Free . Left
+metavar = var . Bound . Left
 
 
 var :: Var (Either Meta Level) -> Type
@@ -110,7 +110,7 @@ occursIn :: Meta -> Level -> Type -> Bool
 occursIn p = go
   where
   go d = \case
-    ForAll _ _ b -> go (succ d) (b (free d))
+    ForAll _ _ b -> go (succ d) (b (bound d))
     Arrow _ a b  -> go d a || go d b
     Comp s t     -> any (go d) s || go d t
     Ne h sp      -> any (either (== p) (const False)) h || any (go d) sp
@@ -134,14 +134,14 @@ infixl 9 $$, $$*
 eval :: HasCallStack => Subst Type -> Snoc (Name :=: Type) -> TX.Type -> Type
 eval subst = go where
   go env = \case
-    TX.String               -> String
-    TX.Var (Global n)       -> global n
-    TX.Var (Free (Right n)) -> (env ! getIndex n) ^. def_
-    TX.Var (Free (Left m))  -> fromMaybe (metavar m) (lookupMeta m subst)
-    TX.ForAll n t b         -> ForAll n t (\ _T -> go (env :> (n :=: _T)) b)
-    TX.Arrow n a b          -> Arrow n (go env a) (go env b)
-    TX.Comp s t             -> Comp (mapSignature (go env) s) (go env t)
-    TX.App  f a             -> go env f $$ go env a
+    TX.String                -> String
+    TX.Var (Free n)          -> free n
+    TX.Var (Bound (Right n)) -> (env ! getIndex n) ^. def_
+    TX.Var (Bound (Left m))  -> fromMaybe (metavar m) (lookupMeta m subst)
+    TX.ForAll n t b          -> ForAll n t (\ _T -> go (env :> (n :=: _T)) b)
+    TX.Arrow n a b           -> Arrow n (go env a) (go env b)
+    TX.Comp s t              -> Comp (mapSignature (go env) s) (go env t)
+    TX.App  f a              -> go env f $$ go env a
 
 apply :: HasCallStack => Subst Type -> Snoc (Name :=: Type) -> Type -> Type
 apply subst env = eval subst env . runQuoter (Level (length env)) . quote
