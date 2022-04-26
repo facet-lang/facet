@@ -7,7 +7,11 @@ module Facet.Sequent.Expr
 , Command(..)
   -- * Scopes
 , Scope
+, abstractL
+, abstractR
 , abstractLR
+, instantiateL
+, instantiateR
 , instantiateLR
 ) where
 
@@ -57,6 +61,10 @@ data Command
 
 newtype Scope = Scope { getScope :: Command }
 
+abstractL, abstractR :: Maybe Name -> (Command -> Scope)
+abstractL c = abstractLR c Nothing
+abstractR t = abstractLR Nothing t
+
 abstractLR :: Maybe Name -> Maybe Name -> (Command -> Scope)
 abstractLR Nothing Nothing = Scope
 abstractLR c t = Scope . replaceCommand (Replacer 0 . freeL <$> c <*> pure boundL) (Replacer 0 . freeR <$> t <*> pure boundR) where
@@ -68,6 +76,12 @@ abstractLR c t = Scope . replaceCommand (Replacer 0 . freeL <$> c <*> pure bound
     | otherwise = Covar (Free (Nil:|>name))
   boundR _ inner = Var (Bound inner)
   boundL _ inner = Covar (Bound inner)
+
+instantiateL :: Maybe Coterm ->  (Scope -> Command)
+instantiateL c = instantiateLR c Nothing
+
+instantiateR :: Maybe Term   -> (Scope -> Command)
+instantiateR t = instantiateLR Nothing t
 
 instantiateLR :: Maybe Coterm -> Maybe Term -> (Scope -> Command)
 instantiateLR Nothing Nothing = getScope
