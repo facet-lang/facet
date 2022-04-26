@@ -7,6 +7,8 @@ module Facet.Sequent.Expr
 , Command(..)
   -- * Scopes
 , ScopeLR
+, ScopeL
+, ScopeR
 , BinderL(..)
 , BinderR(..)
 ) where
@@ -50,6 +52,10 @@ data Command
 -- Scopes
 
 newtype ScopeLR = ScopeLR { getScopeLR :: Command }
+
+newtype ScopeL a = ScopeL { getScopeL :: a }
+
+newtype ScopeR a = ScopeR { getScopeR :: a }
 
 class BinderL scope where
   abstractL :: Name -> Command -> scope
