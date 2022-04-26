@@ -235,6 +235,9 @@ instance Printable C.Module where
 instance (Printable a, Printable b) => Printable (a :=: b) where
   print = print2
 
+instance Printable Name where
+  print Options{ qname } _ = qname . (Nil :|>)
+
 
 class Printable1 f where
   printWith :: (Options Print -> Env Print -> a -> Print) -> Options Print -> Env Print -> f a -> Print
