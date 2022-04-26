@@ -54,7 +54,7 @@ data Command
 newtype Scope = Scope { getScope :: Command }
 
 abstractLR :: Name -> Name -> (Command -> Scope)
-abstractLR t c = Scope . replace (freeR, boundR) (freeL, boundL) where
+abstractLR t c = Scope . replace (freeL, boundL) (freeR, boundR) where
   freeR outer name
     | name == t = Var (Bound outer)
     | otherwise = Var (Free (Nil:|>name))
@@ -65,7 +65,7 @@ abstractLR t c = Scope . replace (freeR, boundR) (freeL, boundL) where
   boundL _ inner = Covar (Bound inner)
 
 instantiateLR :: Term -> Coterm -> (Scope -> Command)
-instantiateLR t c = replace (freeR, boundR) (freeL, boundL) . getScope where
+instantiateLR t c = replace (freeL, boundL) (freeR, boundR) . getScope where
   freeR _ name = Var   (Free (Nil:|>name))
   freeL _ name = Covar (Free (Nil:|>name))
   boundR outer inner
@@ -75,35 +75,35 @@ instantiateLR t c = replace (freeR, boundR) (freeL, boundL) . getScope where
     | outer == inner = c
     | otherwise      = Covar (Bound inner)
 
-replaceTerm :: (Index, Index -> Name -> Term, Index -> Index -> Term) -> (Index, Index -> Name -> Coterm, Index -> Index -> Coterm) -> (Term -> Term)
-replaceTerm (outerR, freeR, boundR) (outerL, freeL, boundL) within = case within of
+replaceTerm :: (Index, Index -> Name -> Coterm, Index -> Index -> Coterm) -> (Index, Index -> Name -> Term, Index -> Index -> Term) -> (Term -> Term)
+replaceTerm (outerL, freeL, boundL) (outerR, freeR, boundR) within = case within of
   Var (Free (Nil:|>n)) -> freeR outerR n
   Var (Free _)         -> within
   Var (Bound inner)    -> boundR outerR inner
-  MuR b                -> MuR (replaceCommand (outerR, freeR, boundR) (succ outerL, freeL, boundL) b)
-  LamR b               -> LamR (replaceCommand (succ outerR, freeR, boundR) (succ outerL, freeL, boundL) b)
-  SumR i a             -> SumR i (replaceTerm (outerR, freeR, boundR) (outerL, freeL, boundL) a)
-  BottomR b            -> BottomR (replaceCommand (outerR, freeR, boundR) (outerL, freeL, boundL) b)
+  MuR b                -> MuR (replaceCommand (succ outerL, freeL, boundL) (outerR, freeR, boundR) b)
+  LamR b               -> LamR (replaceCommand (succ outerL, freeL, boundL) (succ outerR, freeR, boundR) b)
+  SumR i a             -> SumR i (replaceTerm (outerL, freeL, boundL) (outerR, freeR, boundR) a)
+  BottomR b            -> BottomR (replaceCommand (outerL, freeL, boundL) (outerR, freeR, boundR) b)
   UnitR                -> within
-  PrdR a b             -> PrdR (replaceTerm (outerR, freeR, boundR) (outerL, freeL, boundL) a) (replaceTerm (outerR, freeR, boundR) (outerL, freeL, boundL) b)
+  PrdR a b             -> PrdR (replaceTerm (outerL, freeL, boundL) (outerR, freeR, boundR) a) (replaceTerm (outerL, freeL, boundL) (outerR, freeR, boundR) b)
   StringR _            -> within
 
-replaceCoterm :: (Index, Index -> Name -> Term, Index -> Index -> Term) -> (Index, Index -> Name -> Coterm, Index -> Index -> Coterm) -> (Coterm -> Coterm)
-replaceCoterm (outerR, freeR, boundR) (outerL, freeL, boundL) within = case within of
+replaceCoterm :: (Index, Index -> Name -> Coterm, Index -> Index -> Coterm) -> (Index, Index -> Name -> Term, Index -> Index -> Term) -> (Coterm -> Coterm)
+replaceCoterm (outerL, freeL, boundL) (outerR, freeR, boundR) within = case within of
   Covar (Free (Nil:|>n)) -> freeL outerL n
   Covar (Free _)         -> within
   Covar (Bound inner)    -> boundL outerL inner
-  MuL b                  -> MuL (replaceCommand (succ outerR, freeR, boundR) (outerL, freeL, boundL) b)
-  LamL a k               -> LamL (replaceTerm (outerR, freeR, boundR) (outerL, freeL, boundL) a) (replaceCoterm (outerR, freeR, boundR) (outerL, freeL, boundL) k)
-  SumL cs                -> SumL (map (replaceCoterm (outerR, freeR, boundR) (outerL, freeL, boundL)) cs)
+  MuL b                  -> MuL (replaceCommand (outerL, freeL, boundL) (succ outerR, freeR, boundR) b)
+  LamL a k               -> LamL (replaceTerm (outerL, freeL, boundL) (outerR, freeR, boundR) a) (replaceCoterm (outerL, freeL, boundL) (outerR, freeR, boundR) k)
+  SumL cs                -> SumL (map (replaceCoterm (outerL, freeL, boundL) (outerR, freeR, boundR)) cs)
   UnitL                  -> within
-  PrdL1 k                -> PrdL1 (replaceCoterm (outerR, freeR, boundR) (outerL, freeL, boundL) k)
-  PrdL2 k                -> PrdL2 (replaceCoterm (outerR, freeR, boundR) (outerL, freeL, boundL) k)
+  PrdL1 k                -> PrdL1 (replaceCoterm (outerL, freeL, boundL) (outerR, freeR, boundR) k)
+  PrdL2 k                -> PrdL2 (replaceCoterm (outerL, freeL, boundL) (outerR, freeR, boundR) k)
 
-replaceCommand :: (Index, Index -> Name -> Term, Index -> Index -> Term) -> (Index, Index -> Name -> Coterm, Index -> Index -> Coterm) -> (Command -> Command)
-replaceCommand (outerR, freeR, boundR) (outerL, freeL, boundL) = \case
-  t :|: c -> replaceTerm (outerR, freeR, boundR) (outerL, freeL, boundL) t :|: replaceCoterm (outerR, freeR, boundR) (outerL, freeL, boundL) c
-  Let t b -> Let (replaceTerm (outerR, freeR, boundR) (outerL, freeL, boundL) t) (replaceCommand (succ outerR, freeR, boundR) (outerL, freeL, boundL) b)
+replaceCommand :: (Index, Index -> Name -> Coterm, Index -> Index -> Coterm) -> (Index, Index -> Name -> Term, Index -> Index -> Term) -> (Command -> Command)
+replaceCommand (outerL, freeL, boundL) (outerR, freeR, boundR) = \case
+  t :|: c -> replaceTerm (outerL, freeL, boundL) (outerR, freeR, boundR) t :|: replaceCoterm (outerL, freeL, boundL) (outerR, freeR, boundR) c
+  Let t b -> Let (replaceTerm (outerL, freeL, boundL) (outerR, freeR, boundR) t) (replaceCommand (outerL, freeL, boundL) (succ outerR, freeR, boundR) b)
 
-replace :: (Index -> Name -> Term, Index -> Index -> Term) -> (Index -> Name -> Coterm, Index -> Index -> Coterm) -> (Command -> Command)
-replace (freeR, boundR) (freeL, boundL) = replaceCommand (0, freeR, boundR) (0, freeL, boundL)
+replace :: (Index -> Name -> Coterm, Index -> Index -> Coterm) -> (Index -> Name -> Term, Index -> Index -> Term) -> (Command -> Command)
+replace (freeL, boundL) (freeR, boundR) = replaceCommand (0, freeL, boundL) (0, freeR, boundR)
