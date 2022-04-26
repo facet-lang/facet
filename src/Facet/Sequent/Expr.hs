@@ -16,6 +16,7 @@ import Facet.Name
 import Facet.Snoc
 import Facet.Snoc.NonEmpty
 import Facet.Syntax
+import Fresnel.Lens (Lens', lens)
 
 -- Terms
 
@@ -80,6 +81,9 @@ data Replacer t = Replacer
   , free  :: Index -> Name -> t
   , bound :: Index -> Index -> t
   }
+
+outer_ :: Lens' (Replacer t) Index
+outer_ = lens outer (\ Replacer{ free, bound } outer -> Replacer{ outer, free, bound })
 
 replaceTerm :: (Index, Index -> Name -> Coterm, Index -> Index -> Coterm) -> (Index, Index -> Name -> Term, Index -> Index -> Term) -> (Term -> Term)
 replaceTerm (outerL, freeL, boundL) (outerR, freeR, boundR) within = case within of
