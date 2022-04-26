@@ -54,7 +54,7 @@ data Command
 newtype Scope = Scope { getScope :: Command }
 
 abstractLR :: Name -> Name -> (Command -> Scope)
-abstractLR t c = Scope . replace (freeL, boundL) (freeR, boundR) where
+abstractLR t c = Scope . replaceCommand (0, freeL, boundL) (0, freeR, boundR) where
   freeR outer name
     | name == t = Var (Bound outer)
     | otherwise = Var (Free (Nil:|>name))
@@ -65,7 +65,7 @@ abstractLR t c = Scope . replace (freeL, boundL) (freeR, boundR) where
   boundL _ inner = Covar (Bound inner)
 
 instantiateLR :: Term -> Coterm -> (Scope -> Command)
-instantiateLR t c = replace (freeL, boundL) (freeR, boundR) . getScope where
+instantiateLR t c = replaceCommand (0, freeL, boundL) (0, freeR, boundR) . getScope where
   freeR _ name = Var   (Free (Nil:|>name))
   freeL _ name = Covar (Free (Nil:|>name))
   boundR outer inner
@@ -104,6 +104,3 @@ replaceCommand :: (Index, Index -> Name -> Coterm, Index -> Index -> Coterm) -> 
 replaceCommand (outerL, freeL, boundL) (outerR, freeR, boundR) = \case
   t :|: c -> replaceTerm (outerL, freeL, boundL) (outerR, freeR, boundR) t :|: replaceCoterm (outerL, freeL, boundL) (outerR, freeR, boundR) c
   Let t b -> Let (replaceTerm (outerL, freeL, boundL) (outerR, freeR, boundR) t) (replaceCommand (outerL, freeL, boundL) (succ outerR, freeR, boundR) b)
-
-replace :: (Index -> Name -> Coterm, Index -> Index -> Coterm) -> (Index -> Name -> Term, Index -> Index -> Term) -> (Command -> Command)
-replace (freeL, boundL) (freeR, boundR) = replaceCommand (0, freeL, boundL) (0, freeR, boundR)
