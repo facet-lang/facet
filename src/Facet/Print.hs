@@ -264,3 +264,7 @@ class Printable2 p where
     :: (Options Print -> Env Print -> a     -> Print)
     -> (Options Print -> Env Print ->     b -> Print)
     -> (Options Print -> Env Print -> p a b -> Print)
+
+
+instance Printable2 (,) where
+  printWith2 f g opts env (a, b) = tupled [f opts env a, g opts env b]
