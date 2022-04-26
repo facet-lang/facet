@@ -57,25 +57,25 @@ data Command
 
 newtype Scope = Scope { getScope :: Command }
 
-abstractLR :: Name -> Name -> (Command -> Scope)
-abstractLR t c = Scope . replaceCommand (Just (Replacer 0 freeL boundL)) (Just (Replacer 0 freeR boundR)) where
-  freeR outer name
+abstractLR :: Maybe Name -> Maybe Name -> (Command -> Scope)
+abstractLR t c = Scope . replaceCommand (Replacer 0 . freeL <$> c <*> pure boundL) (Replacer 0 . freeR <$> t <*> pure boundR) where
+  freeR t outer name
     | name == t = Var (Bound outer)
     | otherwise = Var (Free (Nil:|>name))
-  freeL outer name
+  freeL c outer name
     | name == c = Covar (Bound outer)
     | otherwise = Covar (Free (Nil:|>name))
   boundR _ inner = Var (Bound inner)
   boundL _ inner = Covar (Bound inner)
 
-instantiateLR :: Term -> Coterm -> (Scope -> Command)
-instantiateLR t c = replaceCommand (Just (Replacer 0 freeL boundL)) (Just (Replacer 0 freeR boundR)) . getScope where
+instantiateLR :: Maybe Term -> Maybe Coterm -> (Scope -> Command)
+instantiateLR t c = replaceCommand (Replacer 0 freeL . boundL <$> c) (Replacer 0 freeR . boundR <$> t) . getScope where
   freeR _ name = Var   (Free (Nil:|>name))
   freeL _ name = Covar (Free (Nil:|>name))
-  boundR outer inner
+  boundR t outer inner
     | outer == inner = t
     | otherwise      = Var (Bound inner)
-  boundL outer inner
+  boundL c outer inner
     | outer == inner = c
     | otherwise      = Covar (Bound inner)
 
