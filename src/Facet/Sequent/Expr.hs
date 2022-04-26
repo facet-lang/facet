@@ -13,6 +13,8 @@ module Facet.Sequent.Expr
 , instantiateL
 , instantiateR
 , instantiateLR
+  -- * Smart constructors
+, muR
 ) where
 
 import Data.Function ((&))
@@ -139,3 +141,9 @@ replaceCommand :: Maybe (Replacer Coterm) -> Maybe (Replacer Term) -> (Command -
 replaceCommand l r = \case
   t :|: c -> replaceTerm l r t :|: replaceCoterm l r c
   Let t b -> Let (replaceTerm l r t) (replaceCommand l (r & _Just.outer_ %~ succ) b)
+
+
+-- Smart constructors
+
+muR :: Name -> Command -> Term
+muR name body = MuR (getScope (abstractLR (Just name) Nothing body))
