@@ -9,7 +9,6 @@ module Facet.Name
 , __
 , QName
 , prettyQName
-, LName(..)
 , Name(..)
 , Assoc(..)
 , Op(..)
@@ -76,18 +75,6 @@ type QName = NonEmpty Name
 
 prettyQName :: Printer a => QName -> a
 prettyQName (ns:|>n) = foldr' (surround dot . pretty) (pretty n) ns
-
-
--- | Local names, consisting of a 'Level' or 'Index' to a pattern in an 'Env' or 'Context' and a 'Name' bound by said pattern.
-data LName v = LName
-  { ident :: v
-  , name  :: Name
-  }
-  deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
-
-instance DeBruijn lv ix => DeBruijn (LName lv) (LName ix) where
-  toIndexed = fmap . toIndexed
-  toLeveled = fmap . toLeveled
 
 
 -- | Declaration names; a choice of textual or operator names.
