@@ -85,6 +85,9 @@ data Replacer t = Replacer
 outer_ :: Lens' (Replacer t) Index
 outer_ = lens outer (\ Replacer{ free, bound } outer -> Replacer{ outer, free, bound })
 
+free' :: Replacer t -> Name -> t
+free' Replacer{ outer, free } = free outer
+
 replaceTerm :: (Index, Index -> Name -> Coterm, Index -> Index -> Coterm) -> (Index, Index -> Name -> Term, Index -> Index -> Term) -> (Term -> Term)
 replaceTerm (outerL, freeL, boundL) (outerR, freeR, boundR) within = case within of
   Var (Free (Nil:|>n)) -> freeR outerR n
