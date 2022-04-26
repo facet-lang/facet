@@ -169,8 +169,9 @@ resolveName searchPaths name = do
   where
   toPath components = foldr1 (FP.</>) (unpack <$> components)
   unpack = \case
-    T n -> TS.unpack n
-    O o -> formatOp (\ a b -> a <> " " <> b) TS.unpack "_" o
+    T n   -> TS.unpack n
+    O o   -> formatOp (\ a b -> a <> " " <> b) TS.unpack "_" o
+    G n i -> TS.unpack n <> show i
 
 
 -- Errors

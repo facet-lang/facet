@@ -23,6 +23,7 @@ import qualified Data.List.NonEmpty as NE
 import           Data.String (IsString(..))
 import           Data.Text (Text)
 import qualified Data.Text as T
+import           Facet.Pretty (subscript)
 import           Facet.Snoc.NonEmpty
 import qualified Prettyprinter as P
 import           Silkscreen
@@ -81,6 +82,7 @@ prettyQName (ns:|>n) = foldr' (surround dot . pretty) (pretty n) ns
 data Name
   = T Text
   | O Op
+  | G Text Int
   deriving (Eq, Ord, Show)
 
 instance IsString Name where
@@ -88,8 +90,9 @@ instance IsString Name where
 
 instance P.Pretty Name where
   pretty = \case
-    T n -> P.pretty n
-    O o -> P.pretty o
+    T n   -> P.pretty n
+    O o   -> P.pretty o
+    G n i -> P.pretty n <> subscript i
 
 
 -- | Associativity of an infix operator.
