@@ -53,8 +53,8 @@ newtype ScopeLR = ScopeLR { getScopeLR :: Command }
 
 class BinderL scope where
   abstractL :: Name -> Command -> scope
-  instantiateL :: Command -> scope -> Command
+  instantiateL :: Coterm -> scope -> Command
 
 class BinderR scope where
   abstractR :: Name -> Command -> scope
-  instantiateR :: Command -> scope -> Command
+  instantiateR :: Term -> scope -> Command
