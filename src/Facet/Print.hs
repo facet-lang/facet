@@ -232,6 +232,10 @@ instance Printable C.Module where
     defn (a :=: b) = group a <> hardline <> group b
 
 
+instance (Printable a, Printable b) => Printable (a :=: b) where
+  print = print2
+
+
 class Printable1 f where
   printWith :: (Options Print -> Env Print -> a -> Print) -> Options Print -> Env Print -> f a -> Print
 
