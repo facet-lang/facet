@@ -59,7 +59,7 @@ newtype Scope = Scope { getScope :: Command }
 
 abstractLR :: Maybe Name -> Maybe Name -> (Command -> Scope)
 abstractLR Nothing Nothing = Scope
-abstractLR t c = Scope . replaceCommand (Replacer 0 . freeL <$> c <*> pure boundL) (Replacer 0 . freeR <$> t <*> pure boundR) where
+abstractLR c t = Scope . replaceCommand (Replacer 0 . freeL <$> c <*> pure boundL) (Replacer 0 . freeR <$> t <*> pure boundR) where
   freeR t outer name
     | name == t = Var (Bound outer)
     | otherwise = Var (Free (Nil:|>name))
