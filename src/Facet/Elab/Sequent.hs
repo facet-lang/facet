@@ -93,7 +93,7 @@ stringS s = pure $ SQ.StringR s :==> T.String
 
 -- Eliminators
 
-appS :: (HasCallStack, Has (Reader ElabContext) sig m, Has (Throw ErrReason) sig m) => (HasCallStack => m (SQ.Term :==> Type)) -> (HasCallStack => Type <==: m SQ.Term) -> m (SQ.Term :==> Type)
+appS :: (HasCallStack, Has (Throw ErrReason) sig m) => (HasCallStack => m (SQ.Term :==> Type)) -> (HasCallStack => Type <==: m SQ.Term) -> m (SQ.Term :==> Type)
 appS f a = do
   f' :==> _F <- f
   (_, _A, _B) <- assertFunction _F
