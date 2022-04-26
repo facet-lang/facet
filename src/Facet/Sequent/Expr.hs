@@ -75,35 +75,35 @@ instantiateLR t c = replace (freeR, boundR) (freeL, boundL) . getScope where
     | outer == inner = c
     | otherwise      = Covar (Bound inner)
 
-replaceTerm :: Index -> Index -> (Index -> Name -> Term) -> (Index -> Index -> Term) -> (Index -> Name -> Coterm) -> (Index -> Index -> Coterm) -> (Term -> Term)
-replaceTerm outerL outerR freeR boundR freeL boundL within = case within of
+replaceTerm :: Index -> (Index -> Name -> Term) -> (Index -> Index -> Term) -> Index -> (Index -> Name -> Coterm) -> (Index -> Index -> Coterm) -> (Term -> Term)
+replaceTerm outerR freeR boundR outerL freeL boundL within = case within of
   Var (Free (Nil:|>n)) -> freeR outerR n
   Var (Free _)         -> within
   Var (Bound inner)    -> boundR outerR inner
-  MuR b                -> MuR (replaceCommand (succ outerL) outerR freeR boundR freeL boundL b)
-  LamR b               -> LamR (replaceCommand (succ outerL) (succ outerR) freeR boundR freeL boundL b)
-  SumR i a             -> SumR i (replaceTerm outerL outerR freeR boundR freeL boundL a)
-  BottomR b            -> BottomR (replaceCommand outerL outerR freeR boundR freeL boundL b)
+  MuR b                -> MuR (replaceCommand outerR freeR boundR (succ outerL) freeL boundL b)
+  LamR b               -> LamR (replaceCommand (succ outerR) freeR boundR (succ outerL) freeL boundL b)
+  SumR i a             -> SumR i (replaceTerm outerR freeR boundR outerL freeL boundL a)
+  BottomR b            -> BottomR (replaceCommand outerR freeR boundR outerL freeL boundL b)
   UnitR                -> within
-  PrdR a b             -> PrdR (replaceTerm outerL outerR freeR boundR freeL boundL a) (replaceTerm outerL outerR freeR boundR freeL boundL b)
+  PrdR a b             -> PrdR (replaceTerm outerR freeR boundR outerL freeL boundL a) (replaceTerm outerR freeR boundR outerL freeL boundL b)
   StringR _            -> within
 
-replaceCoterm :: Index -> Index -> (Index -> Name -> Term) -> (Index -> Index -> Term) -> (Index -> Name -> Coterm) -> (Index -> Index -> Coterm) -> (Coterm -> Coterm)
-replaceCoterm outerL outerR freeR boundR freeL boundL within = case within of
+replaceCoterm :: Index -> (Index -> Name -> Term) -> (Index -> Index -> Term) -> Index -> (Index -> Name -> Coterm) -> (Index -> Index -> Coterm) -> (Coterm -> Coterm)
+replaceCoterm outerR freeR boundR outerL freeL boundL within = case within of
   Covar (Free (Nil:|>n)) -> freeL outerL n
   Covar (Free _)         -> within
   Covar (Bound inner)    -> boundL outerL inner
-  MuL b                  -> MuL (replaceCommand outerL (succ outerR) freeR boundR freeL boundL b)
-  LamL a k               -> LamL (replaceTerm outerL outerR freeR boundR freeL boundL a) (replaceCoterm outerL outerR freeR boundR freeL boundL k)
-  SumL cs                -> SumL (map (replaceCoterm outerL outerR freeR boundR freeL boundL) cs)
+  MuL b                  -> MuL (replaceCommand (succ outerR) freeR boundR outerL freeL boundL b)
+  LamL a k               -> LamL (replaceTerm outerR freeR boundR outerL freeL boundL a) (replaceCoterm outerR freeR boundR outerL freeL boundL k)
+  SumL cs                -> SumL (map (replaceCoterm outerR freeR boundR outerL freeL boundL) cs)
   UnitL                  -> within
-  PrdL1 k                -> PrdL1 (replaceCoterm outerL outerR freeR boundR freeL boundL k)
-  PrdL2 k                -> PrdL2 (replaceCoterm outerL outerR freeR boundR freeL boundL k)
+  PrdL1 k                -> PrdL1 (replaceCoterm outerR freeR boundR outerL freeL boundL k)
+  PrdL2 k                -> PrdL2 (replaceCoterm outerR freeR boundR outerL freeL boundL k)
 
-replaceCommand :: Index -> Index -> (Index -> Name -> Term) -> (Index -> Index -> Term) -> (Index -> Name -> Coterm) -> (Index -> Index -> Coterm) -> (Command -> Command)
-replaceCommand outerL outerR freeR boundR freeL boundL = \case
-  t :|: c -> replaceTerm outerL outerR freeR boundR freeL boundL t :|: replaceCoterm outerL outerR freeR boundR freeL boundL c
-  Let t b -> Let (replaceTerm outerL outerR freeR boundR freeL boundL t) (replaceCommand outerL (succ outerR) freeR boundR freeL boundL b)
+replaceCommand :: Index -> (Index -> Name -> Term) -> (Index -> Index -> Term) -> Index -> (Index -> Name -> Coterm) -> (Index -> Index -> Coterm) -> (Command -> Command)
+replaceCommand outerR freeR boundR outerL freeL boundL = \case
+  t :|: c -> replaceTerm outerR freeR boundR outerL freeL boundL t :|: replaceCoterm outerR freeR boundR outerL freeL boundL c
+  Let t b -> Let (replaceTerm outerR freeR boundR outerL freeL boundL t) (replaceCommand (succ outerR) freeR boundR outerL freeL boundL b)
 
 replace :: (Index -> Name -> Term, Index -> Index -> Term) -> (Index -> Name -> Coterm, Index -> Index -> Coterm) -> (Command -> Command)
-replace (freeR, boundR) (freeL, boundL) = replaceCommand 0 0 freeR boundR freeL boundL
+replace (freeR, boundR) (freeL, boundL) = replaceCommand 0 freeR boundR 0 freeL boundL
