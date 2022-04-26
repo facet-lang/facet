@@ -1,4 +1,5 @@
 {-# LANGUAGE ImplicitParams #-}
+{-# LANGUAGE OverloadedStrings #-}
 module Facet.Elab.Sequent
 ( -- * Variables
   globalS
@@ -80,12 +81,14 @@ hole n = Check $ \ _T -> withFrozenCallStack $ throwError $ Hole n _T
 -- Constructors
 
 lamS
-  :: Has (Throw ErrReason) sig m
-  => Type <==: m SQ.Command
+  :: (Has Fresh sig m, Has (Throw ErrReason) sig m)
+  => (Name -> Name -> Type <==: m SQ.Command)
   -> Type <==: m SQ.Term
 lamS b = Check $ \ _T -> do
   (_, _A, _B) <- assertTacitFunction _T
-  SQ.LamR <$> check (b ::: _B)
+  v <- freshName "v"
+  k <- freshName "k"
+  SQ.lamR v k <$> check (b v k ::: _B)
 
 stringS :: Applicative m => Text -> m (SQ.Term :==> Type)
 stringS s = pure $ SQ.StringR s :==> T.String
@@ -93,12 +96,13 @@ stringS s = pure $ SQ.StringR s :==> T.String
 
 -- Eliminators
 
-appS :: (HasCallStack, Has (Throw ErrReason) sig m) => (HasCallStack => m (SQ.Term :==> Type)) -> (HasCallStack => Type <==: m SQ.Term) -> m (SQ.Term :==> Type)
+appS :: (HasCallStack, Has Fresh sig m, Has (Throw ErrReason) sig m) => (HasCallStack => m (SQ.Term :==> Type)) -> (HasCallStack => Type <==: m SQ.Term) -> m (SQ.Term :==> Type)
 appS f a = do
   f' :==> _F <- f
   (_, _A, _B) <- assertFunction _F
   a' <- check (a ::: _A)
-  pure $ SQ.MuR (f' SQ.:|: SQ.LamL a' (SQ.Covar (Bound (Index 0)))) :==> _B
+  k <- freshName "k"
+  pure $ SQ.muR k (f' SQ.:|: SQ.LamL a' (SQ.Covar (Free (q k)))) :==> _B
 
 
 -- General combinators
@@ -120,7 +124,7 @@ freshName s = G s <$> fresh
 
 -- Elaboration
 
-synthExprS :: (HasCallStack, Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (State (Subst Type)) sig m, Has (Throw ErrReason) sig m, Has (Write Warn) sig m) => S.Ann S.Expr -> m (SQ.Term :==> Type)
+synthExprS :: (HasCallStack, Has Fresh sig m, Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (State (Subst Type)) sig m, Has (Throw ErrReason) sig m, Has (Write Warn) sig m) => S.Ann S.Expr -> m (SQ.Term :==> Type)
 synthExprS = let ?callStack = popCallStack GHC.Stack.callStack in withSpan $ \case
   S.Var n    -> varS n
   S.App f a  -> synthApp f a
@@ -131,14 +135,14 @@ synthExprS = let ?callStack = popCallStack GHC.Stack.callStack in withSpan $ \ca
   where
   nope = couldNotSynthesize
 
-synthApp :: (Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (State (Subst Type)) sig m, Has (Throw ErrReason) sig m, Has (Write Warn) sig m) => S.Ann S.Expr -> S.Ann S.Expr -> m (SQ.Term :==> Type)
+synthApp :: (Has Fresh sig m, Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (State (Subst Type)) sig m, Has (Throw ErrReason) sig m, Has (Write Warn) sig m) => S.Ann S.Expr -> S.Ann S.Expr -> m (SQ.Term :==> Type)
 synthApp f a = appS (synthExprS f) (checkExprS a)
 
-synthAs :: (HasCallStack, Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (State (Subst Type)) sig m, Has (Throw ErrReason) sig m, Has (Write Warn) sig m) => S.Ann S.Expr -> S.Ann S.Type -> m (SQ.Term :==> Type)
+synthAs :: (HasCallStack, Has Fresh sig m, Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (State (Subst Type)) sig m, Has (Throw ErrReason) sig m, Has (Write Warn) sig m) => S.Ann S.Expr -> S.Ann S.Type -> m (SQ.Term :==> Type)
 synthAs t _T = as (checkExprS t ::: do { _T :==> _K <- Type.synthType _T ; (:==> _K) <$> evalTExpr _T })
 
 
-checkExprS :: (HasCallStack, Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (State (Subst Type)) sig m, Has (Throw ErrReason) sig m, Has (Write Warn) sig m) => S.Ann S.Expr -> Type <==: m SQ.Term
+checkExprS :: (HasCallStack, Has Fresh sig m, Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (State (Subst Type)) sig m, Has (Throw ErrReason) sig m, Has (Write Warn) sig m) => S.Ann S.Expr -> Type <==: m SQ.Term
 checkExprS expr = let ?callStack = popCallStack GHC.Stack.callStack in withSpanC expr $ \case
   S.Hole n   -> hole n
   S.Lam cs   -> checkLamS (Check (\ _T -> map (\ (S.Clause (S.Ann _ _ p) b) -> Clause [pattern p] (check (checkExprS b ::: _T))) cs))

@@ -32,10 +32,10 @@ import Fresnel.Setter ((%~))
 
 data Term
   = Var (Var Index)
-  | MuR Command
-  | LamR Command
+  | MuR Scope
+  | LamR Scope
   | SumR Int Term
-  | BottomR Command
+  | BottomR Scope
   | UnitR
   | PrdR Term Term
   | StringR Text
@@ -45,7 +45,7 @@ data Term
 
 data Coterm
   = Covar (Var Index)
-  | MuL Command
+  | MuL Scope
   | LamL Term Coterm
   | SumL [Coterm]
   | UnitL
@@ -118,10 +118,10 @@ replaceTerm l r within = case within of
   Var (Free (Nil:|>n)) -> maybe (const within) free' r n
   Var (Free _)         -> within
   Var (Bound inner)    -> maybe (const within) bound' r inner
-  MuR b                -> MuR (replaceCommand (l & _Just.outer_ %~ succ) r b)
-  LamR b               -> LamR (replaceCommand (l & _Just.outer_ %~ succ) (r & _Just.outer_ %~ succ) b)
+  MuR (Scope b)        -> MuR (Scope (replaceCommand (l & _Just.outer_ %~ succ) r b))
+  LamR (Scope b)       -> LamR (Scope (replaceCommand (l & _Just.outer_ %~ succ) (r & _Just.outer_ %~ succ) b))
   SumR i a             -> SumR i (replaceTerm l r a)
-  BottomR b            -> BottomR (replaceCommand l r b)
+  BottomR (Scope b)    -> BottomR (Scope (replaceCommand l r b))
   UnitR                -> within
   PrdR a b             -> PrdR (replaceTerm l r a) (replaceTerm l r b)
   StringR _            -> within
@@ -131,7 +131,7 @@ replaceCoterm l r within = case within of
   Covar (Free (Nil:|>n)) -> maybe (const within) free' l n
   Covar (Free _)         -> within
   Covar (Bound inner)    -> maybe (const within) bound' l inner
-  MuL b                  -> MuL (replaceCommand l (r & _Just.outer_ %~ succ) b)
+  MuL (Scope b)          -> MuL (Scope (replaceCommand l (r & _Just.outer_ %~ succ) b))
   LamL a k               -> LamL (replaceTerm l r a) (replaceCoterm l r k)
   SumL cs                -> SumL (map (replaceCoterm l r) cs)
   UnitL                  -> within
@@ -147,7 +147,7 @@ replaceCommand l r = \case
 -- Smart constructors
 
 muR :: Name -> Command -> Term
-muR name body = MuR (getScope (abstractLR (Just name) Nothing body))
+muR name body = MuR (abstractLR (Just name) Nothing body)
 
 lamR :: Name -> Name -> Command -> Term
-lamR v k body = LamR (getScope (abstractLR (Just v) (Just k) body))
+lamR v k body = LamR (abstractLR (Just v) (Just k) body)
