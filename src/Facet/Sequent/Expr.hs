@@ -73,10 +73,10 @@ abstractLR Nothing Nothing = Scope
 abstractLR c t = Scope . replaceCommand (Replacer 0 . freeL <$> c <*> pure boundL) (Replacer 0 . freeR <$> t <*> pure boundR) where
   freeR t outer name
     | name == t = Var (Bound outer)
-    | otherwise = Var (Free (Nil:|>name))
+    | otherwise = Var (Free (q name))
   freeL c outer name
     | name == c = Covar (Bound outer)
-    | otherwise = Covar (Free (Nil:|>name))
+    | otherwise = Covar (Free (q name))
   boundR _ inner = Var (Bound inner)
   boundL _ inner = Covar (Bound inner)
 
@@ -89,8 +89,8 @@ instantiateR t = instantiateLR Nothing t
 instantiateLR :: Maybe Coterm -> Maybe Term -> (Scope -> Command)
 instantiateLR Nothing Nothing = getScope
 instantiateLR c t = replaceCommand (Replacer 0 freeL . boundL <$> c) (Replacer 0 freeR . boundR <$> t) . getScope where
-  freeR _ name = Var   (Free (Nil:|>name))
-  freeL _ name = Covar (Free (Nil:|>name))
+  freeR _ name = Var   (Free (q name))
+  freeL _ name = Covar (Free (q name))
   boundR t outer inner
     | outer == inner = t
     | otherwise      = Var (Bound inner)

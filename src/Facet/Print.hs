@@ -216,7 +216,7 @@ instance Printable C.Module where
     (map (\ (C.Import n) -> import' n) is)
     (map (def . fmap defBody) (view C.toList_ ds))
     where
-    def (n :=: d) = ann (qvar (Nil:|>n) ::: d)
+    def (n :=: d) = ann (qvar (q n) ::: d)
     defBody = \case
       C.DTerm Nothing  _T ->       print opts env _T
       C.DTerm (Just b) _T -> defn (print opts env _T :=: print opts env b)
