@@ -23,6 +23,7 @@ module Facet.Print
 , Printable(..)
 , Printable1(..)
 , print1
+, Printable2(..)
 ) where
 
 import           Data.Foldable (foldl')
@@ -256,3 +257,10 @@ instance Printable1 Pattern where
 
 print1 :: (Printable1 f, Printable a) => Options Print -> Env Print -> f a -> Print
 print1 = printWith print
+
+
+class Printable2 p where
+  printWith2
+    :: (Options Print -> Env Print -> a     -> Print)
+    -> (Options Print -> Env Print ->     b -> Print)
+    -> (Options Print -> Env Print -> p a b -> Print)
