@@ -15,6 +15,7 @@ module Facet.Sequent.Expr
 , instantiateLR
   -- * Smart constructors
 , muR
+, lamR
 ) where
 
 import Data.Function ((&))
@@ -147,3 +148,6 @@ replaceCommand l r = \case
 
 muR :: Name -> Command -> Term
 muR name body = MuR (getScope (abstractLR (Just name) Nothing body))
+
+lamR :: Name -> Name -> Command -> Term
+lamR v k body = LamR (getScope (abstractLR (Just v) (Just k) body))
