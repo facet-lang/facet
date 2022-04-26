@@ -9,6 +9,7 @@ module Facet.Sequent.Expr
 , ScopeLR
 , ScopeL
 , ScopeR
+, BinderLR(..)
 , BinderL(..)
 , BinderR(..)
 ) where
@@ -56,6 +57,10 @@ newtype ScopeLR = ScopeLR { getScopeLR :: Command }
 newtype ScopeL a = ScopeL { getScopeL :: a }
 
 newtype ScopeR a = ScopeR { getScopeR :: a }
+
+class BinderLR scope where
+  abstractLR :: Name -> Name -> Command -> scope
+  instantiateLR :: Term -> Coterm -> scope -> Command
 
 class BinderL scope where
   abstractL :: Name -> Command -> scope
