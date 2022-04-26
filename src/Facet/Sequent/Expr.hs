@@ -54,9 +54,9 @@ data Command
 
 newtype ScopeLR = ScopeLR { getScopeLR :: Command }
 
-newtype ScopeL a = ScopeL { getScopeL :: a }
+newtype ScopeL = ScopeL { getScopeL :: Command }
 
-newtype ScopeR a = ScopeR { getScopeR :: a }
+newtype ScopeR = ScopeR { getScopeR :: Command }
 
 class BinderLR scope where
   abstractLR :: Name -> Name -> Command -> scope
