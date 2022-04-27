@@ -65,9 +65,9 @@ data Command
 
 newtype Scope = Scope { getScope :: Command }
 
-abstractL, abstractR :: Maybe Name -> (Command -> Scope)
-abstractL c = abstractLR c Nothing
-abstractR t = abstractLR Nothing t
+abstractL, abstractR :: Name -> (Command -> Scope)
+abstractL c = abstractLR (Just c) Nothing
+abstractR t = abstractLR Nothing (Just t)
 
 abstractLR :: Maybe Name -> Maybe Name -> (Command -> Scope)
 abstractLR Nothing Nothing = Scope
