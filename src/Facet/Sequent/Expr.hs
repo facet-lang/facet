@@ -19,14 +19,16 @@ module Facet.Sequent.Expr
 , let'
 ) where
 
+import Data.Bifunctor (bimap)
 import Data.Function ((&))
 import Data.Text (Text)
+import Data.These
 import Facet.Name
 import Facet.Snoc
 import Facet.Snoc.NonEmpty
 import Facet.Syntax
 import Fresnel.Lens (Lens', lens)
-import Fresnel.Maybe
+import Fresnel.Prism
 import Fresnel.Setter ((%~))
 
 -- Terms
@@ -66,12 +68,11 @@ data Command
 newtype Scope = Scope { getScope :: Command }
 
 abstractL, abstractR :: Name -> (Command -> Scope)
-abstractL c = abstractLR (Just c) Nothing
-abstractR t = abstractLR Nothing (Just t)
+abstractL c = abstractLR (This c)
+abstractR t = abstractLR (That t)
 
-abstractLR :: Maybe Name -> Maybe Name -> (Command -> Scope)
-abstractLR Nothing Nothing = Scope
-abstractLR c t = Scope . replaceCommand (Replacer 0 . freeL <$> c <*> pure boundL) (Replacer 0 . freeR <$> t <*> pure boundR) where
+abstractLR :: These Name Name -> (Command -> Scope)
+abstractLR ct = Scope . replaceCommand (bimap (\ c -> Replacer 0 (freeL c) boundL) (\ t -> Replacer 0 (freeR t) boundR) ct) where
   freeR t outer name
     | name == t = Var (Bound outer)
     | otherwise = Var (Free (q name))
@@ -82,14 +83,13 @@ abstractLR c t = Scope . replaceCommand (Replacer 0 . freeL <$> c <*> pure bound
   boundL _ inner = Covar (Bound inner)
 
 instantiateL :: Coterm ->  (Scope -> Command)
-instantiateL c = instantiateLR (Just c) Nothing
+instantiateL c = instantiateLR (This c)
 
 instantiateR :: Term   -> (Scope -> Command)
-instantiateR t = instantiateLR Nothing (Just t)
+instantiateR t = instantiateLR (That t)
 
-instantiateLR :: Maybe Coterm -> Maybe Term -> (Scope -> Command)
-instantiateLR Nothing Nothing = getScope
-instantiateLR c t = replaceCommand (Replacer 0 freeL . boundL <$> c) (Replacer 0 freeR . boundR <$> t) . getScope where
+instantiateLR :: These Coterm Term -> (Scope -> Command)
+instantiateLR ct = replaceCommand (bimap (Replacer 0 freeL . boundL) (Replacer 0 freeR . boundR) ct) . getScope where
   freeR _ name = Var   (Free (q name))
   freeL _ name = Covar (Free (q name))
   boundR t outer inner
@@ -114,45 +114,58 @@ free' Replacer{ outer, free } = free outer
 bound' :: Replacer t -> Index -> t
 bound' Replacer{ outer, bound } = bound outer
 
-replaceTerm :: Maybe (Replacer Coterm) -> Maybe (Replacer Term) -> (Term -> Term)
-replaceTerm l r within = case within of
-  Var (Free (Nil:|>n)) -> maybe (const within) free' r n
+replaceTerm :: These (Replacer Coterm) (Replacer Term) -> (Term -> Term)
+replaceTerm lr within = case within of
+  Var (Free (Nil:|>n)) -> that (const within) free' lr n
   Var (Free _)         -> within
-  Var (Bound inner)    -> maybe (const within) bound' r inner
-  MuR (Scope b)        -> MuR (Scope (replaceCommand (l & _Just.outer_ %~ succ) r b))
-  LamR (Scope b)       -> LamR (Scope (replaceCommand (l & _Just.outer_ %~ succ) (r & _Just.outer_ %~ succ) b))
-  SumR i a             -> SumR i (replaceTerm l r a)
-  BottomR (Scope b)    -> BottomR (Scope (replaceCommand l r b))
+  Var (Bound inner)    -> that (const within) bound' lr inner
+  MuR (Scope b)        -> MuR (Scope (replaceCommand (lr & _This.outer_ %~ succ) b))
+  LamR (Scope b)       -> LamR (Scope (replaceCommand (lr & _This.outer_ %~ succ & _That.outer_ %~ succ) b))
+  SumR i a             -> SumR i (replaceTerm lr a)
+  BottomR (Scope b)    -> BottomR (Scope (replaceCommand lr b))
   UnitR                -> within
-  PrdR a b             -> PrdR (replaceTerm l r a) (replaceTerm l r b)
+  PrdR a b             -> PrdR (replaceTerm lr a) (replaceTerm lr b)
   StringR _            -> within
+  where
+  that :: c -> (b -> c) -> These a b -> c
+  that d f = these (const d) f (const f)
 
-replaceCoterm :: Maybe (Replacer Coterm) -> Maybe (Replacer Term) -> (Coterm -> Coterm)
-replaceCoterm l r within = case within of
-  Covar (Free (Nil:|>n)) -> maybe (const within) free' l n
+replaceCoterm :: These (Replacer Coterm) (Replacer Term) -> (Coterm -> Coterm)
+replaceCoterm lr within = case within of
+  Covar (Free (Nil:|>n)) -> this (const within) free' lr n
   Covar (Free _)         -> within
-  Covar (Bound inner)    -> maybe (const within) bound' l inner
-  MuL (Scope b)          -> MuL (Scope (replaceCommand l (r & _Just.outer_ %~ succ) b))
-  LamL a k               -> LamL (replaceTerm l r a) (replaceCoterm l r k)
-  SumL cs                -> SumL (map (replaceCoterm l r) cs)
+  Covar (Bound inner)    -> this (const within) bound' lr inner
+  MuL (Scope b)          -> MuL (Scope (replaceCommand (lr & _That.outer_ %~ succ) b))
+  LamL a k               -> LamL (replaceTerm lr a) (replaceCoterm lr k)
+  SumL cs                -> SumL (map (replaceCoterm lr) cs)
   UnitL                  -> within
-  PrdL1 k                -> PrdL1 (replaceCoterm l r k)
-  PrdL2 k                -> PrdL2 (replaceCoterm l r k)
+  PrdL1 k                -> PrdL1 (replaceCoterm lr k)
+  PrdL2 k                -> PrdL2 (replaceCoterm lr k)
+  where
+  this :: c -> (a -> c) -> These a b -> c
+  this d f = these f (const d) (const . f)
 
-replaceCommand :: Maybe (Replacer Coterm) -> Maybe (Replacer Term) -> (Command -> Command)
-replaceCommand l r = \case
-  t :|: c         -> replaceTerm l r t :|: replaceCoterm l r c
-  Let t (Scope b) -> Let (replaceTerm l r t) (Scope (replaceCommand l (r & _Just.outer_ %~ succ) b))
+replaceCommand :: These (Replacer Coterm) (Replacer Term) -> (Command -> Command)
+replaceCommand lr = \case
+  t :|: c         -> replaceTerm lr t :|: replaceCoterm lr c
+  Let t (Scope b) -> Let (replaceTerm lr t) (Scope (replaceCommand (lr & _That.outer_ %~ succ) b))
+
+
+_This :: Prism' (These a b) a
+_This = prism' This (these Just (const Nothing) (const (const Nothing)))
+
+_That :: Prism' (These a b) b
+_That = prism' That (these (const Nothing) Just (const (const Nothing)))
 
 
 -- Smart constructors
 
 muR :: Name -> Command -> Term
-muR name body = MuR (abstractLR (Just name) Nothing body)
+muR name body = MuR (abstractLR (This name) body)
 
 lamR :: Name -> Name -> Command -> Term
-lamR v k body = LamR (abstractLR (Just v) (Just k) body)
+lamR v k body = LamR (abstractLR (These v k) body)
 
 
 let' :: Name -> Term -> Command -> Command
-let' name value body = Let value (abstractLR Nothing (Just name) body)
+let' name value body = Let value (abstractLR (That name) body)
