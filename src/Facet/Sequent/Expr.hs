@@ -16,6 +16,7 @@ module Facet.Sequent.Expr
   -- * Smart constructors
 , muR
 , lamR
+, lamR'
 , let'
 ) where
 
@@ -165,6 +166,9 @@ muR name body = MuR (abstractLR (This name) body)
 
 lamR :: Name -> Name -> Command -> Term
 lamR v k body = LamR (abstractLR (These v k) body)
+
+lamR' :: Name -> Name -> Term -> Term
+lamR' var covar body = lamR var covar (body :|: Covar (Free (q covar)))
 
 
 let' :: Name -> Term -> Command -> Command
