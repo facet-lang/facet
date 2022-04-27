@@ -81,11 +81,11 @@ abstractLR c t = Scope . replaceCommand (Replacer 0 . freeL <$> c <*> pure bound
   boundR _ inner = Var (Bound inner)
   boundL _ inner = Covar (Bound inner)
 
-instantiateL :: Maybe Coterm ->  (Scope -> Command)
-instantiateL c = instantiateLR c Nothing
+instantiateL :: Coterm ->  (Scope -> Command)
+instantiateL c = instantiateLR (Just c) Nothing
 
-instantiateR :: Maybe Term   -> (Scope -> Command)
-instantiateR t = instantiateLR Nothing t
+instantiateR :: Term   -> (Scope -> Command)
+instantiateR t = instantiateLR Nothing (Just t)
 
 instantiateLR :: Maybe Coterm -> Maybe Term -> (Scope -> Command)
 instantiateLR Nothing Nothing = getScope
