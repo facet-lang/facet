@@ -177,15 +177,15 @@ body_ :: Lens (Clause a) (Clause b) a b
 body_ = lens body (\ c body -> c{ body })
 
 
-partitionBy :: [Clause a] -> Scope.Scope Type -> Maybe (Col.Column [Clause a])
+partitionBy :: Has Empty sig m => [Clause a] -> Scope.Scope Type -> m (Col.Column [Clause a])
 partitionBy clauses ctors = fold <$> for clauses (\case
   Clause (PVal p:ps) b -> case p of
     PWildcard       -> pure (Col.fromList ([Clause (PVal PWildcard:ps) b] <$ view Scope.toList_ ctors))
     PVar n          -> pure (Col.fromList ([Clause (PVal (PVar n) :ps) b] <$ view Scope.toList_ ctors))
     PCon (_:|>n) fs -> case Scope.lookupIndex n ctors of
-      Nothing -> Nothing
+      Nothing -> empty
       Just ix -> pure (Col.singleton ix [Clause (map PVal fs <> ps) b])
-  _ -> Nothing)
+  _ -> empty)
 
 
 -- Assertions
