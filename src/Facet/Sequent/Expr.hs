@@ -57,7 +57,7 @@ data Coterm
 
 data Command
   = Term :|: Coterm
-  | Let Term Command
+  | Let Term Scope
 
 
 -- Scopes
@@ -140,8 +140,8 @@ replaceCoterm l r within = case within of
 
 replaceCommand :: Maybe (Replacer Coterm) -> Maybe (Replacer Term) -> (Command -> Command)
 replaceCommand l r = \case
-  t :|: c -> replaceTerm l r t :|: replaceCoterm l r c
-  Let t b -> Let (replaceTerm l r t) (replaceCommand l (r & _Just.outer_ %~ succ) b)
+  t :|: c         -> replaceTerm l r t :|: replaceCoterm l r c
+  Let t (Scope b) -> Let (replaceTerm l r t) (Scope (replaceCommand l (r & _Just.outer_ %~ succ) b))
 
 
 -- Smart constructors
