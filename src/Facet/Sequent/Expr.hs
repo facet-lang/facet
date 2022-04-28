@@ -30,7 +30,7 @@ import Facet.Snoc.NonEmpty
 import Facet.Syntax
 import Fresnel.Lens (Lens', lens)
 import Fresnel.Prism
-import Fresnel.Setter ((%~))
+import Fresnel.Setter ((%~), (+~))
 
 -- Terms
 
@@ -133,7 +133,7 @@ replaceCoterm lr within = case within of
   MuL (Scope b)          -> MuL (Scope (replaceCommand (lr & _That.outer_ %~ succ) b))
   LamL a k               -> LamL (replaceTerm lr a) (replaceCoterm lr k)
   SumL cs                -> SumL (map (fmap (replaceCoterm lr)) cs)
-  PrdL i (Scope b)       -> PrdL i (Scope (replaceCommand lr b))
+  PrdL i (Scope b)       -> PrdL i (Scope (replaceCommand (lr & _This.outer_ +~ Index i) b))
   where
   this :: c -> (a -> c) -> These a b -> c
   this d f = these f (const d) (const . f)
