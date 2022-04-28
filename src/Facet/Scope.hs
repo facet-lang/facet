@@ -12,6 +12,7 @@ import           Data.List (findIndex)
 import qualified Data.Map as Map
 import           Facet.Name
 import           Facet.Syntax
+import           Fresnel.Getter (view)
 import           Fresnel.Iso
 import           Fresnel.Ixed
 import           Fresnel.Optional (optional')
@@ -24,7 +25,7 @@ instance Ixed (Scope a) where
   type IxValue (Scope a) = a
   ix n = optional' prj (\ (Scope ds) d' -> Scope (replace (\ (n' :=: _) -> (n' :=: d') <$ guard (n == n')) ds))
     where
-    prj = lookup n . map (\ (n :=: a) -> (n, a)) . decls
+    prj = lookup n . map (view pair_) . decls
     replace _ []     = []
     replace f (v:vs) = case f v of
       Nothing -> v:replace f vs
