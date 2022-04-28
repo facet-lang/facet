@@ -51,7 +51,7 @@ data Coterm
   = Covar (Var Index)
   | MuL Scope
   | LamL Term Coterm
-  | SumL [Coterm]
+  | SumL [Name :=: Coterm]
   | UnitL
   | PrdL1 Coterm
   | PrdL2 Coterm
@@ -138,7 +138,7 @@ replaceCoterm lr within = case within of
   Covar (Bound inner)    -> this (const within) bound' lr inner
   MuL (Scope b)          -> MuL (Scope (replaceCommand (lr & _That.outer_ %~ succ) b))
   LamL a k               -> LamL (replaceTerm lr a) (replaceCoterm lr k)
-  SumL cs                -> SumL (map (replaceCoterm lr) cs)
+  SumL cs                -> SumL (map (fmap (replaceCoterm lr)) cs)
   UnitL                  -> within
   PrdL1 k                -> PrdL1 (replaceCoterm lr k)
   PrdL2 k                -> PrdL2 (replaceCoterm lr k)
