@@ -24,6 +24,7 @@ module Facet.Elab.Sequent
 , check
 ) where
 
+import           Control.Effect.Empty
 import           Control.Effect.Fresh
 import           Control.Effect.Reader
 import           Control.Effect.State
