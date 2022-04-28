@@ -50,8 +50,7 @@ data Coterm
   | MuL Scope
   | LamL Term Coterm
   | SumL [Name :=: Coterm]
-  | PrdL1 Coterm
-  | PrdL2 Coterm
+  | PrdL Scope
 
 
 -- Commands
@@ -134,8 +133,7 @@ replaceCoterm lr within = case within of
   MuL (Scope b)          -> MuL (Scope (replaceCommand (lr & _That.outer_ %~ succ) b))
   LamL a k               -> LamL (replaceTerm lr a) (replaceCoterm lr k)
   SumL cs                -> SumL (map (fmap (replaceCoterm lr)) cs)
-  PrdL1 k                -> PrdL1 (replaceCoterm lr k)
-  PrdL2 k                -> PrdL2 (replaceCoterm lr k)
+  PrdL (Scope b)         -> PrdL (Scope (replaceCommand lr b))
   where
   this :: c -> (a -> c) -> These a b -> c
   this d f = these f (const d) (const . f)
