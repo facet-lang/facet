@@ -38,7 +38,7 @@ data Term
   = Var (Var Index)
   | MuR Scope
   | LamR Scope
-  | SumR Int Term
+  | SumR Name Term
   | BottomR Scope
   | UnitR
   | PrdR Term Term
