@@ -39,7 +39,6 @@ data Term
   | MuR Scope
   | LamR Scope
   | SumR Name Term
-  | BottomR Scope
   | UnitR
   | PrdR Term Term
   | StringR Text
@@ -123,7 +122,6 @@ replaceTerm lr within = case within of
   MuR (Scope b)        -> MuR (Scope (replaceCommand (lr & _This.outer_ %~ succ) b))
   LamR (Scope b)       -> LamR (Scope (replaceCommand (lr & _This.outer_ %~ succ & _That.outer_ %~ succ) b))
   SumR i a             -> SumR i (replaceTerm lr a)
-  BottomR (Scope b)    -> BottomR (Scope (replaceCommand lr b))
   UnitR                -> within
   PrdR a b             -> PrdR (replaceTerm lr a) (replaceTerm lr b)
   StringR _            -> within
