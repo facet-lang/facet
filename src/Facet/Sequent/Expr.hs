@@ -40,7 +40,7 @@ data Term
   | LamR Scope
   | SumR Name Term
   | UnitR
-  | PrdR Term Term
+  | PrdR [Term]
   | StringR Text
 
 
@@ -123,7 +123,7 @@ replaceTerm lr within = case within of
   LamR (Scope b)       -> LamR (Scope (replaceCommand (lr & _This.outer_ %~ succ & _That.outer_ %~ succ) b))
   SumR i a             -> SumR i (replaceTerm lr a)
   UnitR                -> within
-  PrdR a b             -> PrdR (replaceTerm lr a) (replaceTerm lr b)
+  PrdR as              -> PrdR (map (replaceTerm lr) as)
   StringR _            -> within
   where
   that :: c -> (b -> c) -> These a b -> c
