@@ -39,7 +39,6 @@ data Term
   | MuR Scope
   | LamR Scope
   | SumR Name Term
-  | UnitR
   | PrdR [Term]
   | StringR Text
 
@@ -51,7 +50,6 @@ data Coterm
   | MuL Scope
   | LamL Term Coterm
   | SumL [Name :=: Coterm]
-  | UnitL
   | PrdL1 Coterm
   | PrdL2 Coterm
 
@@ -122,7 +120,6 @@ replaceTerm lr within = case within of
   MuR (Scope b)        -> MuR (Scope (replaceCommand (lr & _This.outer_ %~ succ) b))
   LamR (Scope b)       -> LamR (Scope (replaceCommand (lr & _This.outer_ %~ succ & _That.outer_ %~ succ) b))
   SumR i a             -> SumR i (replaceTerm lr a)
-  UnitR                -> within
   PrdR as              -> PrdR (map (replaceTerm lr) as)
   StringR _            -> within
   where
@@ -137,7 +134,6 @@ replaceCoterm lr within = case within of
   MuL (Scope b)          -> MuL (Scope (replaceCommand (lr & _That.outer_ %~ succ) b))
   LamL a k               -> LamL (replaceTerm lr a) (replaceCoterm lr k)
   SumL cs                -> SumL (map (fmap (replaceCoterm lr)) cs)
-  UnitL                  -> within
   PrdL1 k                -> PrdL1 (replaceCoterm lr k)
   PrdL2 k                -> PrdL2 (replaceCoterm lr k)
   where
