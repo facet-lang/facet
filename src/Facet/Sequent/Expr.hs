@@ -60,6 +60,8 @@ data Command
   = Term :|: Coterm
   | Let Term Scope
 
+infix 2 :|:
+
 
 -- Scopes
 
