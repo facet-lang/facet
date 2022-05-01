@@ -15,6 +15,7 @@ module Facet.Sequent.Expr
 , instantiateLR
   -- * Smart constructors
 , localR
+, globalR
 , muR
 , lamR
 , lamR'
@@ -159,6 +160,9 @@ _That = prism' That (these (const Nothing) Just (const (const Nothing)))
 
 localR :: Name -> Term
 localR = Var . Free . q
+
+globalR :: QName -> Term
+globalR = Var . Free
 
 muR :: Name -> Command -> Term
 muR name body = MuR (abstractLR (This name) body)
