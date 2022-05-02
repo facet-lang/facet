@@ -161,7 +161,7 @@ checkExprS expr = let ?callStack = popCallStack GHC.Stack.callStack in withSpanC
   where
   pattern (S.PVal (Ann _ _ p))                        = PVal (valPattern p)
   pattern (S.PEff (Ann _ _ (S.POp n fs (Ann _ _ k)))) = PEff (POp n (map (valPattern . out) fs) (valPattern k))
-  valPattern (S.PWildcard) = PWildcard
+  valPattern S.PWildcard   = PWildcard
   valPattern (S.PVar n)    = PVar n
   valPattern (S.PCon n fs) = PCon n (map (valPattern . out) fs)
 
