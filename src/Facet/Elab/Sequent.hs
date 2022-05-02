@@ -83,13 +83,13 @@ hole n = Check $ \ _T -> withFrozenCallStack $ throwError $ Hole n _T
 
 lamS
   :: (Has Fresh sig m, Has (Throw ErrReason) sig m)
-  => (Name -> Name -> Type <==: m SQ.Command)
+  => (Type <==: m SQ.Term -> Type <==: m SQ.Coterm -> Type <==: m SQ.Command)
   -> Type <==: m SQ.Term
 lamS b = Check $ \ _T -> do
   (_, _A, _B) <- assertTacitFunction _T
   v <- freshName "v"
   k <- freshName "k"
-  SQ.lamR v k <$> check (b v k ::: _B)
+  SQ.lamR v k <$> check (b (pure (pure (SQ.localR v))) (pure (pure (SQ.localL k))) ::: _B)
 
 stringS :: Applicative m => Text -> m (SQ.Term :==> Type)
 stringS s = pure $ SQ.StringR s :==> T.String
