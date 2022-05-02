@@ -169,7 +169,7 @@ checkLamS
   :: Has (Throw ErrReason) sig m
   => Type <==: [Clause (m SQ.Term)]
   -> Type <==: m SQ.Term
-checkLamS _ = Check (\ _T -> mismatchTypes (Exp (Left "unimplemented")) (Act _T))
+checkLamS _ = Check (mismatchTypes (Exp (Left "unimplemented")) . Act)
 
 
 data Clause a = Clause
