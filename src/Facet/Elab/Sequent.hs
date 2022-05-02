@@ -6,6 +6,7 @@ module Facet.Elab.Sequent
 , varS
   -- * Constructors
 , lamS
+, lamS'
 , stringS
   -- * Eliminators
 , appS
@@ -90,6 +91,12 @@ lamS b = Check $ \ _T -> do
   v <- freshName "v"
   k <- freshName "k"
   SQ.lamR v k <$> check (b (pure (pure (SQ.localR v))) (pure (pure (SQ.localL k))) ::: _B)
+
+lamS'
+  :: (Has Fresh sig m, Has (Throw ErrReason) sig m)
+  => (Type <==: m SQ.Term -> Type <==: m SQ.Term)
+  -> Type <==: m SQ.Term
+lamS' b = lamS (\ v k -> b v >< k)
 
 stringS :: Applicative m => Text -> m (SQ.Term :==> Type)
 stringS s = pure $ SQ.StringR s :==> T.String
