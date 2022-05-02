@@ -63,7 +63,7 @@ import           GHC.Stack (HasCallStack, callStack, popCallStack, withFrozenCal
 -- FIXME: we’re instantiating when inspecting types in the REPL.
 globalS :: Has (State (Subst Type)) sig m => QName ::: Type -> m (SQ.Term :==> Type)
 globalS (q ::: _T) = do
-  let v = SQ.Var (Free q)
+  let v = SQ.globalR q
   (\ (v ::: _T) -> v :==> _T) <$> instantiate const (v ::: _T)
 
 -- FIXME: do we need to instantiate here to deal with rank-n applications?
