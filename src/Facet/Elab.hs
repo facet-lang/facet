@@ -157,7 +157,7 @@ lookupInSig (m :|> n) mod graph = foldMapC $ foldMapC (\ (Interface q@(m':|>_) _
 (|-) :: Has (Reader ElabContext) sig m => Name :==> Type -> m a -> m a
 p |- b = locally context_ (|> p) b
 
-infix 1 |-
+infixr 1 |-
 
 (||-) :: Has (Reader ElabContext) sig m => Name :==> Kind -> m a -> m a
 k ||- b = locally typeContext_ (TypeContext.|> k) b
