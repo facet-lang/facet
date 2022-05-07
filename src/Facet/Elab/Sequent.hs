@@ -222,6 +222,7 @@ patternBody scrutinees clauses = Check $ \ _T -> case scrutinees of
 
       check (switch (pure (SQ.localR s :==> _A)) >< case' groups ::: _T)
 
+    -- FIXME: what should effect patterns elaborate to?
     _                 -> check (patternBody scrutinees' (clauses >>= \case
       Clause (PVal PWildcard:ps) b -> [Clause ps b]
       Clause (PVal (PVar n) :ps) b -> [Clause ps (fmap (n :==> _A |-) b)]
