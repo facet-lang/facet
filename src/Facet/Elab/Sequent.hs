@@ -18,19 +18,21 @@ module Facet.Elab.Sequent
 , Clause(..)
 , patterns_
 , body_
-, partitionBy
+, patternBody
+-- , partitionBy
   -- * Assertions
 , assertTacitFunction
   -- * Judgements
 , check
 ) where
 
+import           Control.Applicative (liftA2)
 import           Control.Effect.Empty
 import           Control.Effect.Fresh
 import           Control.Effect.Reader
 import           Control.Effect.State
 import           Control.Effect.Throw
-import           Data.Foldable (fold)
+import           Data.Maybe (fromMaybe, mapMaybe)
 import           Data.Text (Text)
 import           Data.Traversable (for)
 import           Facet.Effect.Write
@@ -44,17 +46,15 @@ import           Facet.Lens as Lens (views)
 import           Facet.Module
 import           Facet.Name
 import           Facet.Pattern
-import qualified Facet.Pattern.Column as Col
 import qualified Facet.Scope as Scope
-import           Facet.Sequent.Expr as SQ
-import           Facet.Snoc.NonEmpty
+import qualified Facet.Sequent.Expr as SQ
 import           Facet.Subst
 import qualified Facet.Surface.Term.Expr as S
 import qualified Facet.Surface.Type.Expr as S
 import           Facet.Syntax as S hiding (context_)
-import           Facet.Type.Norm as T
+import           Facet.Type.Norm as T hiding (($$))
 import           Facet.Unify
-import           Fresnel.Getter (view)
+import           Fresnel.Fold ((^?))
 import           Fresnel.Lens (Lens, Lens', lens)
 import           GHC.Stack (HasCallStack, callStack, popCallStack, withFrozenCallStack)
 
@@ -185,15 +185,59 @@ body_ :: Lens (Clause a) (Clause b) a b
 body_ = lens body (\ c body -> c{ body })
 
 
-partitionBy :: Has Empty sig m => [Clause a] -> Scope.Scope Type -> m (Col.Column [Clause a])
-partitionBy clauses ctors = fold <$> for clauses (\case
-  Clause (PVal p:ps) b -> case p of
-    PWildcard       -> pure (Col.fromList ([Clause (PVal PWildcard:ps) b] <$ view Scope.toList_ ctors))
-    PVar n          -> pure (Col.fromList ([Clause (PVal (PVar n) :ps) b] <$ view Scope.toList_ ctors))
-    PCon (_:|>n) fs -> case Scope.lookupIndex n ctors of
-      Nothing -> empty
-      Just ix -> pure (Col.singleton ix [Clause (map PVal fs <> ps) b])
-  _ -> empty)
+-- FIXME: try returning a coterm instead of a command
+patternBody
+  :: (Has Fresh sig m, Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason) sig m)
+  => [SQ.Term :==> Type]
+  -> [Clause (Type <==: m SQ.Command)]
+  -> Type <==: m SQ.Command
+patternBody scrutinees clauses = Check $ \ _T -> case scrutinees of
+  (s :==> _A):scrutinees' -> case _A of
+    Ne (Free qname) _ -> do
+      def <- resolveDef qname
+      let constructors = fromMaybe [] (def ^? (_DData . Scope.toList_)) -- FIXME: throw an error if we can't find the datatype
+
+          filterClauses name fieldTypes c = case c of
+            Clause (PVal PWildcard  :ps) b -> Just (Clause (padding <> ps) b)
+            Clause (PVal (PVar n)   :ps) b -> Just (Clause (padding <> ps) (fmap (n :==> _A |-) b))
+            Clause (PVal (PCon n fs):ps) b
+              | n == q name -> Just (Clause (map PVal fs <> ps) b)
+            _                              -> Nothing
+            where
+            padding = replicate (length fieldTypes) (PVal PWildcard)
+
+      groups <- for constructors (\ (name :=: _C) -> do
+        let fieldTypes = argumentTypes _C
+        prefix <- for fieldTypes (\ _T -> (:==> _T) . SQ.localR <$> freshName "x")
+        pure (name :=: muL (const (patternBody (prefix <> scrutinees') (mapMaybe (filterClauses name fieldTypes) clauses)))))
+
+      check (switch (pure (s :==> _A)) >< case' groups ::: _T)
+
+    _                 -> check (patternBody scrutinees' (clauses >>= \case
+      Clause (PVal PWildcard:ps) b -> [Clause ps b]
+      Clause (PVal (PVar n) :ps) b -> [Clause ps (fmap (n :==> _A |-) b)]
+      Clause _ _                   -> []) ::: _T)
+
+  [] -> check (body (head clauses) ::: _T) -- FIXME: throw an error if there aren't any clauses left
+
+
+muL :: (Has Fresh sig m, Has (Reader ElabContext) sig m) => (SQ.Term -> Type <==: m SQ.Command) -> Type <==: m SQ.Coterm
+muL body = Check $ \ _T -> do
+  x <- freshName "x"
+  SQ.muL x <$> (x :==> _T |- check (body (SQ.localR x) ::: _T))
+
+(><) :: Applicative m => Type <==: m SQ.Term -> Type <==: m SQ.Coterm -> Type <==: m SQ.Command
+t >< c = Check $ \ _T -> liftA2 (SQ.:|:) (check (t ::: _T)) (check (c ::: _T))
+
+infix 3 ><
+
+case' :: Has Fresh sig m => [Name :=: (Type <==: m SQ.Coterm)] -> Type <==: m SQ.Coterm
+case' cases = Check $ \ _T -> SQ.SumL <$> traverse (traverse (\ body -> check (body ::: _T))) cases
+
+
+argumentTypes :: Type -> [Type]
+argumentTypes (T.Arrow _ _A _B) = _A : argumentTypes _B
+argumentTypes _                 = []
 
 
 -- Assertions
