@@ -153,7 +153,7 @@ synthAs t _T = as (checkExprS t ::: do { _T :==> _K <- Type.synthType _T ; (:==>
 checkExprS :: (HasCallStack, Has Fresh sig m, Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (State (Subst Type)) sig m, Has (Throw ErrReason) sig m, Has (Write Warn) sig m) => S.Ann S.Expr -> Type <==: m SQ.Term
 checkExprS expr = let ?callStack = popCallStack GHC.Stack.callStack in withSpanC expr $ \case
   S.Hole n   -> hole n
-  S.Lam cs   -> checkLamS (Check (\ _T -> map (\ (S.Clause (S.Ann _ _ p) b) -> Clause [pattern p] (check (checkExprS b ::: _T))) cs))
+  S.Lam cs   -> checkLamS (map (\ (S.Clause (S.Ann _ _ p) b) -> Clause [pattern p] (checkExprS b)) cs)
   S.Var{}    -> switch (synthExprS expr)
   S.App{}    -> switch (synthExprS expr)
   S.As{}     -> switch (synthExprS expr)
@@ -166,10 +166,19 @@ checkExprS expr = let ?callStack = popCallStack GHC.Stack.callStack in withSpanC
   valPattern (S.PCon n fs) = PCon n (map (valPattern . out) fs)
 
 checkLamS
-  :: Has (Throw ErrReason) sig m
-  => Type <==: [Clause (m SQ.Term)]
+  :: (Has Fresh sig m, Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason) sig m)
+  => [Clause (Type <==: m SQ.Term)]
   -> Type <==: m SQ.Term
-checkLamS _ = Check (mismatchTypes (Exp (Left "unimplemented")) . Act)
+checkLamS clauses = Check (go id)
+  where
+  go scrutinees = \case
+    T.Arrow _ _A _B -> do
+      x <- freshName "x"
+      SQ.lamR' x <$> go (scrutinees . ((x :==> _A) :)) _B
+    _T              -> do
+      x <- freshName "x"
+      kx <- freshName "kx"
+      SQ.lamR x kx <$> check (patternBody (scrutinees []) (map (fmap (fmap (fmap (SQ.:|: SQ.localL kx)))) clauses) ::: _T)
 
 
 data Clause a = Clause
