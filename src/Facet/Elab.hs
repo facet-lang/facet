@@ -343,9 +343,7 @@ spans_ = lens spans (\ e spans -> e{ spans })
 -- Machinery
 
 elabWith :: (Subst Type -> a -> m b) -> ReaderC ElabContext (StateC (Subst Type) m) a -> m b
-elabWith k m = runState k mempty $ do
-  let ctx  = ElabContext{ context = Context.empty, typeContext = TypeContext.empty, sig = mempty, spans = Nil }
-  runReader ctx m
+elabWith k = runState k mempty . runReader ElabContext{ context = Context.empty, typeContext = TypeContext.empty, sig = mempty, spans = Nil }
 
 elabKind :: Applicative m => ReaderC ElabContext (StateC (Subst Type) m) Kind -> m Kind
 elabKind = elabWith (const pure)
