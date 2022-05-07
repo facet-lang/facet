@@ -188,7 +188,7 @@ body_ = lens body (\ c body -> c{ body })
 -- FIXME: try returning a coterm instead of a command
 patternBody
   :: (Has Fresh sig m, Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason) sig m)
-  => [SQ.Term :==> Type]
+  => [Name :==> Type]
   -> [Clause (Type <==: m SQ.Command)]
   -> Type <==: m SQ.Command
 patternBody scrutinees clauses = Check $ \ _T -> case scrutinees of
@@ -208,10 +208,10 @@ patternBody scrutinees clauses = Check $ \ _T -> case scrutinees of
 
       groups <- for constructors (\ (name :=: _C) -> do
         let fieldTypes = argumentTypes _C
-        prefix <- for fieldTypes (\ _T -> (:==> _T) . SQ.localR <$> freshName "x")
+        prefix <- for fieldTypes (\ _T -> (:==> _T) <$> freshName "x")
         pure (name :=: muL (const (patternBody (prefix <> scrutinees') (mapMaybe (filterClauses name fieldTypes) clauses)))))
 
-      check (switch (pure (s :==> _A)) >< case' groups ::: _T)
+      check (switch (pure (SQ.localR s :==> _A)) >< case' groups ::: _T)
 
     _                 -> check (patternBody scrutinees' (clauses >>= \case
       Clause (PVal PWildcard:ps) b -> [Clause ps b]
