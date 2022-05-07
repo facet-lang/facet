@@ -194,7 +194,6 @@ body_ :: Lens (Clause a) (Clause b) a b
 body_ = lens body (\ c body -> c{ body })
 
 
--- FIXME: try returning a coterm instead of a command
 patternBody
   :: (Has Fresh sig m, Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason) sig m)
   => [Name :==> Type]
