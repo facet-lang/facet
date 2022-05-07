@@ -176,7 +176,7 @@ data Clause a = Clause
   { patterns :: [Pattern Name]
   , body     :: a
   }
-  deriving (Show)
+  deriving (Functor, Show)
 
 patterns_ :: Lens' (Clause a) [Pattern Name]
 patterns_ = lens patterns (\ c patterns -> c{ patterns })
