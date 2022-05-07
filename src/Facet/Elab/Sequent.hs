@@ -247,7 +247,7 @@ t >< c = Check $ \ _T -> liftA2 (SQ.:|:) (check (t ::: _T)) (check (c ::: _T))
 
 infix 3 ><
 
-case' :: Has Fresh sig m => [Name :=: (Type <==: m SQ.Coterm)] -> Type <==: m SQ.Coterm
+case' :: Applicative m => [Name :=: (Type <==: m SQ.Coterm)] -> Type <==: m SQ.Coterm
 case' cases = Check $ \ _T -> SQ.SumL <$> traverse (traverse (\ body -> check (body ::: _T))) cases
 
 
