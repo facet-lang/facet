@@ -178,7 +178,7 @@ checkLamS clauses = Check (go id)
     _T              -> do
       x <- freshName "x"
       kx <- freshName "kx"
-      SQ.lamR x kx <$> check (patternBody (scrutinees []) (map (fmap (fmap (fmap (SQ.:|: SQ.localL kx)))) clauses) ::: _T)
+      SQ.lamR x kx <$> check (patternBody (scrutinees []) (map (fmap (>< localL kx)) clauses) ::: _T)
 
 
 data Clause a = Clause
@@ -229,6 +229,9 @@ patternBody scrutinees clauses = Check $ \ _T -> case scrutinees of
 
   [] -> check (body (head clauses) ::: _T) -- FIXME: throw an error if there aren't any clauses left
 
+
+localL :: Applicative m => Name -> Type <==: m SQ.Coterm
+localL = pure . pure . SQ.localL
 
 muL :: (Has Fresh sig m, Has (Reader ElabContext) sig m) => (SQ.Term -> Type <==: m SQ.Command) -> Type <==: m SQ.Coterm
 muL body = Check $ \ _T -> do
