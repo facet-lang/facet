@@ -220,7 +220,7 @@ patternBody scrutinees clauses = Check $ \ _T -> case scrutinees of
         prefix <- for fieldTypes (\ _T -> (:==> _T) <$> freshName "x")
         pure (name :=: muL (const (patternBody (prefix <> scrutinees') (mapMaybe (filterClauses name fieldTypes) clauses)))))
 
-      check (switch (pure (SQ.localR s :==> _A)) >< case' groups ::: _T)
+      check (localR s >< case' groups ::: _T)
 
     -- FIXME: what should effect patterns elaborate to?
     _                 -> check (patternBody scrutinees' (clauses >>= \case
@@ -238,6 +238,9 @@ muL :: (Has Fresh sig m, Has (Reader ElabContext) sig m) => (SQ.Term -> Type <==
 muL body = Check $ \ _T -> do
   x <- freshName "x"
   SQ.muL x <$> (x :==> _T |- check (body (SQ.localR x) ::: _T))
+
+localR :: Applicative m => Name -> Type <==: m SQ.Term
+localR = pure . pure . SQ.localR
 
 (><) :: Applicative m => Type <==: m SQ.Term -> Type <==: m SQ.Coterm -> Type <==: m SQ.Command
 t >< c = Check $ \ _T -> liftA2 (SQ.:|:) (check (t ::: _T)) (check (c ::: _T))
