@@ -32,7 +32,7 @@ import           Control.Applicative (liftA2)
 import           Control.Carrier.Fresh.Church
 import           Control.Carrier.Reader
 import           Control.Carrier.State.Church
-import           Control.Effect.Throw
+import           Control.Carrier.Throw.Either
 import           Data.Maybe (mapMaybe)
 import           Data.Text (Text)
 import           Data.Traversable (for)
@@ -276,10 +276,11 @@ check (m ::: _T) = m <==: _T
 
 -- Debugging
 
-runSQ :: Applicative m => Module -> ReaderC Graph (ReaderC Module (FreshC (ReaderC ElabContext (StateC (Subst Type) m)))) a -> m a
+runSQ :: Applicative m => Module -> ThrowC ErrReason (ReaderC Graph (ReaderC Module (FreshC (ReaderC ElabContext (StateC (Subst Type) m))))) a -> m (Either ErrReason a)
 runSQ m
   = runState (const pure) mempty
   . runReader ElabContext{ context = C.empty, typeContext = TC.empty, sig = mempty, spans = mempty }
   . runFresh (const pure) 0
   . runReader m
   . runReader (G.singleton Nothing m)
+  . runThrow
