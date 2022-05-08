@@ -15,7 +15,7 @@ import Data.Bitraversable
 -- Synth judgement
 
 data a :==> b = a :==> b
-  deriving (Foldable, Functor, Traversable)
+  deriving (Foldable, Functor, Show, Traversable)
 
 infixr 2 :==>
 
