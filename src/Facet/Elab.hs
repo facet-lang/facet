@@ -206,6 +206,7 @@ data ErrReason
   | Hole Name Type
   | Invariant String
   | MissingInterface (Interface Type)
+  deriving (Show)
 
 _FreeVariable :: Prism' ErrReason QName
 _FreeVariable = prism' FreeVariable (\case
@@ -225,6 +226,7 @@ _UnifyType = prism' (\ (r, x, a) -> UnifyType r x a) (\case
 data UnifyErrReason
   = Mismatch
   | Occurs Meta Type
+  deriving (Show)
 
 _Mismatch :: Prism' UnifyErrReason ()
 _Mismatch = prism' (const Mismatch) (\case
