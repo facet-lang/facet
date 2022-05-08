@@ -21,6 +21,7 @@ module Facet.Sequent.Expr
 , lamR
 , lamR'
 , localL
+, boundL
 , muL
 , let'
 ) where
@@ -181,6 +182,9 @@ lamR' name body = lamR name name (body :|: Covar (Free (q name)))
 
 localL :: Name -> Coterm
 localL = Covar . Free . q
+
+boundL :: Index -> Coterm
+boundL = Covar . Bound
 
 muL :: Name -> Command -> Coterm
 muL name body = MuL (abstractLR (That name) body)
