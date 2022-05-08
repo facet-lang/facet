@@ -174,7 +174,7 @@ muR :: Name -> Command -> Term
 muR name body = MuR (abstractLR (This name) body)
 
 lamR :: Name -> Name -> Command -> Term
-lamR v k body = LamR (abstractLR (These v k) body)
+lamR k v body = LamR (abstractLR (These k v) body)
 
 lamR' :: Name -> Term -> Term
 lamR' name body = lamR name name (body :|: Covar (Free (q name)))
