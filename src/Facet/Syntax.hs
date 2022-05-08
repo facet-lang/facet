@@ -173,10 +173,10 @@ splitr un = go id
 -- Assertion data
 
 newtype Exp a = Exp { getExp :: a }
-  deriving (Functor)
+  deriving (Functor, Show)
 
 newtype Act a = Act { getAct :: a }
-  deriving (Functor)
+  deriving (Functor, Show)
 
 
 -- Natural transformations
