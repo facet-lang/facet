@@ -93,7 +93,7 @@ lamS b = Check $ \ _T -> do
   (_, _A, _B) <- assertTacitFunction _T
   v <- freshName "v"
   k <- freshName "k"
-  SQ.lamR v k <$> check (b (pure (pure (SQ.freeR v))) (localL k) ::: _B)
+  SQ.lamR v k <$> check (b (pure (pure (SQ.freeR v))) (freeL k) ::: _B)
 
 lamS'
   :: (Has Fresh sig m, Has (Throw ErrReason) sig m)
@@ -181,7 +181,7 @@ checkLamS clauses = Check (go id)
     _T              -> do
       x <- freshName "x"
       kx <- freshName "kx"
-      SQ.lamR x kx <$> check (patternBody (scrutinees []) (map (fmap (>< localL kx)) clauses) ::: _T)
+      SQ.lamR x kx <$> check (patternBody (scrutinees []) (map (fmap (>< freeL kx)) clauses) ::: _T)
 
 
 data Clause a = Clause
@@ -225,7 +225,7 @@ patternBody scrutinees clauses = Check $ \ _T -> case scrutinees of
         prefix <- for fieldTypes (\ _T -> (:==> _T) <$> freshName "x")
         pure (name :=: muL (const (patternBody (prefix <> scrutinees') (mapMaybe (filterClauses name fieldTypes) clauses)))))
 
-      check (localR s >< case' groups ::: _T)
+      check (freeR s >< case' groups ::: _T)
 
     -- FIXME: what should effect patterns elaborate to?
     _                 -> check (patternBody scrutinees' (clauses >>= \case
@@ -236,16 +236,16 @@ patternBody scrutinees clauses = Check $ \ _T -> case scrutinees of
   [] -> check (body (head clauses) ::: _T) -- FIXME: throw an error if there aren't any clauses left
 
 
-localL :: Applicative m => Name -> Type <==: m SQ.Coterm
-localL = pure . pure . SQ.freeL
+freeL :: Applicative m => Name -> Type <==: m SQ.Coterm
+freeL = pure . pure . SQ.freeL
 
 muL :: (Has Fresh sig m, Has (Reader ElabContext) sig m) => (SQ.Term -> Type <==: m SQ.Command) -> Type <==: m SQ.Coterm
 muL body = Check $ \ _T -> do
   x <- freshName "x"
   SQ.muL x <$> (x :==> _T |- check (body (SQ.freeR x) ::: _T))
 
-localR :: Applicative m => Name -> Type <==: m SQ.Term
-localR = pure . pure . SQ.freeR
+freeR :: Applicative m => Name -> Type <==: m SQ.Term
+freeR = pure . pure . SQ.freeR
 
 (><) :: Applicative m => Type <==: m SQ.Term -> Type <==: m SQ.Coterm -> Type <==: m SQ.Command
 t >< c = Check $ \ _T -> liftA2 (SQ.:|:) (check (t ::: _T)) (check (c ::: _T))
