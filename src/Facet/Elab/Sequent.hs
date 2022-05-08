@@ -93,7 +93,7 @@ lamS b = Check $ \ _T -> do
   (_, _A, _B) <- assertTacitFunction _T
   v <- freshName "v"
   k <- freshName "k"
-  SQ.lamR v k <$> check (b (pure (pure (SQ.localR v))) (localL k) ::: _B)
+  SQ.lamR v k <$> check (b (pure (pure (SQ.freeR v))) (localL k) ::: _B)
 
 lamS'
   :: (Has Fresh sig m, Has (Throw ErrReason) sig m)
@@ -237,15 +237,15 @@ patternBody scrutinees clauses = Check $ \ _T -> case scrutinees of
 
 
 localL :: Applicative m => Name -> Type <==: m SQ.Coterm
-localL = pure . pure . SQ.localL
+localL = pure . pure . SQ.freeL
 
 muL :: (Has Fresh sig m, Has (Reader ElabContext) sig m) => (SQ.Term -> Type <==: m SQ.Command) -> Type <==: m SQ.Coterm
 muL body = Check $ \ _T -> do
   x <- freshName "x"
-  SQ.muL x <$> (x :==> _T |- check (body (SQ.localR x) ::: _T))
+  SQ.muL x <$> (x :==> _T |- check (body (SQ.freeR x) ::: _T))
 
 localR :: Applicative m => Name -> Type <==: m SQ.Term
-localR = pure . pure . SQ.localR
+localR = pure . pure . SQ.freeR
 
 (><) :: Applicative m => Type <==: m SQ.Term -> Type <==: m SQ.Coterm -> Type <==: m SQ.Command
 t >< c = Check $ \ _T -> liftA2 (SQ.:|:) (check (t ::: _T)) (check (c ::: _T))

@@ -14,13 +14,13 @@ module Facet.Sequent.Expr
 , instantiateR
 , instantiateLR
   -- * Smart constructors
-, localR
+, freeR
 , globalR
 , boundR
 , muR
 , lamR
 , lamR'
-, localL
+, freeL
 , boundL
 , muL
 , let'
@@ -161,8 +161,8 @@ _That = prism' That (these (const Nothing) Just (const (const Nothing)))
 
 -- Smart constructors
 
-localR :: Name -> Term
-localR = Var . Free . q
+freeR :: Name -> Term
+freeR = Var . Free . q
 
 globalR :: QName -> Term
 globalR = Var . Free
@@ -180,8 +180,8 @@ lamR' :: Name -> Term -> Term
 lamR' name body = lamR name name (body :|: Covar (Free (q name)))
 
 
-localL :: Name -> Coterm
-localL = Covar . Free . q
+freeL :: Name -> Coterm
+freeL = Covar . Free . q
 
 boundL :: Index -> Coterm
 boundL = Covar . Bound

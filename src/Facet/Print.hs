@@ -223,8 +223,8 @@ instance Printable SQ.Term where
     go env = \case
       SQ.Var (Free n)  -> qvar n
       SQ.Var (Bound n) -> fromMaybe (intro __ (toLeveled d n)) $ env Env.!? n
-      SQ.MuR b         -> pretty "µ" <> sqbinder d (\ p@(n :=: v) -> sqblock (v <+> dot <+> print opts (env |> p) (SQ.instantiateR (SQ.localR n) b)))
-      SQ.LamR b        -> pretty "λ" <> sqbinder d (\ x@(xn :=: xv) -> sqbinder (succ d) (\ k@(kn :=: kv) -> sqblock (xv <+> kv <+> dot <+> print opts (env |> x |> k) (SQ.instantiateLR (These (SQ.localL kn) (SQ.localR xn)) b))))
+      SQ.MuR b         -> pretty "µ" <> sqbinder d (\ p@(n :=: v) -> sqblock (v <+> dot <+> print opts (env |> p) (SQ.instantiateR (SQ.freeR n) b)))
+      SQ.LamR b        -> pretty "λ" <> sqbinder d (\ x@(xn :=: xv) -> sqbinder (succ d) (\ k@(kn :=: kv) -> sqblock (xv <+> kv <+> dot <+> print opts (env |> x |> k) (SQ.instantiateLR (These (SQ.freeL kn) (SQ.freeR xn)) b))))
       SQ.SumR n t      -> pretty n <+> print opts env t
       SQ.PrdR ts       -> tupled (map (print opts env) ts)
       SQ.StringR s     -> annotate Lit (pretty (show s))
@@ -238,7 +238,7 @@ instance Printable SQ.Coterm where
     go env = \case
       SQ.Covar (Free n)  -> qvar n
       SQ.Covar (Bound n) -> fromMaybe (intro __ (toLeveled d n)) $ env Env.!? n
-      SQ.MuL b           -> pretty "µ̃" <> sqbinder d (\ p@(n :=: v) -> sqblock (v <+> dot <+> print opts (env |> p) (SQ.instantiateL (SQ.localL n) b)))
+      SQ.MuL b           -> pretty "µ̃" <> sqbinder d (\ p@(n :=: v) -> sqblock (v <+> dot <+> print opts (env |> p) (SQ.instantiateL (SQ.freeL n) b)))
       SQ.LamL a k        -> print opts env a <> print opts env k
       SQ.SumL bs         -> pretty "case" <+> sqblock (encloseSep mempty mempty (pretty ", ") (map (\ (n :=: b) -> parens (pretty n) <+> dot <+> print opts env b) bs))
       SQ.PrdL i b        -> pretty 'π' <> subscript i <+> print opts env b
@@ -251,7 +251,7 @@ instance Printable SQ.Command where
     where
     go env = \case
       t SQ.:|: c -> angles (print opts env t <+> pretty '|' <+> print opts env c)
-      SQ.Let t b -> pretty "let" <+> sqbinder d (\ p@(n :=: v) -> sqblock (v <+> pretty '=' <+> print opts env t) <+> pretty "in" <+> print opts (env |> p) (SQ.instantiateR (SQ.localR n) b))
+      SQ.Let t b -> pretty "let" <+> sqbinder d (\ p@(n :=: v) -> sqblock (v <+> pretty '=' <+> print opts env t) <+> pretty "in" <+> print opts (env |> p) (SQ.instantiateR (SQ.freeR n) b))
       where
       d = level env
 
