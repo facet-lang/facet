@@ -16,6 +16,7 @@ module Facet.Sequent.Expr
   -- * Smart constructors
 , localR
 , globalR
+, boundR
 , muR
 , lamR
 , lamR'
@@ -164,6 +165,9 @@ localR = Var . Free . q
 
 globalR :: QName -> Term
 globalR = Var . Free
+
+boundR :: Index -> Term
+boundR = Var . Bound
 
 muR :: Name -> Command -> Term
 muR name body = MuR (abstractLR (This name) body)
