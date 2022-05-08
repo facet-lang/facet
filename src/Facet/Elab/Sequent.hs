@@ -24,23 +24,25 @@ module Facet.Elab.Sequent
 , assertTacitFunction
   -- * Judgements
 , check
+  -- * Debugging
+, runSQ
 ) where
 
 import           Control.Applicative (liftA2)
-import           Control.Effect.Empty
-import           Control.Effect.Fresh
-import           Control.Effect.Reader
-import           Control.Effect.State
+import           Control.Carrier.Fresh.Church
+import           Control.Carrier.Reader
+import           Control.Carrier.State.Church
 import           Control.Effect.Throw
 import           Data.Maybe (mapMaybe)
 import           Data.Text (Text)
 import           Data.Traversable (for)
+import qualified Facet.Context as C
 import           Facet.Effect.Write
 import           Facet.Elab
 import qualified Facet.Elab.Type as Type
 import           Facet.Functor.Check
 import           Facet.Functor.Synth
-import           Facet.Graph
+import           Facet.Graph as G
 import           Facet.Kind
 import           Facet.Lens as Lens (views)
 import           Facet.Module
@@ -53,6 +55,7 @@ import qualified Facet.Surface.Term.Expr as S
 import qualified Facet.Surface.Type.Expr as S
 import           Facet.Syntax as S hiding (context_)
 import           Facet.Type.Norm as T hiding (($$))
+import qualified Facet.TypeContext as TC
 import           Facet.Unify
 import           Fresnel.Fold ((^?))
 import           Fresnel.Lens (Lens, Lens', lens)
@@ -269,3 +272,14 @@ assertTacitFunction = assertTypesMatch _Arrow "_ -> _" -- FIXME: this binds non-
 
 check :: (Type <==: m a) ::: Type -> m a
 check (m ::: _T) = m <==: _T
+
+
+-- Debugging
+
+runSQ :: Applicative m => Module -> ReaderC Graph (ReaderC Module (FreshC (ReaderC ElabContext (StateC (Subst Type) m)))) a -> m a
+runSQ m
+  = runState (const pure) mempty
+  . runReader ElabContext{ context = C.empty, typeContext = TC.empty, sig = mempty, spans = mempty }
+  . runFresh (const pure) 0
+  . runReader m
+  . runReader (G.singleton Nothing m)
