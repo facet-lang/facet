@@ -26,8 +26,7 @@ module Facet.Sequent.Expr
 , let'
 ) where
 
-import Data.Bifunctor (bimap)
-import Data.Function ((&))
+import Data.Bifunctor (Bifunctor(..))
 import Data.String
 import Data.Text (Text)
 import Data.These
@@ -35,9 +34,6 @@ import Facet.Name
 import Facet.Snoc
 import Facet.Snoc.NonEmpty
 import Facet.Syntax
-import Fresnel.Lens (Lens', lens)
-import Fresnel.Prism
-import Fresnel.Setter ((%~), (+~))
 
 -- Terms
 
@@ -117,22 +113,23 @@ data Replacer t = Replacer
   , bound :: Index -> Index -> t
   }
 
-outer_ :: Lens' (Replacer t) Index
-outer_ = lens outer (\ Replacer{ free, bound } outer -> Replacer{ outer, free, bound })
-
 free' :: Replacer t -> Name -> t
 free' Replacer{ outer, free } = free outer
 
 bound' :: Replacer t -> Index -> t
 bound' Replacer{ outer, bound } = bound outer
 
+incr :: Replacer t -> Replacer t
+incr r@Replacer{ outer } = r{ outer = outer + 1}
+
+
 replaceTerm :: These (Replacer Coterm) (Replacer Term) -> (Term -> Term)
 replaceTerm lr within = case within of
   Var (Free (Nil:|>n)) -> that (const within) free' lr n
   Var (Free _)         -> within
   Var (Bound inner)    -> that (const within) bound' lr inner
-  MuR (Scope b)        -> MuR (Scope (replaceCommand (lr & _This.outer_ %~ succ) b))
-  LamR (Scope b)       -> LamR (Scope (replaceCommand (lr & _This.outer_ %~ succ & _That.outer_ %~ succ) b))
+  MuR (Scope b)        -> MuR (Scope (replaceCommand (first incr lr) b))
+  LamR (Scope b)       -> LamR (Scope (replaceCommand (bimap incr incr lr) b))
   SumR i a             -> SumR i (replaceTerm lr a)
   PrdR as              -> PrdR (map (replaceTerm lr) as)
   StringR _            -> within
@@ -145,10 +142,10 @@ replaceCoterm lr within = case within of
   Covar (Free (Nil:|>n)) -> this (const within) free' lr n
   Covar (Free _)         -> within
   Covar (Bound inner)    -> this (const within) bound' lr inner
-  MuL (Scope b)          -> MuL (Scope (replaceCommand (lr & _That.outer_ %~ succ) b))
+  MuL (Scope b)          -> MuL (Scope (replaceCommand (second incr lr) b))
   LamL a k               -> LamL (replaceTerm lr a) (replaceCoterm lr k)
   SumL cs                -> SumL (map (fmap (replaceCoterm lr)) cs)
-  PrdL i b               -> PrdL i (replaceCoterm (lr & _This.outer_ +~ Index i) b)
+  PrdL i b               -> PrdL i (replaceCoterm lr b)
   where
   this :: c -> (a -> c) -> These a b -> c
   this d f = these f (const d) (const . f)
@@ -156,14 +153,7 @@ replaceCoterm lr within = case within of
 replaceCommand :: These (Replacer Coterm) (Replacer Term) -> (Command -> Command)
 replaceCommand lr = \case
   t :|: c         -> replaceTerm lr t :|: replaceCoterm lr c
-  Let t (Scope b) -> Let (replaceTerm lr t) (Scope (replaceCommand (lr & _That.outer_ %~ succ) b))
-
-
-_This :: Prism' (These a b) a
-_This = prism' This (these Just (const Nothing) (const (const Nothing)))
-
-_That :: Prism' (These a b) b
-_That = prism' That (these (const Nothing) Just (const (const Nothing)))
+  Let t (Scope b) -> Let (replaceTerm lr t) (Scope (replaceCommand (second incr lr) b))
 
 
 -- Smart constructors
