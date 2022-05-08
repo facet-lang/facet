@@ -44,6 +44,7 @@ data Term
   | SumR Name Term
   | PrdR [Term]
   | StringR Text
+  deriving (Show)
 
 instance IsString Term where
   fromString = freeR . fromString
@@ -57,6 +58,7 @@ data Coterm
   | LamL Term Coterm
   | SumL [Name :=: Coterm]
   | PrdL Int Coterm
+  deriving (Show)
 
 instance IsString Coterm where
   fromString = freeL . fromString
@@ -67,6 +69,7 @@ instance IsString Coterm where
 data Command
   = Term :|: Coterm
   | Let Term Scope
+  deriving (Show)
 
 infix 2 :|:
 
@@ -74,6 +77,7 @@ infix 2 :|:
 -- Scopes
 
 newtype Scope = Scope { getScope :: Command }
+  deriving (Show)
 
 abstractL, abstractR :: Name -> (Command -> Scope)
 abstractL c = abstractLR (This c)
