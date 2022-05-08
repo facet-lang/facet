@@ -201,7 +201,7 @@ data ErrReason
   -- FIXME: add source references for the imports, definition sites, and any re-exports.
   | AmbiguousName QName
   | CouldNotSynthesize
-  | UnifyType UnifyErrReason (Exp (Either String Type)) (Act Type)
+  | UnifyType UnifyErrReason (Exp (Either String Type)) (Act (Either String Type))
   | UnifyKind (Exp (Either String Kind)) (Act Kind)
   | Hole Name Type
   | Invariant String
@@ -217,7 +217,7 @@ _AmbiguousName = prism' AmbiguousName (\case
   AmbiguousName n -> Just n
   _               -> Nothing)
 
-_UnifyType :: Prism' ErrReason (UnifyErrReason, Exp (Either String Type), Act Type)
+_UnifyType :: Prism' ErrReason (UnifyErrReason, Exp (Either String Type), Act (Either String Type))
 _UnifyType = prism' (\ (r, x, a) -> UnifyType r x a) (\case
   UnifyType r x a -> Just (r, x, a)
   _               -> Nothing)
@@ -242,7 +242,7 @@ applySubst subst r = case r of
   AmbiguousName{}      -> r
   CouldNotSynthesize{} -> r
   -- NB: not substituting in @r@ because we want to retain the cyclic occurrence (and finitely)
-  UnifyType r exp act  -> UnifyType r (fmap roundtrip <$> exp) (roundtrip <$> act)
+  UnifyType r exp act  -> UnifyType r (fmap roundtrip <$> exp) (fmap roundtrip <$> act)
   UnifyKind{}          -> r
   Hole n t             -> Hole n (roundtrip t)
   Invariant{}          -> r
@@ -251,7 +251,7 @@ applySubst subst r = case r of
   roundtrip = apply subst Nil
 
 
-mismatchTypes :: Has (Throw ErrReason) sig m => Exp (Either String Type) -> Act Type -> m a
+mismatchTypes :: Has (Throw ErrReason) sig m => Exp (Either String Type) -> Act (Either String Type) -> m a
 mismatchTypes exp act = withFrozenCallStack $ throwError $ UnifyType Mismatch exp act
 
 mismatchKinds :: Has (Throw ErrReason) sig m => Exp (Either String Kind) -> Act Kind -> m a
@@ -312,7 +312,7 @@ assertMatch :: Applicative m => (Exp (Either String b) -> Act s -> m a) -> Prism
 assertMatch mismatch pat exp _T = maybe (mismatch (Exp (Left exp)) (Act _T)) pure (_T ^? pat)
 
 assertTypesMatch :: Has (Throw ErrReason) sig m => Prism' Type a -> String -> Type -> m a
-assertTypesMatch pat exp _T = maybe (mismatchTypes (Exp (Left exp)) (Act _T)) pure (_T ^? pat)
+assertTypesMatch pat exp _T = maybe (mismatchTypes (Exp (Left exp)) (Act (Right _T))) pure (_T ^? pat)
 
 assertFunction :: Has (Throw ErrReason) sig m => Type -> m (Maybe Name, Type, Type)
 assertFunction = assertTypesMatch _Arrow "_ -> _"

@@ -37,7 +37,7 @@ unify :: (HasCallStack, Has (Reader ElabContext) sig m, Has (Throw ErrReason) si
 unify t1 t2 = runUnify t1 t2 (runState (const pure) (mempty :: Subst Type) (unifyType (getExp t1) (getAct t2)))
 
 runUnify :: Has (Throw ErrReason) sig m => Exp Type -> Act Type -> ThrowC ErrReason (WithCallStack UnifyErrReason) m a -> m a
-runUnify t1 t2 = runThrow (withCallStack (\ r -> throwError (UnifyType r (Right <$> t1) t2)))
+runUnify t1 t2 = runThrow (withCallStack (\ r -> throwError (UnifyType r (Right <$> t1) (Right <$> t2))))
 
 runUnifyMaybe :: Applicative m => ErrorC (WithCallStack UnifyErrReason) m a -> m (Maybe a)
 runUnifyMaybe = runError (const (pure Nothing)) (pure . Just)
