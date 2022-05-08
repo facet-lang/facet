@@ -62,6 +62,9 @@ data Coterm
   | SumL [Name :=: Coterm]
   | PrdL Int Coterm
 
+instance IsString Coterm where
+  fromString = freeL . fromString
+
 
 -- Commands
 
