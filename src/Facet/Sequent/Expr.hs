@@ -28,6 +28,7 @@ module Facet.Sequent.Expr
 
 import Data.Bifunctor (bimap)
 import Data.Function ((&))
+import Data.String
 import Data.Text (Text)
 import Data.These
 import Facet.Name
@@ -47,6 +48,9 @@ data Term
   | SumR Name Term
   | PrdR [Term]
   | StringR Text
+
+instance IsString Term where
+  fromString = freeR . fromString
 
 
 -- Coterms
