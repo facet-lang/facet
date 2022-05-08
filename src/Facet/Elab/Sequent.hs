@@ -32,7 +32,7 @@ import           Control.Effect.Fresh
 import           Control.Effect.Reader
 import           Control.Effect.State
 import           Control.Effect.Throw
-import           Data.Maybe (fromMaybe, mapMaybe)
+import           Data.Maybe (mapMaybe)
 import           Data.Text (Text)
 import           Data.Traversable (for)
 import           Facet.Effect.Write
@@ -203,9 +203,12 @@ patternBody scrutinees clauses = Check $ \ _T -> case scrutinees of
   (s :==> _A):scrutinees' -> case _A of
     Ne (Free qname) _ -> do
       def <- resolveDef qname
-      let constructors = fromMaybe [] (def ^? (_DData . Scope.toList_)) -- FIXME: throw an error if we can't find the datatype
-
-          filterClauses name fieldTypes c = case c of
+      constructors <- maybe (mismatchTypes (Exp (Left "datatype")) (Act (Left (case def of
+        DTerm{}                   -> "term"
+        DSubmodule SData{} _      -> "datatype"
+        DSubmodule SInterface{} _ -> "interface"
+        DSubmodule SModule{} _    -> "module")))) pure (def ^? (_DData . Scope.toList_))
+      let filterClauses name fieldTypes c = case c of
             Clause (PVal PWildcard  :ps) b -> Just (Clause (padding <> ps) b)
             Clause (PVal (PVar n)   :ps) b -> Just (Clause (padding <> ps) (fmap (n :==> _A |-) b))
             Clause (PVal (PCon n fs):ps) b
