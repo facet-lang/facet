@@ -11,6 +11,7 @@ module Facet.Elab.Sequent
   -- * Eliminators
 , appS
   -- * General combinators
+, switch
 , freshName
   -- * Elaboration
 , synthExprS
