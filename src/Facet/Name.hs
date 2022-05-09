@@ -8,6 +8,7 @@ module Facet.Name
 , Meta(..)
 , __
 , QName
+, (//)
 , q
 , prettyQName
 , Name(..)
@@ -75,6 +76,11 @@ __ = T T.empty
 
 -- | Qualified names, consisting of a module name and declaration name.
 type QName = NonEmpty Name
+
+(//) :: QName -> Name -> QName
+(//) = (|>)
+
+infixl 5 //
 
 q :: Name -> QName
 q = (Nil :|>)
