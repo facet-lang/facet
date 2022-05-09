@@ -177,12 +177,13 @@ checkLamS
   :: (Has Fresh sig m, Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason) sig m)
   => [Clause (Type <==: m SQ.Term)]
   -> Type <==: m SQ.Term
-checkLamS clauses = Check (go id)
+checkLamS clauses = go id
   where
-  go scrutinees = \case
+  go scrutinees = Check $ \case
     T.Arrow _ _A _B -> do
       x <- freshName "x"
-      SQ.lamR' x <$> go (scrutinees . ((x :==> _A) :)) _B
+      kx <- freshName "kx"
+      SQ.lamR kx x <$> check (go (scrutinees . ((x :==> _A) :)) >< freeL kx ::: _B)
     _T              -> do
       x <- freshName "x"
       kx <- freshName "kx"
