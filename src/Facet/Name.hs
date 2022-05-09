@@ -141,7 +141,10 @@ data Op
   | Postfix Text
   | Infix   Text
   | Outfix Text Text
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord)
+
+instance Show Op where
+  showsPrec _ = formatOp (\ a b -> a . showChar ' ' . b) (showString . unpack) (showChar '_')
 
 formatOp :: (a -> a -> a) -> (Text -> a) -> a -> Op -> a
 formatOp (<+>) pretty place = \case
