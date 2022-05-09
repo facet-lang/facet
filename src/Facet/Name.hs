@@ -10,6 +10,7 @@ module Facet.Name
 , QName
 , (//)
 , q
+, qlast
 , prettyQName
 , Name(..)
 , Assoc(..)
@@ -84,6 +85,9 @@ infixl 5 //
 
 q :: Name -> QName
 q = (Nil :|>)
+
+qlast :: QName -> Name
+qlast (_ :|> l) = l
 
 prettyQName :: Printer a => QName -> a
 prettyQName (ns:|>n) = foldr' (surround dot . pretty) (pretty n) ns
