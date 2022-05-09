@@ -43,7 +43,6 @@ import           Facet.Quote
 import qualified Facet.Scope as C
 import qualified Facet.Sequent.Expr as SQ
 import           Facet.Snoc
-import           Facet.Snoc.NonEmpty (NonEmpty(..))
 import           Facet.Style
 import           Facet.Syntax hiding (Ann(..))
 import qualified Facet.Term.Expr as C
@@ -128,7 +127,7 @@ intro  n = name lower n . getLevel
 tintro n = name upper n . getLevel
 
 qvar :: (P.Level p ~ Precedence, PrecedencePrinter p) => QName -> p
-qvar (_ :|> n) = setPrec Var (pretty n)
+qvar = setPrec Var . pretty . qlast
 
 meta :: Meta -> Print
 meta (Meta m) = setPrec Var $ annotate (Name m) $ pretty '?' <> upper m
@@ -259,7 +258,7 @@ instance Printable SQ.Command where
 instance Printable C.Module where
   print opts env (C.Module mname is _ ds) = module_
     mname
-    (qvar (fromList [T (T.pack "Kernel")]:|>T (T.pack "Module")))
+    (qvar (fromList [T (T.pack "Kernel"), T (T.pack "Module")]))
     (map (\ (C.Import n) -> import' n) is)
     (map (def . fmap defBody) (view C.toList_ ds))
     where
