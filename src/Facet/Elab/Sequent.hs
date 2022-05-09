@@ -16,6 +16,7 @@ module Facet.Elab.Sequent
   -- * Elaboration
 , synthExprS
 , checkExprS
+, checkLamS
 , Clause(..)
 , patterns_
 , body_
