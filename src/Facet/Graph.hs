@@ -60,10 +60,14 @@ lookupM :: Has (Choose :+: Empty) sig m => QName -> Graph -> m (Maybe FilePath, 
 lookupM n = maybe empty pure . Map.lookup n . getGraph
 
 lookupWith :: Has (Choose :+: Empty) sig m => (Name -> Module -> m res) -> Graph -> Module -> QName -> m res
-lookupWith lookup graph mod@Module{ name } (QName (m:|>n))
-  =   guard (m == toSnoc name || m == Nil) *> lookup n mod
-  <|> guard (m == Nil) *> foldMapC (maybe empty (lookup n) . snd) (getGraph graph)
-  <|> guard (m /= Nil) *> (lookupM (fromSnoc m) graph >>= maybe empty pure . snd >>= lookup n)
+lookupWith lookup graph mod@Module{ name } (QName (m:|>n)) = guards
+  [ (m == toSnoc name || m == Nil, lookup n mod)
+  , (m == Nil, foldMapC (maybe empty (lookup n) . snd) (getGraph graph))
+  , (m /= Nil, lookupM (fromSnoc m) graph >>= maybe empty pure . snd >>= lookup n)
+  ]
+
+guards :: Has Empty sig m => [(Bool, m a)] -> m a
+guards cases = foldr (\ (cond, alt) rest -> if cond then alt else rest) empty cases
 
 lookupQ :: Has (Choose :+: Empty) sig m => Graph -> Module -> QName -> m Def
 lookupQ = lookupWith (\ n m -> view def_ <$> (lookupDef n m))
