@@ -87,6 +87,7 @@ import qualified Facet.Type.Expr as TX
 import           Facet.Type.Norm as TN
 import qualified Facet.TypeContext as TypeContext
 import           Fresnel.Fold ((^?))
+import           Fresnel.Getter (view)
 import           Fresnel.Ixed (ix)
 import           Fresnel.Lens (Lens', lens)
 import           Fresnel.Prism (Prism', prism')
@@ -119,18 +120,19 @@ instantiate inst = go
 resolveWith
   :: (Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason) sig m)
   => (forall sig m . Has (Choose :+: Empty) sig m => Name -> Module -> m d)
+  -> (d -> QName)
   -> QName
   -> m d
-resolveWith lookup n = ask >>= \ graph -> asks (\ module' -> lookupWith lookup graph module' n) >>= \case
+resolveWith lookup toQName n = ask >>= \ graph -> asks (\ module' -> lookupWith lookup graph module' n) >>= \case
   []  -> freeVariable n
   [v] -> pure v
   _   -> ambiguousName n
 
 resolveC :: (Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason) sig m) => QName -> m (QName :=: Type)
-resolveC = resolveWith lookupConstructor
+resolveC = resolveWith lookupConstructor (view tm_)
 
 resolveDef :: (Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason) sig m) => QName -> m Def
-resolveDef = resolveWith lookupDef
+resolveDef = fmap (view def_) . resolveWith lookupDef (view tm_)
 
 lookupInContext :: Has (Choose :+: Empty) sig m => QName -> Context -> m (Index, Type)
 lookupInContext (QName (m :|> n))

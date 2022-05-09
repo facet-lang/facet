@@ -30,7 +30,9 @@ import           Facet.Module
 import           Facet.Name
 import           Facet.Snoc
 import           Facet.Snoc.NonEmpty (NonEmpty(..))
+import           Facet.Syntax (def_)
 import           Fresnel.At
+import           Fresnel.Getter (view)
 import           Fresnel.Iso
 import           Fresnel.Ixed
 
@@ -64,7 +66,7 @@ lookupWith lookup graph mod@Module{ name } (QName (m:|>n))
   <|> guard (m /= Nil) *> (lookupM (fromSnoc m) graph >>= maybe empty pure . snd >>= lookup n)
 
 lookupQ :: Has (Choose :+: Empty) sig m => Graph -> Module -> QName -> m Def
-lookupQ = lookupWith lookupDef
+lookupQ = lookupWith (\ n m -> view def_ <$> (lookupDef n m))
 
 
 -- FIXME: enrich this with source references for each
