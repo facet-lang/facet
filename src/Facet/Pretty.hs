@@ -15,6 +15,7 @@ module Facet.Pretty
 , upper
 , varFrom
 , subscript
+, subscriptWith
 , digits
   -- * Columnar layout
 , tabulate2
@@ -108,6 +109,13 @@ subscript :: Printer p => Int -> p
 subscript i = sign <> foldMap (pretty . (subscripts !!) . abs) (digits i)
   where
   sign | i < 0     = pretty "₋"
+       | otherwise = mempty
+  subscripts = ['₀'..'₉']
+
+subscriptWith :: (s -> s -> s) -> (Char -> s) -> s -> Int -> s
+subscriptWith (<>) pretty mempty i = sign <> foldr ((<>) . pretty . (subscripts !!) . abs) mempty (digits i)
+  where
+  sign | i < 0     = pretty '₋'
        | otherwise = mempty
   subscripts = ['₀'..'₉']
 
