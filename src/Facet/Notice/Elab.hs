@@ -1,6 +1,7 @@
 module Facet.Notice.Elab
 ( -- * Elaboration
   rethrowElabErrors
+, printErrReason
 , rethrowElabWarnings
 ) where
 
@@ -30,7 +31,7 @@ import           Silkscreen
 -- Elaboration
 
 rethrowElabErrors :: Applicative m => Options Print -> L.ThrowC (Notice (Doc Style)) Err m a -> m a
-rethrowElabErrors opts = L.runThrow (pure . rethrow)
+rethrowElabErrors opts = L.runThrow (pure . fmap getPrint . rethrow)
   where
   rethrow Err{ callStack, context, typeContext, reason, sig, subst } = Notice.Notice (Just Error) [] (printErrReason opts mempty reason)
     [ nest 2 (pretty "Context" <\> concatWith (<\>) ctx)
@@ -42,25 +43,25 @@ rethrowElabErrors opts = L.runThrow (pure . rethrow)
     where
     (_, printCtx, ctx) = foldl' combine (0, Env.empty, Nil) (Env.bindings (elems context))
     (_, _, _, tyCtx) = foldl' combineTyCtx (0, Nil, Env.empty, Nil) (getTypeContext typeContext)
-    subst' = map (\ (m :=: v) -> getPrint (Print.meta m <+> pretty '=' <+> maybe (pretty '?') (print opts printCtx) v)) (metas subst)
-    sig' = getPrint . print opts printCtx . fmap (apply subst Nil) <$> (interfaces =<< sig)
+    subst' = map (\ (m :=: v) -> Print.meta m <+> pretty '=' <+> maybe (pretty '?') (print opts printCtx) v) (metas subst)
+    sig' = print opts printCtx . fmap (apply subst Nil) <$> (interfaces =<< sig)
     combineTyCtx
       :: Printable k
-      => (Facet.Name.Level, Snoc (Name :=: Type), Env.Env Print, Snoc (Doc Style))
+      => (Facet.Name.Level, Snoc (Name :=: Type), Env.Env Print, Snoc Print)
       -> Name :==> k
-      -> (Facet.Name.Level, Snoc (Name :=: Type), Env.Env Print, Snoc (Doc Style))
+      -> (Facet.Name.Level, Snoc (Name :=: Type), Env.Env Print, Snoc Print)
     combineTyCtx (d, env, prints, ctx) (n :==> _K) =
       ( succ d
       , env :> (n :=: bound d)
       , prints Env.|> (n :=: intro n d)
-      , ctx :> getPrint (print opts prints (ann (intro n d ::: print opts prints _K))) )
+      , ctx :> print opts prints (ann (intro n d ::: print opts prints _K)) )
     combine (d, prints, ctx) (n :=: _T) =
       ( succ d
       , prints Env.|> (n :=: intro n d)
-      , ctx :> getPrint (print opts prints (n :=: ann (intro n d ::: print opts prints (apply subst Nil _T)))) )
+      , ctx :> print opts prints (n :=: ann (intro n d ::: print opts prints (apply subst Nil _T))) )
 
 
-printErrReason :: Options Print -> Env.Env Print -> ErrReason -> Doc Style
+printErrReason :: Options Print -> Env.Env Print -> ErrReason -> Print
 printErrReason opts ctx = group . \case
   FreeVariable n               -> fillSep [reflow "variable not in scope:", pretty n]
   AmbiguousName n ns           -> fillSep [reflow "ambiguous name", pretty n] <\> nest 2 (reflow "alternatives:" <\> unlines (map pretty ns))
@@ -71,24 +72,24 @@ printErrReason opts ctx = group . \case
     where
     reason = \case
       Mismatch   -> pretty "mismatch"
-      Occurs v t -> reflow "infinite type:" <+> getPrint (print opts ctx (metavar v)) <+> reflow "occurs in" <+> getPrint (print opts ctx t)
-    exp' = either reflow (getPrint . print opts ctx) exp
-    act' = either reflow (getPrint . print opts ctx) act
+      Occurs v t -> reflow "infinite type:" <+> print opts ctx (metavar v) <+> reflow "occurs in" <+> print opts ctx t
+    exp' = either reflow (print opts ctx) exp
+    act' = either reflow (print opts ctx) act
     -- line things up nicely for e.g. wrapped function types
     align = nest 2 . (flatAlt (line <> stimes (3 :: Int) space) mempty <>)
   UnifyKind (Exp exp) (Act act) -> pretty "mismatch"
     <> hardline <> pretty "expected:" <> align exp'
     <> hardline <> pretty "  actual:" <> align act'
     where
-    exp' = either reflow (getPrint . print opts ctx) exp
-    act' = getPrint (print opts ctx act)
+    exp' = either reflow (print opts ctx) exp
+    act' = print opts ctx act
     -- line things up nicely for e.g. wrapped function types
     align = nest 2 . (flatAlt (line <> stimes (3 :: Int) space) mempty <>)
   Hole n _T                    ->
-    let _T' = getPrint (print opts ctx _T)
+    let _T' = print opts ctx _T
     in fillSep [ reflow "found hole", pretty n, colon, _T' ]
   Invariant s -> reflow s
-  MissingInterface i -> reflow "could not find required interface" <+> getPrint (print opts ctx i)
+  MissingInterface i -> reflow "could not find required interface" <+> print opts ctx i
 
 
 rethrowElabWarnings :: L.WriteC (Notice (Doc Style)) Warn m a -> m a
