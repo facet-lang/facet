@@ -98,7 +98,7 @@ lamS b = Check $ \ _T -> do
   (_, _A, _B) <- assertTacitFunction _T
   v <- freshName "v"
   k <- freshName "k"
-  SQ.lamR v k <$> check (b (pure (pure (SQ.freeR v))) (freeL k) ::: _B)
+  SQ.lamR k v <$> check (b (pure (pure (SQ.freeR v))) (freeL k) ::: _B)
 
 lamS'
   :: (Has Fresh sig m, Has (Throw ErrReason) sig m)
