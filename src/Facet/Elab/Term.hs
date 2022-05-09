@@ -275,7 +275,7 @@ elabDataDef constructors = Check $ \ _K -> do
   mname <- Lens.view name_
   for constructors $ \ (S.Ann _ _ (n ::: t)) -> do
     c_T <- elabType $ runErr $ abstractType (Type.switch (synthType t) <==: KType) _K
-    con' <- elabTerm $ runErr $ check (abstractTerm (const (Con (mname |> n) . toList)) ::: c_T)
+    con' <- elabTerm $ runErr $ check (abstractTerm (const (Con (mname // n) . toList)) ::: c_T)
     pure $ n :=: con' ::: c_T
 
 elabInterfaceDef
