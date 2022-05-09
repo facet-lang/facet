@@ -164,7 +164,7 @@ varP :: Name -> Bind m (ValPattern (Name :==> Type))
 varP n = Bind $ \ _A k -> k (PVar (n :==> wrap _A))
   where
   wrap = \case
-    T.Comp sig _A -> T.Arrow Nothing (T.free (NE.FromList ["Data", "Unit"] |> T "Unit")) (T.Comp sig _A)
+    T.Comp sig _A -> T.Arrow Nothing (T.free (NE.FromList ["Data", "Unit", "Unit"])) (T.Comp sig _A)
     _T            -> _T
 
 conP :: (Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason) sig m) => QName -> [Bind m (ValPattern (Name :==> Type))] -> Bind m (ValPattern (Name :==> Type))
@@ -186,7 +186,7 @@ fieldsP = foldr cons nil
 allP :: Has (Throw ErrReason :+: Write Warn) sig m => Name -> Bind m (Pattern (Name :==> Type))
 allP n = Bind $ \ _A k -> do
   (sig, _T) <- assertComp _A
-  k (PVal (PVar (n :==> T.Arrow Nothing (T.free (NE.FromList ["Data", "Unit"] |> T "Unit")) (T.Comp sig _T))))
+  k (PVal (PVar (n :==> T.Arrow Nothing (T.free (NE.FromList ["Data", "Unit", "Unit"])) (T.Comp sig _T))))
 
 
 -- Expression elaboration
