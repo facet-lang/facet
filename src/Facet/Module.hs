@@ -28,7 +28,6 @@ import Data.Coerce
 import Facet.Kind
 import Facet.Name
 import Facet.Scope
-import Facet.Snoc.NonEmpty ((|>))
 import Facet.Syntax
 import Facet.Term.Expr
 import Facet.Type.Norm
@@ -75,11 +74,11 @@ foldMapC f = getChoosing #. foldMap (Choosing #. f)
 
 
 lookupConstructor :: Has (Choose :+: Empty) sig m => Name -> Module -> m (QName :=: Type)
-lookupConstructor n Module{ name, scope } = maybe empty (pure . (name |> n :=:)) (scope ^? toList_.folded.def_._DData.ix n)
+lookupConstructor n Module{ name, scope } = maybe empty (pure . (name // n :=:)) (scope ^? toList_.folded.def_._DData.ix n)
 
 -- | Look up effect operations.
 lookupOperation :: Has (Choose :+: Empty) sig m => Name -> Module -> m (QName :=: Type)
-lookupOperation n Module{ name, scope } = maybe empty (pure . (name |> n :=:)) (scope ^? toList_.folded.def_._DInterface.ix n)
+lookupOperation n Module{ name, scope } = maybe empty (pure . (name // n :=:)) (scope ^? toList_.folded.def_._DInterface.ix n)
 
 lookupDef :: Has Empty sig m => Name -> Module -> m Def
 lookupDef n = maybe empty pure . preview (scope_.ix n)
