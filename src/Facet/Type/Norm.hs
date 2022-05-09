@@ -6,9 +6,11 @@ module Facet.Type.Norm
 , _Arrow
 , _Ne
 , _Comp
+  -- ** Construction
 , bound
 , free
 , metavar
+, (-->)
 , unNeutral
 , unComp
 , occursIn
@@ -93,6 +95,12 @@ metavar = var . Bound . Left
 
 var :: Var (Either Meta Level) -> Type
 var v = Ne v Nil
+
+
+(-->) :: Type -> Type -> Type
+(-->) = Arrow Nothing
+
+infixr 1 -->
 
 
 unNeutral :: Has Empty sig m => Type -> m (Var (Either Meta Level), Snoc Type)
