@@ -16,6 +16,7 @@ import           Fresnel.Getter (view)
 import           Fresnel.Iso
 import           Fresnel.Ixed
 import           Fresnel.Optional (optional')
+import           GHC.Exts (IsList(..))
 
 newtype Scope a = Scope { decls :: [Name :=: a] }
   deriving (Functor, Monoid, Semigroup)
@@ -30,6 +31,11 @@ instance Ixed (Scope a) where
     replace f (v:vs) = case f v of
       Nothing -> v:replace f vs
       Just v' -> v':vs
+
+instance IsList (Scope a) where
+  type Item (Scope a) = Name :=: a
+  fromList = Scope
+  toList = decls
 
 decls_ :: Iso (Scope a) (Scope b) (Map.Map Name a) (Map.Map Name b)
 decls_ = toList_.fmapping pair_.iso Map.fromList Map.toList
