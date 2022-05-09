@@ -281,7 +281,7 @@ instance (Printable a, Printable b) => Printable (a :=: b) where
   print = print2
 
 instance Printable Name where
-  print Options{ qname } _ = qname . (Nil :|>)
+  print Options{ qname } _ = qname . q
 
 
 class Printable1 f where
