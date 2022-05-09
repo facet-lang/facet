@@ -106,11 +106,7 @@ varFrom alpha i = pretty (toAlpha alpha i)
 
 
 subscript :: Printer p => Int -> p
-subscript i = sign <> foldMap (pretty . (subscripts !!) . abs) (digits i)
-  where
-  sign | i < 0     = pretty "₋"
-       | otherwise = mempty
-  subscripts = ['₀'..'₉']
+subscript = subscriptWith (<>) pretty mempty
 
 subscriptWith :: (s -> s -> s) -> (Char -> s) -> s -> Int -> s
 subscriptWith (<>) pretty mempty i = sign <> foldr ((<>) . pretty . (subscripts !!) . abs) mempty (digits i)
