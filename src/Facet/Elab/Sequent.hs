@@ -27,6 +27,7 @@ module Facet.Elab.Sequent
 , check
   -- * Debugging
 , runSQ
+, runSQThese
 ) where
 
 import           Control.Applicative (liftA2)
@@ -44,13 +45,14 @@ import qualified Facet.Elab.Type as Type
 import           Facet.Functor.Check
 import           Facet.Functor.Synth
 import           Facet.Graph as G
-import           Facet.Kind
+import           Facet.Kind as K
 import           Facet.Lens as Lens (views)
 import           Facet.Module
 import           Facet.Name
 import           Facet.Pattern
 import qualified Facet.Scope as Scope
 import qualified Facet.Sequent.Expr as SQ
+import           Facet.Snoc (Snoc(..))
 import           Facet.Subst
 import qualified Facet.Surface.Term.Expr as S
 import qualified Facet.Surface.Type.Expr as S
@@ -60,6 +62,7 @@ import qualified Facet.TypeContext as TC
 import           Facet.Unify
 import           Fresnel.Fold ((^?))
 import           Fresnel.Lens (Lens, Lens', lens)
+import           GHC.Exts (fromList)
 import           GHC.Stack (HasCallStack, callStack, popCallStack, withFrozenCallStack)
 
 -- Variables
@@ -285,3 +288,16 @@ runSQ m
   . runReader m
   . runReader (G.singleton Nothing m)
   . runThrow
+
+runSQThese :: Applicative m => ThrowC ErrReason (ReaderC Graph (ReaderC Module (FreshC (ReaderC ElabContext (StateC (Subst Type) m))))) a -> m (Either ErrReason a)
+runSQThese = runSQ m
+  where
+  _These _A _B = Ne (Free "Module.These") (Nil:>_A:>_B)
+  m = Module "Module.These" [] [] (fromList
+    [ "These" :=: DSubmodule (SData (fromList
+      [ "this"  :=: ForAll "A" KType (\ _A -> ForAll "B" KType (\ _B -> _A --> _These _A _B))
+      , "that"  :=: ForAll "A" KType (\ _A -> ForAll "B" KType (\ _B -> _B --> _These _A _B))
+      , "these" :=: ForAll "A" KType (\ _A -> ForAll "B" KType (\ _B -> _A --> _B --> _These _A _B))
+      ]))
+      (KType K.==> KType K.==> KType)
+    ])
