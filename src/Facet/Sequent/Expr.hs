@@ -129,27 +129,27 @@ incr r@Replacer{ outer } = r{ outer = outer + 1}
 
 replaceTerm :: These (Replacer Coterm) (Replacer Term) -> (Term -> Term)
 replaceTerm lr within = case within of
-  Var (Free (Nil:|>n)) -> that (const within) free' lr n
-  Var (Free _)         -> within
-  Var (Bound inner)    -> that (const within) bound' lr inner
-  MuR (Scope b)        -> MuR (Scope (replaceCommand (first incr lr) b))
-  LamR (Scope b)       -> LamR (Scope (replaceCommand (bimap incr incr lr) b))
-  SumR i a             -> SumR i (replaceTerm lr a)
-  PrdR as              -> PrdR (map (replaceTerm lr) as)
-  StringR _            -> within
+  Var (Free (QName (Nil:|>n))) -> that (const within) free' lr n
+  Var (Free _)                 -> within
+  Var (Bound inner)            -> that (const within) bound' lr inner
+  MuR (Scope b)                -> MuR (Scope (replaceCommand (first incr lr) b))
+  LamR (Scope b)               -> LamR (Scope (replaceCommand (bimap incr incr lr) b))
+  SumR i a                     -> SumR i (replaceTerm lr a)
+  PrdR as                      -> PrdR (map (replaceTerm lr) as)
+  StringR _                    -> within
   where
   that :: c -> (b -> c) -> These a b -> c
   that d f = these (const d) f (const f)
 
 replaceCoterm :: These (Replacer Coterm) (Replacer Term) -> (Coterm -> Coterm)
 replaceCoterm lr within = case within of
-  Covar (Free (Nil:|>n)) -> this (const within) free' lr n
-  Covar (Free _)         -> within
-  Covar (Bound inner)    -> this (const within) bound' lr inner
-  MuL (Scope b)          -> MuL (Scope (replaceCommand (second incr lr) b))
-  LamL a k               -> LamL (replaceTerm lr a) (replaceCoterm lr k)
-  SumL cs                -> SumL (map (fmap (replaceCoterm lr)) cs)
-  PrdL i b               -> PrdL i (replaceCoterm lr b)
+  Covar (Free (QName (Nil:|>n))) -> this (const within) free' lr n
+  Covar (Free _)                 -> within
+  Covar (Bound inner)            -> this (const within) bound' lr inner
+  MuL (Scope b)                  -> MuL (Scope (replaceCommand (second incr lr) b))
+  LamL a k                       -> LamL (replaceTerm lr a) (replaceCoterm lr k)
+  SumL cs                        -> SumL (map (fmap (replaceCoterm lr)) cs)
+  PrdL i b                       -> PrdL i (replaceCoterm lr b)
   where
   this :: c -> (a -> c) -> These a b -> c
   this d f = these f (const d) (const . f)

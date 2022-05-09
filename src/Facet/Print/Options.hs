@@ -10,7 +10,6 @@ module Facet.Print.Options
 ) where
 
 import Facet.Name
-import Facet.Snoc.NonEmpty
 import Silkscreen
 
 -- Options
@@ -35,7 +34,7 @@ quietOptions = Options
 
 qualified, unqualified :: Printer p => QName -> p
 qualified = prettyQName
-unqualified (_:|>n) = pretty n
+unqualified = pretty . qlast
 
 printInstantiation :: Printer p => p -> p -> p
 printInstantiation = (<+>)

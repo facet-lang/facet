@@ -133,23 +133,23 @@ resolveDef :: (Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw E
 resolveDef = resolveWith lookupDef
 
 lookupInContext :: Has (Choose :+: Empty) sig m => QName -> Context -> m (Index, Type)
-lookupInContext (m:|>n)
+lookupInContext (QName (m :|> n))
   | m == Nil  = lookupIndex n
   | otherwise = const empty
 
 lookupInTypeContext :: Has (Choose :+: Empty) sig m => QName -> TypeContext.TypeContext -> m (Index, Kind)
-lookupInTypeContext (m:|>n)
+lookupInTypeContext (QName (m :|> n))
   | m == Nil  = TypeContext.lookupIndex n
   | otherwise = const empty
 
 -- FIXME: probably we should instead look up the effect op globally, then check for membership in the sig
 -- FIXME: return the index in the sig; it’s vital for evaluation of polymorphic effects when there are multiple such
 lookupInSig :: Has (Choose :+: Empty) sig m => QName -> Module -> Graph -> [Signature Type] -> m (QName :=: Type)
-lookupInSig (m :|> n) mod graph = foldMapC $ foldMapC (\ (Interface q@(m':|>_) _) -> do
+lookupInSig (QName (m :|> n)) mod graph = foldMapC $ foldMapC (\ (Interface q@(QName (m':|>_)) _) -> do
   guard (m == Nil || m == m')
   defs <- interfaceScope =<< lookupQ graph mod q
   d <- maybe empty pure (defs ^? ix n)
-  pure $ m' :|> n :=: d) . interfaces
+  pure $ QName (m' :|> n) :=: d) . interfaces
   where
   interfaceScope = \case { DSubmodule (SInterface defs) _K -> pure defs ; _ -> empty }
 

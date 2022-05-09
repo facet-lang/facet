@@ -49,7 +49,6 @@ import           Facet.Print as Print hiding (meta)
 import           Facet.Quote
 import           Facet.REPL.Parser
 import           Facet.Snoc
-import           Facet.Snoc.NonEmpty
 import           Facet.Source (Source(..), sourceFromString)
 import           Facet.Style as Style
 import qualified Facet.Surface.Term.Expr as S
@@ -204,7 +203,7 @@ showType e = Action $ do
   outputDocLn (getPrint (ann (Print.print opts mempty e ::: Print.print opts mempty _T)))
 
 showEval e = Action $ do
-  e' :==> _T <- runElab $ Elab.elabSynthTerm $ Elab.runErr $ locally Elab.sig_ (I.singleton (I.Interface (["Effect", "Console"]:|>T "Output") Nil) :) $ Elab.synthExpr e
+  e' :==> _T <- runElab $ Elab.elabSynthTerm $ Elab.runErr $ locally Elab.sig_ (I.singleton (I.Interface ["Effect", "Console", "Output"] Nil) :) $ Elab.synthExpr e
   e'' <- runElab $ runEvalMain e'
   opts <- get
   outputDocLn (getPrint (ann (Print.print opts mempty e'' ::: Print.print opts mempty _T)))

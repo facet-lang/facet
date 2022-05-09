@@ -167,7 +167,7 @@ resolveName searchPaths name = do
       [] -> []
       _  -> [ nest 2 (reflow "search paths:" <\> concatWith (<\>) (map pretty searchPaths)) ]
   where
-  toPath components = foldr1 (FP.</>) (unpack <$> components)
+  toPath (QName components) = foldr1 (FP.</>) (unpack <$> components)
   unpack = \case
     T n   -> TS.unpack n
     O o   -> formatOp (\ a b -> a <> " " <> b) TS.unpack "_" o

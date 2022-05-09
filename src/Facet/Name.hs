@@ -1,5 +1,6 @@
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
 module Facet.Name
 ( Index(..)
@@ -7,11 +8,13 @@ module Facet.Name
 , DeBruijn(..)
 , Meta(..)
 , __
-, QName
+, QName(..)
 , (//)
 , q
 , qlast
 , prettyQName
+, fromSnoc
+, toSnoc
 , Name(..)
 , Assoc(..)
 , Op(..)
@@ -23,12 +26,12 @@ module Facet.Name
 import           Data.Foldable (foldl', foldr')
 import           Data.Functor.Classes (showsUnaryWith)
 import qualified Data.List.NonEmpty as NE
-import           Data.String (IsString(..))
-import           Data.Text (Text)
+import           Data.Text (Text, pack)
 import qualified Data.Text as T
 import           Facet.Pretty (subscript)
 import           Facet.Snoc
-import           Facet.Snoc.NonEmpty
+import qualified Facet.Snoc.NonEmpty as SNE
+import           GHC.Exts
 import qualified Prettyprinter as P
 import           Silkscreen
 
@@ -76,21 +79,40 @@ __ = T T.empty
 
 
 -- | Qualified names, consisting of a module name and declaration name.
-type QName = NonEmpty Name
+newtype QName = QName { getQName :: SNE.NonEmpty Name }
+  deriving (Eq, Ord, Show)
+
+instance IsList QName where
+  type Item QName = Name
+  fromList = QName . fromList
+  toList = toList . getQName
+
+instance IsString QName where
+  fromString = QName . SNE.fromSnoc . go Nil
+    where
+    go accum s = let (name, rest) = span (/= '.') s in case rest of
+      '.':s' -> go (accum :> T (pack name)) s'
+      _      -> accum :> T (pack name)
 
 (//) :: QName -> Name -> QName
-(//) = (|>)
+q // n = QName (getQName q SNE.|> n)
 
 infixl 5 //
 
 q :: Name -> QName
-q = (Nil :|>)
+q = QName . (Nil SNE.:|>)
 
 qlast :: QName -> Name
-qlast (_ :|> l) = l
+qlast (QName (_ SNE.:|> l)) = l
 
 prettyQName :: Printer a => QName -> a
-prettyQName (ns:|>n) = foldr' (surround dot . pretty) (pretty n) ns
+prettyQName (QName (ns SNE.:|> n)) = foldr' (surround dot . pretty) (pretty n) ns
+
+fromSnoc :: Snoc Name -> QName
+fromSnoc = QName . SNE.fromSnoc
+
+toSnoc :: QName -> Snoc Name
+toSnoc = SNE.toSnoc . getQName
 
 
 -- | Declaration names; a choice of textual or operator names.

@@ -61,7 +61,7 @@ whole p = whiteSpace *> p <* eof
 
 
 makeOperator :: (N.QName, N.Op, N.Assoc) -> Operator (S.Ann S.Expr)
-makeOperator (name, op, assoc) = (op, assoc, nary (name |> N.O op))
+makeOperator (name, op, assoc) = (op, assoc, nary (name N.// N.O op))
   where
   nary name es = foldl' (S.annBinary S.App) (S.Ann (S.ann (head es)) Nil (S.Var name)) es
 
@@ -201,7 +201,7 @@ tvar = anned (S.TVar <$> qname tname)
 signature :: (Has Parser sig p, Has (Writer Comments) sig p, TokenParsing p) => p [S.Ann (S.Interface (S.Ann S.Type))]
 signature = brackets (commaSep delta) <?> "signature"
   where
-  delta = anned $ S.Interface <$> head <*> (fromList <$> many type')
+  delta = anned $ S.Interface . N.QName <$> head <*> (fromList <$> many type')
   head = mkHead <$> token (runUnspaced (sepByNonEmpty comp dot))
   mkHead cs = fromList (NE.init cs) |> NE.last cs
   comp = ident tnameStyle
@@ -236,7 +236,7 @@ clause = S.Clause <$> try (compPattern <* arrow) <*> expr <?> "clause"
 
 evar :: (Has Parser sig p, Has (Writer Comments) sig p, TokenParsing p) => p (S.Ann S.Expr)
 evar = choice
-  [ token (anned (runUnspaced (S.Var <$> try (fromSnoc <$> ((:>) . fromList <$> many (comp <* dot) <*> ename)))))
+  [ token (anned (runUnspaced (S.Var <$> try ((N.//) . fromList <$> many (comp <* dot) <*> ename))))
     -- FIXME: would be better to commit once we see a placeholder, but try doesn’t really let us express that
   , try (anned (parens (S.Var <$> qname (N.O <$> oname))))
   ]
@@ -307,7 +307,7 @@ mname = token (runUnspaced (fromList <$> sepBy1 comp dot))
   comp = ident tnameStyle
 
 qname :: (Has Parser sig p, TokenParsing p) => p N.Name -> p N.QName
-qname name = token (runUnspaced (try ((|>) <$> mname <*> Unspaced name) <|> (Nil :|>) <$> Unspaced name)) <?> "name"
+qname name = token (runUnspaced (try ((N.//) <$> mname <*> Unspaced name) <|> N.QName . (Nil :|>) <$> Unspaced name)) <?> "name"
 
 
 reserved :: HashSet.HashSet String

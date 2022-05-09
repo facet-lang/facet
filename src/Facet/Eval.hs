@@ -27,26 +27,26 @@ module Facet.Eval
 , reader'
 ) where
 
-import           Control.Algebra
-import           Control.Carrier.Reader
-import           Control.Monad (ap, guard, liftM, (>=>))
-import           Control.Monad.Trans.Class
-import           Data.Foldable
-import           Data.Function
-import           Data.Maybe (fromMaybe)
-import           Data.Text (Text)
-import           Facet.Env as Env
-import           Facet.Graph
-import           Facet.Module
-import           Facet.Name hiding (Op)
-import           Facet.Pattern
-import           Facet.Quote
-import           Facet.Semialign (zipWithM)
-import qualified Facet.Snoc.NonEmpty as NE
-import           Facet.Syntax
-import           Facet.Term.Expr
-import           GHC.Stack (HasCallStack)
-import           Prelude hiding (zipWith)
+import Control.Algebra
+import Control.Carrier.Reader
+import Control.Monad (ap, guard, liftM, (>=>))
+import Control.Monad.Trans.Class
+import Data.Foldable
+import Data.Function
+import Data.Maybe (fromMaybe)
+import Data.Text (Text)
+import Facet.Env as Env
+import Facet.Graph
+import Facet.Module
+import Facet.Name hiding (Op)
+import Facet.Pattern
+import Facet.Quote
+import Facet.Semialign (zipWithM)
+import Facet.Syntax
+import Facet.Term.Expr
+import GHC.Exts (fromList)
+import GHC.Stack (HasCallStack)
+import Prelude hiding (zipWith)
 
 eval :: (HasCallStack, Has (Reader Graph :+: Reader Module) sig m, MonadFail m) => Term -> ReaderC (Env (Value (Eval m))) (Eval m) (Value (Eval m))
 eval = \case
@@ -133,7 +133,7 @@ instance Monad m => Quote (Value m) (m Term) where
     VString s -> pure . pure $ String s
 
 unit :: Value m
-unit = VCon (NE.FromList ["Data", "Unit"] NE.|> T "unit") []
+unit = VCon (fromList ["Data", "Unit", "unit"]) []
 
 
 -- Elimination
