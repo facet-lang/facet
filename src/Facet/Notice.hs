@@ -26,7 +26,7 @@ data Notice a = Notice
   , reason     :: !a
   , context    :: ![a]
   }
-  deriving (Show)
+  deriving (Functor, Show)
 
 level_ :: Lens' (Notice a) (Maybe Level)
 level_ = lens level $ \ n level -> n{ level }
