@@ -126,7 +126,7 @@ resolveWith
 resolveWith lookup toQName n = ask >>= \ graph -> asks (\ module' -> lookupWith lookup graph module' n) >>= \case
   []  -> freeVariable n
   [v] -> pure v
-  _   -> ambiguousName n
+  ns  -> ambiguousName n (map toQName ns)
 
 resolveC :: (Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason) sig m) => QName -> m (QName :=: Type)
 resolveC = resolveWith lookupConstructor (view tm_)
@@ -201,7 +201,7 @@ data Err = Err
 data ErrReason
   = FreeVariable QName
   -- FIXME: add source references for the imports, definition sites, and any re-exports.
-  | AmbiguousName QName
+  | AmbiguousName QName [QName]
   | CouldNotSynthesize
   | UnifyType UnifyErrReason (Exp (Either String Type)) (Act (Either String Type))
   | UnifyKind (Exp (Either String Kind)) (Act Kind)
@@ -215,10 +215,10 @@ _FreeVariable = prism' FreeVariable (\case
   FreeVariable n -> Just n
   _              -> Nothing)
 
-_AmbiguousName :: Prism' ErrReason QName
-_AmbiguousName = prism' AmbiguousName (\case
-  AmbiguousName n -> Just n
-  _               -> Nothing)
+_AmbiguousName :: Prism' ErrReason (QName, [QName])
+_AmbiguousName = prism' (uncurry AmbiguousName) (\case
+  AmbiguousName n ns -> Just (n, ns)
+  _                  -> Nothing)
 
 _UnifyType :: Prism' ErrReason (UnifyErrReason, Exp (Either String Type), Act (Either String Type))
 _UnifyType = prism' (\ (r, x, a) -> UnifyType r x a) (\case
@@ -271,8 +271,8 @@ freeVariable :: Has (Throw ErrReason) sig m => QName -> m a
 freeVariable n = withFrozenCallStack $ throwError $ FreeVariable n
 
 -- FIXME: get references for the resolved names
-ambiguousName :: Has (Throw ErrReason) sig m => QName -> m a
-ambiguousName n = withFrozenCallStack $ throwError $ AmbiguousName n
+ambiguousName :: Has (Throw ErrReason) sig m => QName -> [QName] -> m a
+ambiguousName n ns = withFrozenCallStack $ throwError $ AmbiguousName n ns
 
 missingInterface :: Has (Throw ErrReason) sig m => Interface Type -> m a
 missingInterface i = withFrozenCallStack $ throwError $ MissingInterface i
