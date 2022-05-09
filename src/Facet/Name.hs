@@ -12,7 +12,6 @@ module Facet.Name
 , (//)
 , q
 , qlast
-, prettyQName
 , fromSnoc
 , toSnoc
 , Name(..)
@@ -94,6 +93,9 @@ instance IsString QName where
       '.':s' -> go (accum :> T (pack name)) s'
       _      -> accum :> T (pack name)
 
+instance Pretty QName where
+  pretty (QName (ns SNE.:|> n)) = foldr' (surround dot . pretty) (pretty n) ns
+
 (//) :: QName -> Name -> QName
 q // n = QName (getQName q SNE.|> n)
 
@@ -104,9 +106,6 @@ q = QName . (Nil SNE.:|>)
 
 qlast :: QName -> Name
 qlast (QName (_ SNE.:|> l)) = l
-
-prettyQName :: Printer a => QName -> a
-prettyQName (QName (ns SNE.:|> n)) = foldr' (surround dot . pretty) (pretty n) ns
 
 fromSnoc :: Snoc Name -> QName
 fromSnoc = QName . SNE.fromSnoc

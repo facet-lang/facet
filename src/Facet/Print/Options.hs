@@ -33,7 +33,7 @@ quietOptions = Options
   }
 
 qualified, unqualified :: Printer p => QName -> p
-qualified = prettyQName
+qualified = pretty
 unqualified = pretty . qlast
 
 printInstantiation :: Printer p => p -> p -> p

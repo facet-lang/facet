@@ -62,8 +62,8 @@ rethrowElabErrors opts = L.runThrow (pure . rethrow)
 
 printErrReason :: Options Print -> Env.Env Print -> ErrReason -> Doc Style
 printErrReason opts ctx = group . \case
-  FreeVariable n               -> fillSep [reflow "variable not in scope:", prettyQName n]
-  AmbiguousName n              -> fillSep [reflow "ambiguous name", prettyQName n] -- <\> nest 2 (reflow "alternatives:" <\> unlines (map prettyQName qs))
+  FreeVariable n               -> fillSep [reflow "variable not in scope:", pretty n]
+  AmbiguousName n              -> fillSep [reflow "ambiguous name", pretty n] -- <\> nest 2 (reflow "alternatives:" <\> unlines (map prettyQName qs))
   CouldNotSynthesize           -> reflow "could not synthesize a type; try a type annotation"
   UnifyType r (Exp exp) (Act act) -> reason r
     <> hardline <> pretty "expected:" <> align exp'
