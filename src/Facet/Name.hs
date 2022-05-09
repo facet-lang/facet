@@ -25,9 +25,9 @@ module Facet.Name
 import           Data.Foldable (foldl', foldr')
 import           Data.Functor.Classes (showsUnaryWith)
 import qualified Data.List.NonEmpty as NE
-import           Data.Text (Text, pack)
+import           Data.Text (Text, pack, unpack)
 import qualified Data.Text as T
-import           Facet.Pretty (subscript)
+import           Facet.Pretty (subscript, subscriptWith)
 import           Facet.Snoc
 import qualified Facet.Snoc.NonEmpty as SNE
 import           GHC.Exts
@@ -119,7 +119,7 @@ data Name
   = T Text
   | O Op
   | G Text Int
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord)
 
 instance IsString Name where
   fromString = T . fromString
@@ -129,6 +129,12 @@ instance P.Pretty Name where
     T n   -> P.pretty n
     O o   -> P.pretty o
     G n i -> P.pretty n <> subscript i
+
+instance Show Name where
+  showsPrec p = \case
+    T n   -> showString (unpack n)
+    O o   -> showsPrec p o
+    G n i -> showString (unpack n) . subscriptWith (.) showChar id i
 
 
 -- | Associativity of an infix operator.
