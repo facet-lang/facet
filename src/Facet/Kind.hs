@@ -1,8 +1,11 @@
 module Facet.Kind
-( Kind(..)
+( -- * Kinds
+  Kind(..)
 , _KType
 , _KInterface
 , _KArrow
+  -- * Constructors
+, (==>)
 ) where
 
 import Facet.Name
@@ -24,3 +27,10 @@ _KInterface = prism' (const KInterface) (\case{ KInterface -> Just () ; _ -> Not
 
 _KArrow :: Prism' Kind (Maybe Name, Kind, Kind)
 _KArrow = prism' (\ (n, a, b) -> KArrow n a b) (\case{ KArrow n a b -> Just (n, a, b) ; _ -> Nothing })
+
+
+-- Constructors
+
+(==>) :: Kind -> Kind -> Kind
+(==>) = KArrow Nothing
+infixr 1 ==>
