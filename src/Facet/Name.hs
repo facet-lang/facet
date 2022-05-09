@@ -24,6 +24,7 @@ module Facet.Name
 
 import           Data.Foldable (foldl', foldr')
 import           Data.Functor.Classes (showsUnaryWith)
+import           Data.List (intercalate)
 import qualified Data.List.NonEmpty as NE
 import           Data.Text (Text, pack, unpack)
 import qualified Data.Text as T
@@ -79,7 +80,7 @@ __ = T T.empty
 
 -- | Qualified names, consisting of a module name and declaration name.
 newtype QName = QName { getQName :: SNE.NonEmpty Name }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord)
 
 instance IsList QName where
   type Item QName = Name
@@ -95,6 +96,9 @@ instance IsString QName where
 
 instance Pretty QName where
   pretty (QName (ns SNE.:|> n)) = foldr' (surround dot . pretty) (pretty n) ns
+
+instance Show QName where
+  showsPrec _ (QName components) = showString (intercalate "." (map show (toList components)))
 
 (//) :: QName -> Name -> QName
 q // n = QName (getQName q SNE.|> n)
