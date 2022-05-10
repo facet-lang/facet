@@ -71,7 +71,7 @@ instance Show Type where
     where
     go d = \case
       String       -> showString "String"
-      ForAll n k b -> showString "ForAll " . showsPrec 11 n . showChar ' ' . showsPrec 11 k . showChar ' ' . showParen True (showString "\\ " . showsPrec 11 d . showString "->". go (succ d) (b (bound d)))
+      ForAll n k b -> showString "ForAll " . showsPrec 11 n . showChar ' ' . showsPrec 11 k . showChar ' ' . showParen True (showString "\\ " . showsPrec 11 d . showString " -> ". go (succ d) (b (bound d)))
       Arrow n a b  -> showString "Arrow " . showsPrec 11 n . showChar ' ' . go d a . showChar ' ' . go d b
       Ne v ts      -> showString "Ne " . showsPrec 11 v . showString " [" . foldr (\ t r -> go d t . showString ", " . r) id ts . showChar ']'
       Comp s t     -> showString "Comp [" . foldr (\ t r -> go d t . showString ", " . r) id s . showString "] " . go d t
