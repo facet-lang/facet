@@ -36,7 +36,7 @@ import           Control.Carrier.Fresh.Church
 import           Control.Carrier.Reader
 import           Control.Carrier.State.Church
 import           Control.Carrier.Throw.Either
-import           Data.Maybe (mapMaybe)
+import           Data.Maybe (catMaybes, mapMaybe)
 import           Data.Text (Text)
 import           Data.Traversable (for)
 import qualified Facet.Context as C
@@ -229,10 +229,14 @@ patternBody scrutinees clauses = Check $ \ _T -> case scrutinees of
 
       groups <- for constructors (\ (name :=: _C) -> do
         let fieldTypes = argumentTypes _C
-        prefix <- for fieldTypes (\ _T -> (:==> _T) <$> freshName "x")
-        pure (qname // name :=: muL (const (patternBody (prefix <> scrutinees') (mapMaybe (filterClauses (qname // name) fieldTypes) clauses)))))
+            clauses' = mapMaybe (filterClauses (qname // name) fieldTypes) clauses
+        if null clauses' then
+          pure Nothing
+        else do
+          prefix <- for fieldTypes (\ _T -> (:==> _T) <$> freshName "x")
+          pure (Just (qname // name :=: muL (const (patternBody (prefix <> scrutinees') clauses')))))
 
-      check (freeR s >< case' groups ::: _T)
+      check (freeR s >< case' (catMaybes groups) ::: _T)
 
     -- FIXME: what should effect patterns elaborate to?
     _                 -> check (patternBody scrutinees' (clauses >>= \case
