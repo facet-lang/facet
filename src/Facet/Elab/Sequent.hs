@@ -186,9 +186,8 @@ checkLamS clauses = go id
       kx <- freshName "kx"
       SQ.lamR kx x <$> check (go (scrutinees . ((x :==> _A) :)) >< freeL kx ::: _B)
     _T              -> do
-      x <- freshName "x"
       kx <- freshName "kx"
-      SQ.lamR kx x <$> check (patternBody (scrutinees []) (map (fmap (>< freeL kx)) clauses) ::: _T)
+      SQ.muR kx <$> check (patternBody (scrutinees []) (map (fmap (>< freeL kx)) clauses) ::: _T)
 
 
 data Clause a = Clause
