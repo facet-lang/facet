@@ -75,13 +75,14 @@ instance Show Type where
       String       -> showString "String"
       ForAll n k b -> showString "ForAll " . showsPrec 11 n . showChar ' ' . showsPrec 11 k . showChar ' ' . showParen True (showString "\\ " . showsLevel d . showString " -> ". go (succ d) (b (bound d)))
       Arrow n a b  -> showString "Arrow " . showsPrec 11 n . showChar ' ' . go d a . showChar ' ' . go d b
-      Ne v ts      -> showString "Ne " . showsVar v . showString " [" . foldr (\ t r -> go d t . showString ", " . r) id ts . showChar ']'
-      Comp s t     -> showString "Comp [" . foldr (.) id (intersperse (showString ", ") (foldr ((:) . go d) [] s)) . showString "] " . go d t
+      Ne v ts      -> showString "Ne " . showsVar v . showString " [" . showsFoldable (go d) ts . showChar ']'
+      Comp s t     -> showString "Comp [" . showsFoldable (go d) s . showString "] " . go d t
     showsVar = \case
       Bound (Left (Meta v)) -> showChar 'σ' . shows v
       Bound (Right d)       -> showsLevel d
       Free n                -> shows n
     showsLevel (Level v) = showString (toAlpha ['a'..'z'] v)
+    showsFoldable f s = foldr (.) id (intersperse (showString ", ") (foldr ((:) . f) [] s))
 
 _String :: Prism' Type ()
 _String = prism' (const String) (\case{ String -> Just () ; _ -> Nothing })
