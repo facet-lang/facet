@@ -54,6 +54,7 @@ import           Facet.Pattern
 import qualified Facet.Scope as Scope
 import qualified Facet.Sequent.Expr as SQ
 import           Facet.Snoc (Snoc(..))
+import           Facet.Snoc.NonEmpty (NonEmpty(..))
 import           Facet.Subst
 import qualified Facet.Surface.Term.Expr as S
 import qualified Facet.Surface.Type.Expr as S
@@ -210,7 +211,7 @@ patternBody
   -> Type <==: m SQ.Command
 patternBody scrutinees clauses = Check $ \ _T -> case scrutinees of
   (s :==> _A):scrutinees' -> case _A of
-    Ne (Free qname) _ -> do
+    Ne (Free qname@(QName (_:>_:|>_))) _ -> do
       def <- resolveDef qname
       constructors <- maybe (mismatchTypes (Exp (Left "datatype")) (Act (Left (case def of
         DTerm{}                   -> "term"
@@ -266,6 +267,7 @@ case' cases = Check $ \ _T -> SQ.SumL <$> traverse (traverse (\ body -> check (b
 
 
 argumentTypes :: Type -> [Type]
+argumentTypes (T.ForAll n _ b)  = argumentTypes (b (free (q n)))
 argumentTypes (T.Arrow _ _A _B) = _A : argumentTypes _B
 argumentTypes _                 = []
 
