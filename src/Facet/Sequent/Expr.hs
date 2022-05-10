@@ -177,7 +177,14 @@ boundL :: Index -> Coterm
 boundL = Covar . Bound
 
 muL :: Name -> Command -> Coterm
-muL name body = MuL (abstractLR (That name) body)
+muL name body = compactL name (MuL (abstractLR (That name) body))
+
+compactL :: Name -> Coterm -> Coterm
+compactL name = \case
+  MuL body
+    | Var (Free q) :|: k <- instantiateR (freeR name) body
+    , Just name == qlocal q -> k
+  c                         -> c
 
 
 let' :: Name -> Term -> Command -> Command
