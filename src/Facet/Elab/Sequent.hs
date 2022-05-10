@@ -252,10 +252,10 @@ patternBody scrutinees clauses = Check $ \ _T -> case scrutinees of
 freeL :: Applicative m => Name -> Type <==: m SQ.Coterm
 freeL = pure . pure . SQ.freeL
 
-muL :: (Has Fresh sig m, Has (Reader ElabContext) sig m) => (SQ.Term -> Type <==: m SQ.Command) -> Type <==: m SQ.Coterm
+muL :: (Has Fresh sig m, Has (Reader ElabContext) sig m) => (SQ.Term :==> Type -> Type <==: m SQ.Command) -> Type <==: m SQ.Coterm
 muL body = Check $ \ _T -> do
   x <- freshName "x"
-  SQ.muL x <$> (x :==> _T |- check (body (SQ.freeR x) ::: _T))
+  SQ.muL x <$> (x :==> _T |- check (body (SQ.freeR x :==> _T) ::: _T))
 
 freeR :: Applicative m => Name -> Type <==: m SQ.Term
 freeR = pure . pure . SQ.freeR
