@@ -177,7 +177,7 @@ boundL :: Index -> Coterm
 boundL = Covar . Bound
 
 muL :: Name -> Command -> Coterm
-muL name body = compactL name (MuL (abstractLR (That name) body))
+muL name body = compactL name (MuL (abstractR name body))
 
 compactL :: Name -> Coterm -> Coterm
 compactL name = \case
