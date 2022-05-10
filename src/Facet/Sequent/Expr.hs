@@ -84,7 +84,7 @@ abstractL c = abstractLR (This c)
 abstractR t = abstractLR (That t)
 
 abstractLR :: These Name Name -> (Command -> Scope)
-abstractLR ct = Scope . replaceCommand (bimap (\ c -> Replacer 0 (freeL c) boundL) (\ t -> Replacer 0 (freeR t) boundR) ct) where
+abstractLR ct = Scope . replaceCommand (bimap (\ c -> Replacer (freeL c) boundL) (\ t -> Replacer (freeR t) boundR) ct) 0 where
   freeR t outer name
     | name == t = Var (Bound outer)
     | otherwise = Var (Free (q name))
@@ -101,7 +101,7 @@ instantiateR :: Term   -> (Scope -> Command)
 instantiateR t = instantiateLR (That t)
 
 instantiateLR :: These Coterm Term -> (Scope -> Command)
-instantiateLR ct = replaceCommand (bimap (Replacer 0 freeL . boundL) (Replacer 0 freeR . boundR) ct) . getScope where
+instantiateLR ct = replaceCommand (bimap (Replacer freeL . boundL) (Replacer freeR . boundR) ct) 0 . getScope where
   freeR _ name = Var   (Free (q name))
   freeL _ name = Covar (Free (q name))
   boundR t outer inner
@@ -112,52 +112,41 @@ instantiateLR ct = replaceCommand (bimap (Replacer 0 freeL . boundL) (Replacer 0
     | otherwise      = Covar (Bound inner)
 
 data Replacer t = Replacer
-  { outer :: Index
-  , free  :: Index -> Name -> t
+  { free  :: Index -> Name -> t
   , bound :: Index -> Index -> t
   }
 
-free' :: Replacer t -> Name -> t
-free' Replacer{ outer, free } = free outer
-
-bound' :: Replacer t -> Index -> t
-bound' Replacer{ outer, bound } = bound outer
-
-incr :: Replacer t -> Replacer t
-incr r@Replacer{ outer } = r{ outer = outer + 1}
-
-
-replaceTerm :: These (Replacer Coterm) (Replacer Term) -> (Term -> Term)
-replaceTerm lr within = case within of
-  Var (Free (QName (Nil:|>n))) -> that (const within) free' lr n
+replaceTerm :: These (Replacer Coterm) (Replacer Term) -> Index -> (Term -> Term)
+replaceTerm lr outer within = case within of
+  Var (Free (QName (Nil:|>n))) -> that (const within) (`free` outer) lr n
   Var (Free _)                 -> within
-  Var (Bound inner)            -> that (const within) bound' lr inner
-  MuR (Scope b)                -> MuR (Scope (replaceCommand (bimap incr incr lr) b))
-  LamR (Scope b)               -> LamR (Scope (replaceCommand (bimap incr incr lr) b))
-  SumR i a                     -> SumR i (replaceTerm lr a)
-  PrdR as                      -> PrdR (map (replaceTerm lr) as)
+  Var (Bound inner)            -> that (const within) (`bound` outer) lr inner
+  MuR (Scope b)                -> MuR (Scope (replaceCommand lr (succ outer) b))
+  LamR (Scope b)               -> LamR (Scope (replaceCommand lr (succ (succ outer)) b))
+  SumR i a                     -> SumR i (replaceTerm lr outer a)
+  PrdR as                      -> PrdR (map (replaceTerm lr outer) as)
   StringR _                    -> within
   where
   that :: c -> (b -> c) -> These a b -> c
   that d f = these (const d) f (const f)
 
-replaceCoterm :: These (Replacer Coterm) (Replacer Term) -> (Coterm -> Coterm)
-replaceCoterm lr within = case within of
-  Covar (Free (QName (Nil:|>n))) -> this (const within) free' lr n
+replaceCoterm :: These (Replacer Coterm) (Replacer Term) -> Index -> (Coterm -> Coterm)
+replaceCoterm lr outer within = case within of
+  Covar (Free (QName (Nil:|>n))) -> this (const within) (`free` outer) lr n
   Covar (Free _)                 -> within
-  Covar (Bound inner)            -> this (const within) bound' lr inner
-  MuL (Scope b)                  -> MuL (Scope (replaceCommand (bimap incr incr lr) b))
-  LamL a k                       -> LamL (replaceTerm lr a) (replaceCoterm lr k)
-  SumL cs                        -> SumL (map (fmap (replaceCoterm lr)) cs)
-  PrdL i b                       -> PrdL i (replaceCoterm lr b)
+  Covar (Bound inner)            -> this (const within) (`bound` outer) lr inner
+  MuL (Scope b)                  -> MuL (Scope (replaceCommand lr (succ outer) b))
+  LamL a k                       -> LamL (replaceTerm lr outer a) (replaceCoterm lr outer k)
+  SumL cs                        -> SumL (map (fmap (replaceCoterm lr outer)) cs)
+  PrdL i b                       -> PrdL i (replaceCoterm lr outer b)
   where
   this :: c -> (a -> c) -> These a b -> c
   this d f = these f (const d) (const . f)
 
-replaceCommand :: These (Replacer Coterm) (Replacer Term) -> (Command -> Command)
-replaceCommand lr = \case
-  t :|: c         -> replaceTerm lr t :|: replaceCoterm lr c
-  Let t (Scope b) -> Let (replaceTerm lr t) (Scope (replaceCommand (bimap incr incr lr) b))
+replaceCommand :: These (Replacer Coterm) (Replacer Term) -> Index -> (Command -> Command)
+replaceCommand lr outer = \case
+  t :|: c         -> replaceTerm lr outer t :|: replaceCoterm lr outer c
+  Let t (Scope b) -> Let (replaceTerm lr outer t) (Scope (replaceCommand lr (succ outer) b))
 
 
 -- Smart constructors
