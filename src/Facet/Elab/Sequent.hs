@@ -239,7 +239,10 @@ patternBody scrutinees clauses = Check $ \ _T -> case scrutinees of
       Clause (PVal (PVar n) :ps) b -> [Clause ps (fmap (n :==> _A |-) b)]
       Clause _ _                   -> []) ::: _T)
 
-  [] -> check (body (head clauses) ::: _T) -- FIXME: throw an error if there aren't any clauses left
+  -- FIXME: throw a proper error if there aren't any clauses left
+  [] -> case clauses of
+    c:_ -> check (body c ::: _T)
+    []  -> error $ "patternBody: no clause left for exhausted scrutinee at type " <> show _T
 
 
 freeL :: Applicative m => Name -> Type <==: m SQ.Coterm
