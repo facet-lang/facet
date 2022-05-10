@@ -221,7 +221,7 @@ patternBody scrutinees clauses = Check $ \ _T -> case scrutinees of
             Clause (PVal PWildcard  :ps) b -> Just (Clause (padding <> ps) b)
             Clause (PVal (PVar n)   :ps) b -> Just (Clause (padding <> ps) (fmap (n :==> _A |-) b))
             Clause (PVal (PCon n fs):ps) b
-              | n == q name -> Just (Clause (map PVal fs <> ps) b)
+              | n == name -> Just (Clause (map PVal fs <> ps) b)
             _                              -> Nothing
             where
             padding = replicate (length fieldTypes) (PVal PWildcard)
@@ -229,7 +229,7 @@ patternBody scrutinees clauses = Check $ \ _T -> case scrutinees of
       groups <- for constructors (\ (name :=: _C) -> do
         let fieldTypes = argumentTypes _C
         prefix <- for fieldTypes (\ _T -> (:==> _T) <$> freshName "x")
-        pure (name :=: muL (const (patternBody (prefix <> scrutinees') (mapMaybe (filterClauses name fieldTypes) clauses)))))
+        pure (qname // name :=: muL (const (patternBody (prefix <> scrutinees') (mapMaybe (filterClauses (qname // name) fieldTypes) clauses)))))
 
       check (freeR s >< case' groups ::: _T)
 
@@ -258,7 +258,7 @@ t >< c = Check $ \ _T -> liftA2 (SQ.:|:) (check (t ::: _T)) (check (c ::: _T))
 
 infix 3 ><
 
-case' :: Applicative m => [Name :=: (Type <==: m SQ.Coterm)] -> Type <==: m SQ.Coterm
+case' :: Applicative m => [QName :=: (Type <==: m SQ.Coterm)] -> Type <==: m SQ.Coterm
 case' cases = Check $ \ _T -> SQ.SumL <$> traverse (traverse (\ body -> check (body ::: _T))) cases
 
 

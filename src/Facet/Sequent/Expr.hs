@@ -41,7 +41,7 @@ data Term
   = Var (Var Index)
   | MuR Scope
   | LamR Scope
-  | SumR Name Term
+  | SumR QName Term
   | PrdR [Term]
   | StringR Text
   deriving (Show)
@@ -56,7 +56,7 @@ data Coterm
   = Covar (Var Index)
   | MuL Scope
   | LamL Term Coterm
-  | SumL [Name :=: Coterm]
+  | SumL [QName :=: Coterm]
   | PrdL Int Coterm
   deriving (Show)
 
