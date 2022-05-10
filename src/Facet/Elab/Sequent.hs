@@ -185,9 +185,7 @@ checkLamS clauses = go id
       x <- freshName "x"
       kx <- freshName "kx"
       SQ.lamR kx x <$> check (go (scrutinees . ((x :==> _A) :)) >< freeL kx ::: _B)
-    _T              -> do
-      kx <- freshName "kx"
-      SQ.muR kx <$> (kx :==> _T |- check (patternBody (scrutinees []) (map (fmap (>< freeL kx)) clauses) ::: _T))
+    _T              -> check (muR (\ kx -> patternBody (scrutinees []) (map (fmap (>< switch (pure kx))) clauses)) ::: _T)
 
 
 data Clause a = Clause
@@ -259,6 +257,11 @@ muL body = Check $ \ _T -> do
 
 freeR :: Applicative m => Name -> Type <==: m SQ.Term
 freeR = pure . pure . SQ.freeR
+
+muR :: (Has Fresh sig m, Has (Reader ElabContext) sig m) => (SQ.Coterm :==> Type -> Type <==: m SQ.Command) -> Type <==: m SQ.Term
+muR body = Check $ \ _T -> do
+  x <- freshName "x"
+  SQ.muR x <$> (x :==> _T |- check (body (SQ.freeL x :==> _T) ::: _T))
 
 (><) :: Applicative m => Type <==: m SQ.Term -> Type <==: m SQ.Coterm -> Type <==: m SQ.Command
 t >< c = Check $ \ _T -> liftA2 (SQ.:|:) (check (t ::: _T)) (check (c ::: _T))
