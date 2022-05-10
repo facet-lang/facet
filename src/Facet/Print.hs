@@ -238,7 +238,7 @@ instance Printable SQ.Coterm where
       SQ.Covar (Free n)  -> qvar n
       SQ.Covar (Bound n) -> fromMaybe (intro __ (toLeveled d n)) $ env Env.!? n
       SQ.MuL b           -> pretty "µ̃" <> sqbinder d (\ p@(n :=: v) -> sqblock (v <+> dot <+> print opts (env |> p) (SQ.instantiateL (SQ.freeL n) b)))
-      SQ.LamL a k        -> print opts env a <> print opts env k
+      SQ.LamL a k        -> print opts env a <> dot <> print opts env k
       SQ.SumL bs         -> pretty "case" <+> sqblock (encloseSep mempty mempty (pretty ", ") (map (\ (n :=: b) -> parens (pretty n) <+> dot <+> print opts env b) bs))
       SQ.PrdL i b        -> pretty 'π' <> subscript i <+> print opts env b
       where
