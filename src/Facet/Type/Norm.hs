@@ -82,7 +82,7 @@ instance Show Type where
       Bound (Left (Meta v)) -> showChar 'σ' . shows v
       Bound (Right d)       -> showsLevel d
       Free n                -> shows n
-    showsLevel (Level v) = showString (toAlpha ['a'..'z'] v)
+    showsLevel (Level v) = showString ('_':toAlpha ['A'..'Z'] v)
     showsFoldable f s = foldr (.) id (intersperse (showString ", ") (foldr ((:) . f) [] s))
 
 _String :: Prism' Type ()
