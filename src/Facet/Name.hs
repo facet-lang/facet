@@ -12,6 +12,7 @@ module Facet.Name
 , (//)
 , q
 , qlast
+, qlocal
 , fromSnoc
 , toSnoc
 , Name(..)
@@ -110,6 +111,10 @@ q = QName . (Nil SNE.:|>)
 
 qlast :: QName -> Name
 qlast (QName (_ SNE.:|> l)) = l
+
+qlocal :: QName -> Maybe Name
+qlocal (QName (Nil SNE.:|> n)) = Just n
+qlocal _                       = Nothing
 
 fromSnoc :: Snoc Name -> QName
 fromSnoc = QName . SNE.fromSnoc
