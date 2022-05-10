@@ -76,7 +76,7 @@ instance Show Type where
       ForAll n k b      -> showParen (p > 10) $ showString "ForAll " . showsPrec 11 n . showChar ' ' . showsPrec 11 k . showChar ' ' . showParen True (showString "\\ " . showsLevel d . showString " -> ". go (succ d) 0 (b (bound d)))
       Arrow Nothing a b -> showParen (p > 1) $ go d 2 a . showString " --> " . go d 1 b
       Arrow n a b       -> showParen (p > 10) $ showString "Arrow " . showsPrec 11 n . showChar ' ' . go d 11 a . showChar ' ' . go d 11 b
-      Ne v ts           -> showParen (p > 10) $ showString "Ne " . showsVar v . showString " [" . showsFoldable (go d 0) ts . showChar ']'
+      Ne v ts           -> showParen (p > 10) $ foldl' (\ s t -> s . showChar ' ' . go d 11 t) (showsVar v) ts
       Comp s t          -> showParen (p > 10) $ showString "Comp [" . showsFoldable (go d 0) s . showString "] " . go d 11 t
     showsVar = \case
       Bound (Left (Meta v)) -> showChar 'σ' . shows v
