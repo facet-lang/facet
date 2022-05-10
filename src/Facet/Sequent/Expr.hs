@@ -132,7 +132,7 @@ replaceTerm lr within = case within of
   Var (Free (QName (Nil:|>n))) -> that (const within) free' lr n
   Var (Free _)                 -> within
   Var (Bound inner)            -> that (const within) bound' lr inner
-  MuR (Scope b)                -> MuR (Scope (replaceCommand (first incr lr) b))
+  MuR (Scope b)                -> MuR (Scope (replaceCommand (bimap incr incr lr) b))
   LamR (Scope b)               -> LamR (Scope (replaceCommand (bimap incr incr lr) b))
   SumR i a                     -> SumR i (replaceTerm lr a)
   PrdR as                      -> PrdR (map (replaceTerm lr) as)
@@ -146,7 +146,7 @@ replaceCoterm lr within = case within of
   Covar (Free (QName (Nil:|>n))) -> this (const within) free' lr n
   Covar (Free _)                 -> within
   Covar (Bound inner)            -> this (const within) bound' lr inner
-  MuL (Scope b)                  -> MuL (Scope (replaceCommand (second incr lr) b))
+  MuL (Scope b)                  -> MuL (Scope (replaceCommand (bimap incr incr lr) b))
   LamL a k                       -> LamL (replaceTerm lr a) (replaceCoterm lr k)
   SumL cs                        -> SumL (map (fmap (replaceCoterm lr)) cs)
   PrdL i b                       -> PrdL i (replaceCoterm lr b)
@@ -157,7 +157,7 @@ replaceCoterm lr within = case within of
 replaceCommand :: These (Replacer Coterm) (Replacer Term) -> (Command -> Command)
 replaceCommand lr = \case
   t :|: c         -> replaceTerm lr t :|: replaceCoterm lr c
-  Let t (Scope b) -> Let (replaceTerm lr t) (Scope (replaceCommand (second incr lr) b))
+  Let t (Scope b) -> Let (replaceTerm lr t) (Scope (replaceCommand (bimap incr incr lr) b))
 
 
 -- Smart constructors
