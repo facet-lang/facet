@@ -69,14 +69,14 @@ instance Quote Type TX.Type where
     Ne n sp      -> foldl' (\ h t -> TX.App <$> h <*> quote t) (Quoter (\ d -> TX.Var (toIndexed d n))) sp
 
 instance Show Type where
-  showsPrec _ = go 0
+  showsPrec = go 0
     where
-    go d = \case
+    go d p = \case
       String       -> showString "String"
-      ForAll n k b -> showString "ForAll " . showsPrec 11 n . showChar ' ' . showsPrec 11 k . showChar ' ' . showParen True (showString "\\ " . showsLevel d . showString " -> ". go (succ d) (b (bound d)))
-      Arrow n a b  -> showString "Arrow " . showsPrec 11 n . showChar ' ' . go d a . showChar ' ' . go d b
-      Ne v ts      -> showString "Ne " . showsVar v . showString " [" . showsFoldable (go d) ts . showChar ']'
-      Comp s t     -> showString "Comp [" . showsFoldable (go d) s . showString "] " . go d t
+      ForAll n k b -> showParen (p > 10) $ showString "ForAll " . showsPrec 11 n . showChar ' ' . showsPrec 11 k . showChar ' ' . showParen True (showString "\\ " . showsLevel d . showString " -> ". go (succ d) 0 (b (bound d)))
+      Arrow n a b  -> showParen (p > 10) $ showString "Arrow " . showsPrec 11 n . showChar ' ' . go d 11 a . showChar ' ' . go d 11 b
+      Ne v ts      -> showParen (p > 10) $ showString "Ne " . showsVar v . showString " [" . showsFoldable (go d 0) ts . showChar ']'
+      Comp s t     -> showParen (p > 10) $ showString "Comp [" . showsFoldable (go d 0) s . showString "] " . go d 11 t
     showsVar = \case
       Bound (Left (Meta v)) -> showChar 'σ' . shows v
       Bound (Right d)       -> showsLevel d
