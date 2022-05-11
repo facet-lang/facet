@@ -60,6 +60,10 @@ _Caveat lector: there are no guarantees of correctness or completeness on the co
 
   - Ideally, emit DWARF data.
 
+- Type patterns, for use with type lambdas & probably quantifiers.
+
+- Dictionary patterns, to bind the operations of an effect interface in the scope of a handler.
+
 
 ### Surface
 
@@ -144,11 +148,15 @@ _Caveat lector: there are no guarantees of correctness or completeness on the co
 
 ### Elaborator
 
-- Emit warnings.
+- ✅ Emit warnings.
 
 - Continue after errors on a declaration-by-declaration basis.
 
-- Add entire composite patterns to contexts. One entry for the whole pattern at type A, with sub-entries for each sub-pattern at decomposed types.
+- ✅ Add entire composite patterns to contexts. One entry for the whole pattern at type A, with sub-entries for each sub-pattern at decomposed types.
+
+- `Level`/`Level` pairs could be represented as `Ratio`s.
+
+- Distinguish between the `Level` a variable was bound and the `Level` of the place it’s being inserted at the type level using `newtype`s.
 
 
 ### Pretty-printer

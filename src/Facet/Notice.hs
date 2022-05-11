@@ -8,8 +8,8 @@ module Facet.Notice
 , context_
 ) where
 
-import Control.Lens (Lens', lens)
 import Facet.Source (Source(..))
+import Fresnel.Lens (Lens', lens)
 
 -- Notices
 
@@ -26,7 +26,7 @@ data Notice a = Notice
   , reason     :: !a
   , context    :: ![a]
   }
-  deriving (Show)
+  deriving (Functor, Show)
 
 level_ :: Lens' (Notice a) (Maybe Level)
 level_ = lens level $ \ n level -> n{ level }

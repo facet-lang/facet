@@ -12,6 +12,7 @@ import           Data.Maybe (fromMaybe)
 import qualified Facet.Notice as Notice
 import           Facet.Pretty
 import           Facet.Source
+import           Facet.Source.Reference
 import qualified Facet.Span as Span
 import qualified Prettyprinter as P
 import           Silkscreen
@@ -84,7 +85,7 @@ prettyNotice (Notice.Notice level src reason context) = concatWith (surround har
   , context >>= \ ctx -> [ mempty, annotate Context ctx ]])
   where
   header = nest 2 (group (fillSep
-    [ foldMap (\ (Source path span _ _) -> annotate Path (pretty (fromMaybe "(interactive)" path)) <> colon <> prettySpan span <> colon) src <> foldMap ((space <>) . (<> colon) . prettyLevel) level
+    [ foldMap (\ (Source (Reference path span) _ _) -> annotate Path (pretty (fromMaybe "(interactive)" path)) <> colon <> prettySpan span <> colon) src <> foldMap ((space <>) . (<> colon) . prettyLevel) level
     , annotate Reason reason
     ]))
 
@@ -93,7 +94,7 @@ prettyNotice (Notice.Notice level src reason context) = concatWith (surround har
     Notice.Warn  -> P.pretty "warning"
     Notice.Error -> P.pretty "error"
 
-  ref (Source _ span _ (line:|_)) = annotate Gutter (pretty (succ (Span.line (Span.start span)))) <+> align (vcat
+  ref (Source (Reference _ span) _ (line:|_)) = annotate Gutter (pretty (succ (Span.line (Span.start span)))) <+> align (vcat
     [ annotate Gutter (pretty '|') <+> prettyLine line
     , annotate Gutter (pretty '|') <+> padding span <> annotate Caret (caret (lineLength line) span)
     ])

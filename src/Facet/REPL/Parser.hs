@@ -33,7 +33,7 @@ command symbols usage meta parse = Commands
 
 
 parseCommands :: (Has Parser sig p, TokenParsing p) => Commands a -> p a
-parseCommands = runCommandParser . _parseCommands
+parseCommands c = runCommandParser (_parseCommands c)
 
 data Commands a = Commands
   { getCommands    :: [Command]
@@ -66,10 +66,10 @@ instance Alternative CommandParser where
   some (CommandParser m) = CommandParser (some m)
 
 instance Monad CommandParser where
-  m >>= f = CommandParser (runCommandParser m >>= runCommandParser . f)
+  m >>= f = CommandParser (runCommandParser m >>= \ a -> runCommandParser (f a))
 
 instance Algebra Parser CommandParser where
-  alg hdl sig ctx = CommandParser $ alg (runCommandParser . hdl) (inj sig) ctx
+  alg hdl sig ctx = CommandParser $ alg (\ m -> runCommandParser (hdl m)) (inj sig) ctx
 
 instance Parsing CommandParser where
   try (CommandParser m) = CommandParser (try m)

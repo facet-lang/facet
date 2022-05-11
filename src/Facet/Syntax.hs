@@ -1,9 +1,16 @@
+{-# LANGUAGE UndecidableInstances #-}
 module Facet.Syntax
-( (:::)(..)
-, tm
-, ty
+( -- * Term containers
+  IsPair(..)
+, HasTerm(..)
+-- , tm
+, (:::)(..)
+, ty_
 , (:=:)(..)
-, nm, def
+, nm_
+, def_
+, (:@)(..)
+, qty_
   -- * Variables
 , Var(..)
   -- * Decomposition
@@ -12,14 +19,40 @@ module Facet.Syntax
   -- * Assertion data
 , Exp(..)
 , Act(..)
+  -- * Natural transformations
+, type (~>)
+  -- * Annotations
+, Ann(..)
+, ann_
+, context_
+, out_
+, annUnary
+, annBinary
+, Comment(..)
 ) where
 
 import Data.Bifoldable
 import Data.Bifunctor
 import Data.Bitraversable
+import Data.Function (on)
 import Data.Functor.Classes
+import Data.Text (Text)
 import Facet.Name
 import Facet.Snoc
+import Facet.Span
+import Fresnel.Getter (view)
+import Fresnel.Iso (Iso, iso)
+import Fresnel.Lens (Lens, Lens', lens)
+
+-- Term containers
+
+class IsPair p where
+  pair_ :: Iso (p a b) (p a' b') (a, b) (a', b')
+
+
+class HasTerm p where
+  tm_ :: Lens (p s t) (p s' t) s s'
+
 
 data a ::: b = a ::: b
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
@@ -47,11 +80,14 @@ instance Eq2 (:::) where
 instance Ord2 (:::) where
   liftCompare2 compareA compareB (a1 ::: b1) (a2 ::: b2) = compareA a1 a2 <> compareB b1 b2
 
-tm :: a ::: b -> a
-tm (a ::: _) = a
+instance IsPair (:::) where
+  pair_ = iso ((,) <$> view tm_ <*> view ty_) (uncurry (:::))
 
-ty :: a ::: b -> b
-ty (_ ::: b) = b
+instance HasTerm (:::) where
+  tm_ = lens (\ (a ::: _) -> a) (\ (_ ::: t) s' -> s' ::: t)
+
+ty_ :: Lens (s ::: t) (s ::: t') t t'
+ty_ = lens (\ (_ ::: b) -> b) (\ (s ::: _) t' -> s ::: t')
 
 
 data a :=: b = a :=: b
@@ -68,19 +104,53 @@ instance Bifunctor (:=:) where
 instance Bitraversable (:=:) where
   bitraverse f g (a :=: b) = (:=:) <$> f a <*> g b
 
-nm :: a :=: b -> a
-nm (a :=: _) = a
+instance IsPair (:=:) where
+  pair_ = iso ((,) <$> view nm_ <*> view def_) (uncurry (:=:))
 
-def :: a :=: b -> b
-def (_ :=: b) = b
+instance HasTerm (:=:) where
+  tm_ = lens (\ (a :=: _) -> a) (\ (_ :=: t) s' -> s' :=: t)
+
+nm_ :: Lens (a :=: b) (a' :=: b) a a'
+nm_ = lens (\ (a :=: _) -> a) (\ (_ :=: b) a -> a :=: b)
+
+def_ :: Lens (a :=: b) (a :=: b') b b'
+def_ = lens (\ (_ :=: b) -> b) (\ (a :=: _) b -> a :=: b)
+
+
+data a :@ b = a :@ b
+  deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
+
+infixl 1 :@
+
+instance Bifoldable (:@) where
+  bifoldMap = bifoldMapDefault
+
+instance Bifunctor (:@) where
+  bimap = bimapDefault
+
+instance Bitraversable (:@) where
+  bitraverse f g (a :@ b) = (:@) <$> f a <*> g b
+
+instance IsPair (:@) where
+  pair_ = iso ((,) <$> view tm_ <*> view qty_) (uncurry (:@))
+
+instance HasTerm (:@) where
+  tm_ = lens (\ (a :@ _) -> a) (\ (_ :@ t) s' -> s' :@ t)
+
+qty_ :: Lens (p :@ q) (p :@ q') q q'
+qty_ = lens (\ (_ :@ q) -> q) (\ (p :@ _) q -> p :@ q)
 
 
 -- Variables
 
 data Var a
-  = Global RName -- ^ Global variables, considered equal by 'RName'.
-  | Free a
+  = Bound a
+  | Free QName -- ^ Free variables (both local and global), considered equal by 'QName'. Unary names are locals, n>1-ary names are globals.
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
+
+instance DeBruijn lv ix => DeBruijn (Var lv) (Var ix) where
+  toIndexed = fmap . toIndexed
+  toLeveled = fmap . toLeveled
 
 
 -- Decomposition
@@ -103,7 +173,54 @@ splitr un = go id
 -- Assertion data
 
 newtype Exp a = Exp { getExp :: a }
-  deriving (Functor)
+  deriving (Functor, Show)
 
 newtype Act a = Act { getAct :: a }
-  deriving (Functor)
+  deriving (Functor, Show)
+
+
+-- Natural transformations
+
+type i ~> j = forall x . i x -> j x
+
+
+-- Annotations
+
+data Ann a = Ann
+  { ann     :: Span
+  , context :: Snoc (Span, Comment)
+  , out     :: a
+  }
+  deriving (Foldable, Functor, Traversable)
+
+instance Eq a => Eq (Ann a) where
+  (==) = (==) `on` out
+
+instance Ord a => Ord (Ann a) where
+  compare = compare `on` out
+
+instance Show a => Show (Ann a) where
+  showsPrec p = showsPrec p . out
+
+instance HasSpan (Ann a) where
+  span_ = ann_
+
+ann_ :: Lens' (Ann a) Span
+ann_ = lens ann (\ a ann -> a{ ann })
+
+context_ :: Lens (Ann a) (Ann a) (Snoc (Span, Comment)) (Snoc (Span, Comment))
+context_ = lens context (\ a context -> a{ context })
+
+out_ :: Lens (Ann a) (Ann b) a b
+out_ = lens out (\ a out -> a{ out })
+
+
+annUnary :: (Ann a -> a) -> Ann a -> Ann a
+annUnary f a = Ann (ann a) Nil (f a)
+
+annBinary :: (Ann a -> Ann b -> a) -> Ann a -> Ann b -> Ann a
+annBinary f a b = Ann (ann a <> ann b) Nil (f a b)
+
+
+newtype Comment = Comment { getComment :: Text }
+  deriving (Eq, Show)

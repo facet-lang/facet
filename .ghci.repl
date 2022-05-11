@@ -32,12 +32,14 @@
 -- 8.10+
 :seti -Wno-missing-safe-haskell-mode
 :seti -Wno-prepositive-qualified-module
+-- 9.2+
+:seti -Wno-missing-kind-signatures
 
 -- We have this one on in the project but not in the REPL to reduce noise
 :seti -Wno-type-defaults
 :set -Wno-unused-packages
 
-:load Facet.CLI test/Test.hs
+:load Facet.CLI Facet.Elab.Sequent test/Test.hs
 
 import Facet.Parser
 import Facet.Print

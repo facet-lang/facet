@@ -20,59 +20,67 @@ import           Control.Carrier.Writer.Church
 import           Control.Effect.Choose
 import           Control.Effect.Empty
 import           Control.Effect.Throw
-import           Control.Lens as Lens (At(..), Index, IxValue, Ixed(..), iso)
 import           Control.Monad (unless, when, (<=<))
 import           Control.Monad.Trans.Class
 import           Data.Foldable (for_)
 import qualified Data.Map as Map
 import           Data.Monoid (Endo(..))
 import qualified Data.Set as Set
-import           Facet.Core.Module
+import           Facet.Module
 import           Facet.Name
 import           Facet.Snoc
-import           Facet.Snoc.NonEmpty (fromSnoc, toSnoc)
-import           Facet.Syntax
+import           Facet.Snoc.NonEmpty (NonEmpty(..))
+import           Facet.Syntax (def_)
+import           Fresnel.At
+import           Fresnel.Getter (view)
+import           Fresnel.Iso
+import           Fresnel.Ixed
 
-newtype Graph = Graph { getGraph :: Map.Map MName (Maybe FilePath, Maybe Module) }
-  deriving (Semigroup, Monoid)
+newtype Graph = Graph { getGraph :: Map.Map QName (Maybe FilePath, Maybe Module) }
+  deriving (Monoid, Semigroup)
 
-type instance Lens.Index Graph = MName
-type instance IxValue Graph = (Maybe FilePath, Maybe Module)
+instance Ixed Graph where
+  type Index Graph = QName
+  type IxValue Graph = (Maybe FilePath, Maybe Module)
+  ix = ixAt
 
-instance Ixed Graph
 instance At   Graph where
   at i = iso getGraph Graph .at i
 
 singleton :: Maybe FilePath -> Module -> Graph
 singleton p m@Module{ name } = Graph (Map.singleton name (p, Just m))
 
-restrict :: Graph -> Set.Set MName -> Graph
+restrict :: Graph -> Set.Set QName -> Graph
 restrict (Graph g) s = Graph $ Map.restrictKeys g s
 
 insert :: Maybe FilePath -> Module -> Graph -> Graph
 insert p m@Module{ name } = Graph . Map.insert name (p, Just m) . getGraph
 
-lookupM :: Has (Choose :+: Empty) sig m => MName -> Graph -> m (Maybe FilePath, Maybe Module)
+lookupM :: Has (Choose :+: Empty) sig m => QName -> Graph -> m (Maybe FilePath, Maybe Module)
 lookupM n = maybe empty pure . Map.lookup n . getGraph
 
 lookupWith :: Has (Choose :+: Empty) sig m => (Name -> Module -> m res) -> Graph -> Module -> QName -> m res
-lookupWith lookup graph mod@Module{ name } (m:.n)
-  =   guard (m == toSnoc name || m == Nil) *> lookup n mod
-  <|> guard (m == Nil) *> foldMapC (maybe empty (lookup n) . snd) (getGraph graph)
-  <|> guard (m /= Nil) *> (lookupM (fromSnoc m) graph >>= maybe empty pure . snd >>= lookup n)
+lookupWith lookup graph mod@Module{ name } (QName (m:|>n)) = guards
+  [ (m == toSnoc name || m == Nil, lookup n mod)
+  , (m == Nil, foldMapC (maybe empty (lookup n) . snd) (getGraph graph))
+  , (m /= Nil, lookupM (fromSnoc m) graph >>= maybe empty pure . snd >>= lookup n)
+  ]
 
-lookupQ :: Has (Choose :+: Empty) sig m => Graph -> Module -> QName -> m (RName :=: Def)
-lookupQ = lookupWith lookupD
+guards :: Has Empty sig m => [(Bool, m a)] -> m a
+guards cases = foldr (\ (cond, alt) rest -> if cond then alt else rest) empty cases
+
+lookupQ :: Has (Choose :+: Empty) sig m => Graph -> Module -> QName -> m Def
+lookupQ = lookupWith (\ n m -> view def_ <$> (lookupDef n m))
 
 
 -- FIXME: enrich this with source references for each
-newtype GraphErr = CyclicImport (Snoc MName)
+newtype GraphErr = CyclicImport (Snoc QName)
 
-data Node a = Node MName [MName] a
+data Node a = Node QName [QName] a
 
-loadOrder :: Has (Throw GraphErr) sig m => (MName -> m (Node a)) -> [Node a] -> m [a]
+loadOrder :: Has (Throw GraphErr) sig m => (QName -> m (Node a)) -> [Node a] -> m [a]
 loadOrder lookup modules = do
-  modules <- execWriter . evalState (Set.empty @MName) . runReader (Nil @MName)
+  modules <- execWriter . evalState (Set.empty @QName) . runReader (Nil @QName)
     $ for_ modules visit
   pure $ appEndo modules []
   where

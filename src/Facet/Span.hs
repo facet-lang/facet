@@ -8,8 +8,9 @@ module Facet.Span
 , HasSpan(..)
 ) where
 
-import Control.Lens (Lens', iso, lens)
 import Data.Functor.Classes (showsBinaryWith)
+import Fresnel.Iso (iso)
+import Fresnel.Lens (Lens', lens)
 
 -- Positions
 
