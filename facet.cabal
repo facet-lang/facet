@@ -25,6 +25,7 @@ common common
     -Wno-missed-specialisations
     -Wno-missing-import-lists
     -Wno-missing-local-signatures
+    -Wno-missing-safe-haskell-mode
     -Wno-monomorphism-restriction
     -Wno-name-shadowing
     -Wno-safe
@@ -35,6 +36,15 @@ common common
     ghc-options:
       -Wno-missing-safe-haskell-mode
       -Wno-prepositive-qualified-module
+  if (impl(ghc >= 9.2))
+    ghc-options:
+      -Wno-missing-kind-signatures
+  if (impl(ghc >= 9.8))
+    ghc-options:
+      -Wno-missing-poly-kind-signatures
+      -Wno-missing-role-annotations
+      -Wno-operator-whitespace
+      -Wno-term-variable-capture
   default-extensions:
     DeriveTraversable
     DerivingStrategies
@@ -128,7 +138,7 @@ library
     Paths_facet
   build-depends:
     , ansi-terminal
-    , base ^>= 4.14
+    , base >= 4.14 && < 4.21
     , charset
     , colour
     , containers
@@ -166,8 +176,10 @@ test-suite test
     , base
     , containers
     , facet
-    , hedgehog ^>= 1
+    , hedgehog ^>= 1.5
     , parsers
+  ghc-options:
+    -Wno-missing-signatures
 
 
 executable facetc
