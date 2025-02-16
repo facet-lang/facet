@@ -27,7 +27,6 @@ module Facet.Print
 , print2
 ) where
 
-import           Data.Foldable (foldl')
 import           Data.Maybe (fromMaybe)
 import qualified Data.Text as T
 import           Data.These

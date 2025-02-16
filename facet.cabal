@@ -25,6 +25,7 @@ common common
     -Wno-missed-specialisations
     -Wno-missing-import-lists
     -Wno-missing-local-signatures
+    -Wno-missing-safe-haskell-mode
     -Wno-monomorphism-restriction
     -Wno-name-shadowing
     -Wno-safe
@@ -38,6 +39,12 @@ common common
   if (impl(ghc >= 9.2))
     ghc-options:
       -Wno-missing-kind-signatures
+  if (impl(ghc >= 9.8))
+    ghc-options:
+      -Wno-missing-poly-kind-signatures
+      -Wno-missing-role-annotations
+      -Wno-operator-whitespace
+      -Wno-term-variable-capture
   default-extensions:
     DeriveTraversable
     DerivingStrategies
@@ -190,7 +197,7 @@ test-suite test
     , base
     , containers
     , facet
-    , hedgehog >= 1 && < 1.2
+    , hedgehog ^>= 1.5
     , parsers
   if (impl(ghc >= 9.2))
     ghc-options:

@@ -1,4 +1,5 @@
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE UndecidableInstances #-}
 -- | This module defines the /elaboration/ of terms in 'S.Expr' into values in 'Type'.
@@ -332,13 +333,13 @@ data ElabContext = ElabContext
   }
 
 context_ :: Lens' ElabContext Context
-context_ = lens (\ ElabContext{ context } -> context) (\ ElabContext{ typeContext, sig, spans } context -> ElabContext{ context, typeContext, sig, spans })
+context_ = lens (\ ElabContext{ context } -> context) (\ ElabContext{context = _, ..} context -> ElabContext{ .. })
 
 typeContext_ :: Lens' ElabContext TypeContext.TypeContext
-typeContext_ = lens (\ ElabContext{ typeContext } -> typeContext) (\ ElabContext{ context, sig, spans } typeContext -> ElabContext{ context, typeContext, sig, spans })
+typeContext_ = lens (\ ElabContext{ typeContext } -> typeContext) (\ ElabContext{typeContext = _, ..} typeContext -> ElabContext{ .. })
 
 sig_ :: Lens' ElabContext [Signature Type]
-sig_ = lens (\ ElabContext{ sig } -> sig) (\ ElabContext{ context, typeContext, spans } sig -> ElabContext{ context, typeContext, sig, spans })
+sig_ = lens (\ ElabContext{ sig } -> sig) (\ ElabContext{sig = _, ..} sig -> ElabContext{ .. })
 
 spans_ :: Lens' ElabContext (Snoc Span)
 spans_ = lens spans (\ e spans -> e{ spans })

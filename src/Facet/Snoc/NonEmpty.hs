@@ -9,7 +9,7 @@ module Facet.Snoc.NonEmpty
 , pattern FromList
 ) where
 
-import Data.Foldable (foldl', foldr')
+import Data.Foldable (foldr')
 import Facet.Snoc hiding (FromList)
 import GHC.Exts
 

@@ -11,7 +11,7 @@ module Facet.Snoc
 ) where
 
 import Control.Applicative
-import Data.Foldable (foldl', foldr')
+import Data.Foldable (foldr')
 import Data.Functor.Classes
 import Data.Semialign
 import Data.These

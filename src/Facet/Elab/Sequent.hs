@@ -31,7 +31,6 @@ module Facet.Elab.Sequent
 , runSQThese
 ) where
 
-import           Control.Applicative (liftA2)
 import           Control.Carrier.Fresh.Church
 import           Control.Carrier.Reader
 import           Control.Carrier.State.Church

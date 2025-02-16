@@ -23,7 +23,7 @@ module Facet.Name
 , formatOpN
 ) where
 
-import           Data.Foldable (foldl', foldr')
+import           Data.Foldable (foldr')
 import           Data.Functor.Classes (showsUnaryWith)
 import           Data.List (intercalate)
 import qualified Data.List.NonEmpty as NE

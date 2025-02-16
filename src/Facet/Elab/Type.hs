@@ -10,11 +10,9 @@ module Facet.Elab.Type
 ) where
 
 import           Control.Algebra
-import           Control.Applicative (liftA2)
 import           Control.Effect.Reader
 import           Control.Effect.Throw
 import           Control.Monad (unless)
-import           Data.Foldable (foldl')
 import           Facet.Elab
 import           Facet.Functor.Check
 import           Facet.Functor.Synth
