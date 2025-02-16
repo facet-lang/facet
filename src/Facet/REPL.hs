@@ -241,6 +241,6 @@ prompt = do
 runElab :: Has (State Options :+: State REPL) sig m => I.WriteC (Notice.Notice (Doc Style)) Elab.Warn (I.ThrowC (Notice.Notice (Doc Style)) Elab.Err (ReaderC MName (ReaderC Module (ReaderC Graph m)))) a -> m a
 runElab m = do
   graph <- use (target_.modules_)
-  localDefs <- use localDefs_
+  localDefs@Module{ name } <- use localDefs_
   opts <- get
-  runReader graph . runReader localDefs . runReader ((name :: Module -> MName) localDefs) . rethrowElabErrors opts . rethrowElabWarnings $ m
+  runReader graph . runReader localDefs . runReader name . rethrowElabErrors opts . rethrowElabWarnings $ m
