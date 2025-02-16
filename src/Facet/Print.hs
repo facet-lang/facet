@@ -31,7 +31,7 @@ module Facet.Print
 , meta
 ) where
 
-import           Data.Foldable (foldl', toList)
+import           Data.Foldable (toList)
 import           Data.Maybe (fromMaybe)
 import qualified Data.Text as T
 import           Data.Traversable (mapAccumL)
@@ -258,6 +258,8 @@ printModule (C.Module mname is _ ds) = module_
 intro, tintro :: Name -> Level -> Print
 intro  n = name lower n . getLevel
 tintro n = name upper n . getLevel
+
+qvar :: (P.Level p ~ Precedence, PrecedencePrinter p) => QName -> p
 qvar (_ :. n) = setPrec Var (pretty n)
 
 lname :: LName Level -> Print
@@ -266,6 +268,7 @@ lname (LName d n) = intro n d
 meta :: Meta -> Print
 meta (Meta m) = setPrec Var $ annotate (Name m) $ pretty '?' <> upper m
 
+local :: Name -> Level -> Print
 local  n d = name lower n (getLevel d)
 
 name :: (Int -> Print) -> Name -> Int -> Print

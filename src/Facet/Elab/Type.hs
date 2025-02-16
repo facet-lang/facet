@@ -15,12 +15,10 @@ module Facet.Elab.Type
 ) where
 
 import           Control.Algebra
-import           Control.Applicative (liftA2)
 import           Control.Effect.Lens (views)
 import           Control.Effect.Throw
 import           Control.Monad (unless)
 import           Data.Bifunctor (first)
-import           Data.Foldable (foldl')
 import           Data.Functor (($>))
 import           Facet.Core.Module
 import           Facet.Core.Pattern

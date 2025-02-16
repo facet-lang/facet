@@ -11,7 +11,6 @@ module Facet.Parser.Table
 ) where
 
 import Control.Applicative (Alternative(..), (<**>))
-import Data.Foldable (foldl')
 import Data.Function ((&))
 import Facet.Name
 import Text.Parser.Combinators

@@ -29,7 +29,6 @@ module Facet.Core.Type
 ) where
 
 import           Control.Effect.Empty
-import           Data.Foldable (foldl')
 import           Data.Function (on, (&))
 import           Data.Maybe (fromMaybe)
 import qualified Data.Set as Set

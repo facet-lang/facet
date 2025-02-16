@@ -1,3 +1,4 @@
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 -- | This module defines the /elaboration/ of terms in 'S.Expr' into values in 'Type'.
 --
@@ -301,10 +302,10 @@ data ElabContext = ElabContext
   }
 
 context_ :: Lens' ElabContext Context
-context_ = lens (\ ElabContext{ context } -> context) (\ e context -> (e :: ElabContext){ context })
+context_ = lens (\ ElabContext{ context } -> context) (\ ElabContext{context = _, ..} context -> ElabContext{ .. })
 
 sig_ :: Lens' ElabContext [Signature Type]
-sig_ = lens (\ ElabContext{ sig } -> sig) (\ e sig -> (e :: ElabContext){ sig })
+sig_ = lens (\ ElabContext{ sig } -> sig) (\ ElabContext{sig = _, ..} sig -> ElabContext{ .. })
 
 spans_ :: Lens' ElabContext (Snoc Span)
 spans_ = lens spans (\ e spans -> e{ spans })

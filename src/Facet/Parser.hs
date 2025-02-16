@@ -26,7 +26,6 @@ import           Data.Bool (bool)
 import           Data.Char (isSpace)
 import qualified Data.CharSet as CharSet
 import qualified Data.CharSet.Unicode as Unicode
-import           Data.Foldable (foldl')
 import           Data.Functor (void)
 import qualified Data.HashSet as HashSet
 import qualified Data.List.NonEmpty as NE
@@ -60,7 +59,8 @@ whole p = whiteSpace *> p <* eof
 makeOperator :: (N.MName, N.Op, N.Assoc) -> Operator (S.Ann S.Expr)
 makeOperator (name, op, assoc) = (op, assoc, nary (toSnoc name N.:. N.O op))
   where
-  nary name es = foldl' (S.annBinary S.App) (S.Ann (S.ann (head es)) Nil (S.Var name)) es
+  nary _    []     = error "operator given no operands"
+  nary name (e:es) = foldl' (S.annBinary S.App) (S.Ann (S.ann e) Nil (S.Var name)) (e:es)
 
 
 -- Modules

@@ -4,7 +4,6 @@ module Facet.Notice.Elab
 , rethrowElabWarnings
 ) where
 
-import           Data.Foldable (foldl')
 import           Data.Semigroup (stimes)
 import qualified Facet.Carrier.Throw.Inject as L
 import qualified Facet.Carrier.Write.Inject as L

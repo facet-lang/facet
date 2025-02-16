@@ -6,7 +6,6 @@ module Facet.Norm
 ) where
 
 import           Control.Monad (guard)
-import           Data.Foldable (foldl')
 import           Data.Function (on)
 import           Data.Monoid
 import           Data.Text (Text)
