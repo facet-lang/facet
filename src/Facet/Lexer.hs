@@ -12,7 +12,6 @@ import Data.Text (Text, pack)
 import Facet.Effect.Parser
 import Facet.Name
 import Facet.Snoc
-import Facet.Snoc.NonEmpty
 import Facet.Span
 import Text.Parser.Char
 import Text.Parser.Combinators
@@ -38,7 +37,7 @@ data TokenKind
   | RAngle
   | OpIdent String
   | QIdent QName
-  | MIdent MName
+  | MIdent QName
   | EIdent Name
   | TIdent Name
   | HIdent Name
@@ -65,11 +64,11 @@ kind_ = choice
   , RBracket   <$  char ']' <?> "]"
   , LAngle     <$  char '<' <?> "<"
   , RAngle     <$  char '>' <?> ">"
-  , QIdent     <$> ((:.) . toSnoc <$> mname <* dot <*> choice [ U <$> ename, U <$> tname ])
+  , QIdent     <$> mname
   , MIdent     <$> mname
-  , EIdent . U <$> ename
-  , TIdent . U <$> tname
-  , HIdent . U <$> ident (char '?') nameChar <?> "hole name"
+  , EIdent . T <$> ename
+  , TIdent     <$> tname
+  , HIdent . T <$> ident (char '?') nameChar <?> "hole name"
   ]
   where
   mname = fromList <$> sepBy1 tcomp dot <?> "module name"
@@ -77,8 +76,8 @@ kind_ = choice
   tname = tcomp <?> "type name"
   dot = char '.' <?> "."
   ecomp = ident (choice [ lower, char '_' ]) nameChar
-  tcomp :: CharParsing p => p Text
-  tcomp = ident (choice [ upper, char '_' ]) nameChar
+  tcomp :: CharParsing p => p Name
+  tcomp = T <$> ident (choice [ upper, char '_' ]) nameChar
 
 ident :: CharParsing p => p Char -> p Char -> p Text
 ident i r = fmap pack . (:) <$> i <*> many r

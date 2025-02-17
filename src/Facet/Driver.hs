@@ -23,9 +23,7 @@ module Facet.Driver
 import           Control.Algebra
 import           Control.Carrier.Reader
 import           Control.Effect.Error
-import           Control.Effect.Lens (use, uses, (.=))
 import           Control.Effect.State
-import           Control.Lens (Lens, Lens', at, lens, (^.))
 import           Control.Monad.IO.Class
 import           Data.Foldable (toList)
 import           Data.Maybe (catMaybes)
@@ -34,24 +32,29 @@ import qualified Data.Text as TS
 import           Data.Traversable (for)
 import           Facet.Carrier.Parser.Church
 import qualified Facet.Carrier.Throw.Inject as I
-import           Facet.Core.Module hiding (Import(name), imports, imports_)
 import           Facet.Effect.Readline
 import           Facet.Effect.Write
 import qualified Facet.Elab.Term as Elab
 import           Facet.Graph
 import           Facet.Lens
+import           Facet.Module hiding (Import(name), imports, imports_)
 import           Facet.Name
 import qualified Facet.Notice as Notice
 import           Facet.Notice.Elab (rethrowElabErrors, rethrowElabWarnings)
 import           Facet.Notice.Parser (rethrowParseErrors)
 import           Facet.Parser
 import           Facet.Pretty
-import           Facet.Print (Options)
+import           Facet.Print (Options, Print)
+import           Facet.Scope
 import           Facet.Snoc
 import           Facet.Source
+import           Facet.Source.Reference
 import           Facet.Style
-import qualified Facet.Surface as Import (Import(..))
-import qualified Facet.Surface as S
+import qualified Facet.Surface.Module as Import (Import(..))
+import           Facet.Syntax as S
+import           Fresnel.At (at)
+import           Fresnel.Getter ((^.))
+import           Fresnel.Lens (Lens, Lens', lens)
 import           Silkscreen
 import           System.Directory (findFile)
 import qualified System.FilePath as FP
@@ -60,14 +63,14 @@ import           Text.Parser.Token (whiteSpace)
 
 data Target = Target
   { modules     :: Graph
-  , targets     :: Set.Set MName
+  , targets     :: Set.Set QName
   , searchPaths :: Set.Set FilePath
   }
 
 modules_ :: Lens' Target Graph
 modules_ = lens modules (\ r modules -> r{ modules })
 
-targets_ :: Lens' Target (Set.Set MName)
+targets_ :: Lens' Target (Set.Set QName)
 targets_ = lens targets (\ r targets -> r{ targets })
 
 searchPaths_ :: Lens' Target (Set.Set FilePath)
@@ -85,12 +88,12 @@ kernel :: Module
 kernel = Module kernelName [] [] $ Scope mempty
   -- FIXME: include things like Type and Interface
   where
-  kernelName = fromList [TS.pack "Kernel"]
+  kernelName = fromList [T (TS.pack "Kernel")]
 
 
 -- Module loading
 
-reloadModules :: (Has (Error (Notice.Notice (Doc Style)) :+: Output :+: State Options :+: State Target :+: Write (Notice.Notice (Doc Style))) sig m, MonadIO m) => m ()
+reloadModules :: (Has (Error (Notice.Notice (Doc Style)) :+: Output :+: State (Options Print) :+: State Target :+: Write (Notice.Notice (Doc Style))) sig m, MonadIO m) => m ()
 reloadModules = do
   searchPaths <- uses searchPaths_ toList
   modules_ .= singleton Nothing kernel
@@ -104,14 +107,14 @@ reloadModules = do
   let nModules = length modules
   results <- for (zip [1..] modules) $ \ (i, h@(ModuleHeader name src _)) -> do
     graph <- use modules_
-    let loaded = traverse (\ name -> graph^.at name >>= snd) h
+    let loaded = traverse (\ name -> graph ^. at name >>= snd) h
     case loaded of
       Just loaded -> (Just <$> do
-        outputDocLn $ annotate Progress (brackets (ratio (i :: Int) nModules)) <+> nest 2 (group (fillSep [ pretty "Loading", prettyMName name ]))
-        storeModule name (path src) =<< loadModule graph loaded)
+        outputDocLn $ annotate Progress (brackets (ratio (i :: Int) nModules)) <+> nest 2 (group (fillSep [ pretty "Loading", pretty name ]))
+        storeModule name (path (reference src)) =<< loadModule graph loaded)
         `catchError` \ err -> Nothing <$ outputDocLn (prettyNotice err)
       Nothing -> do
-        outputDocLn $ annotate Progress (brackets (ratio i nModules)) <+> nest 2 (group (fillSep [ pretty "Skipping", prettyMName name ]))
+        outputDocLn $ annotate Progress (brackets (ratio i nModules)) <+> nest 2 (group (fillSep [ pretty "Skipping", pretty name ]))
         pure Nothing
   let nSuccess = length (catMaybes results)
       status
@@ -122,7 +125,7 @@ reloadModules = do
   ratio n d = pretty n <+> pretty "of" <+> pretty d
 
 data ModuleHeader a = ModuleHeader
-  { moduleName :: MName
+  { moduleName :: QName
   , source     :: Source
   , imports    :: [a]
   }
@@ -131,10 +134,10 @@ data ModuleHeader a = ModuleHeader
 imports_ :: Lens (ModuleHeader a) (ModuleHeader b) [a] [b]
 imports_ = lens imports (\ h imports -> h{ imports })
 
-headerNode :: ModuleHeader MName -> Node (ModuleHeader MName)
+headerNode :: ModuleHeader QName -> Node (ModuleHeader QName)
 headerNode h@(ModuleHeader n _ imports) = Node n imports h
 
-loadModuleHeader :: (Has (Output :+: Throw (Notice.Notice (Doc Style))) sig m, MonadIO m) => [FilePath] -> Either FilePath MName -> m (ModuleHeader MName)
+loadModuleHeader :: (Has (Output :+: Throw (Notice.Notice (Doc Style))) sig m, MonadIO m) => [FilePath] -> Either FilePath QName -> m (ModuleHeader QName)
 loadModuleHeader searchPaths target = do
   path <- case target of
     Left path  -> pure path
@@ -144,27 +147,31 @@ loadModuleHeader searchPaths target = do
   (name', is) <- rethrowParseErrors @_ @Style (runParserWithSource src (runFacet [] (whiteSpace *> moduleHeader)))
   pure (ModuleHeader name' src (map (Import.name . S.out) is))
 
-loadModule :: Has (Output :+: State Options :+: Throw (Notice.Notice (Doc Style)) :+: Write (Notice.Notice (Doc Style))) sig m => Graph -> ModuleHeader Module -> m Module
+loadModule :: Has (Output :+: State (Options Print) :+: Throw (Notice.Notice (Doc Style)) :+: Write (Notice.Notice (Doc Style))) sig m => Graph -> ModuleHeader Module -> m Module
 loadModule graph (ModuleHeader _ src imports) = do
   let ops = foldMap (\ m -> map (\ (op, assoc) -> (name m, op, assoc)) (operators m)) imports
   m <- rethrowParseErrors @_ @Style (runParserWithSource src (runFacet (map makeOperator ops) (whole module')))
   opts <- get
   rethrowElabWarnings . rethrowElabErrors opts . runReader graph . runReader src $ Elab.elabModule m
 
-storeModule :: Has (State Target) sig m => MName -> Maybe FilePath -> Module -> m ()
+storeModule :: Has (State Target) sig m => QName -> Maybe FilePath -> Module -> m ()
 storeModule name path m = modules_ .at name .= Just (path, Just m)
 
-resolveName :: (Has (Throw (Notice.Notice (Doc Style))) sig m, MonadIO m) => [FilePath] -> MName -> m FilePath
+resolveName :: (Has (Throw (Notice.Notice (Doc Style))) sig m, MonadIO m) => [FilePath] -> QName -> m FilePath
 resolveName searchPaths name = do
   let namePath = toPath name FP.<.> ".facet"
   path <- liftIO $ findFile searchPaths namePath
   case path of
     Just path -> pure path
-    Nothing   -> throwError @(Notice.Notice (Doc Style)) $ Notice.Notice (Just Notice.Error) [] (fillSep [pretty "module", squotes (prettyMName name), reflow "could not be found."]) $ case searchPaths of
+    Nothing   -> throwError @(Notice.Notice (Doc Style)) $ Notice.Notice (Just Notice.Error) [] (fillSep [pretty "module", squotes (pretty name), reflow "could not be found."]) $ case searchPaths of
       [] -> []
       _  -> [ nest 2 (reflow "search paths:" <\> concatWith (<\>) (map pretty searchPaths)) ]
   where
-  toPath components = foldr1 (FP.</>) (TS.unpack <$> components)
+  toPath (QName components) = foldr1 (FP.</>) (unpack <$> components)
+  unpack = \case
+    T n   -> TS.unpack n
+    O o   -> formatOp (\ a b -> a <> " " <> b) TS.unpack "_" o
+    G n i -> TS.unpack n <> show i
 
 
 -- Errors
@@ -178,4 +185,4 @@ ioErrorToNotice refs err = Notice.Notice (Just Notice.Error) refs (group (reflow
 rethrowGraphErrors :: Applicative m => [Source] -> I.ThrowC (Notice.Notice (Doc Style)) GraphErr m a -> m a
 rethrowGraphErrors refs = I.runThrow (pure . formatGraphErr)
   where
-  formatGraphErr (CyclicImport path) = Notice.Notice (Just Notice.Error) refs (reflow "cyclic import") (map prettyMName (toList path))
+  formatGraphErr (CyclicImport path) = Notice.Notice (Just Notice.Error) refs (reflow "cyclic import") (map pretty (toList path))

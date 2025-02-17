@@ -12,14 +12,13 @@ import           Control.Carrier.Error.Church
 import           Control.Carrier.Fail.Either
 import           Control.Carrier.Reader
 import           Control.Carrier.State.Church
-import           Control.Effect.Lens (use, uses, (%=))
 import           Control.Exception (handle)
-import           Control.Lens (Lens', lens, (&), (.~))
 import           Control.Monad (unless, (<=<))
 import           Control.Monad.IO.Class
 import           Data.Char
 import           Data.Colour.RGBSpace.HSL (hsl)
 import           Data.Foldable (toList)
+import           Data.Function ((&))
 import qualified Data.Map as Map
 import           Data.Semigroup (stimes)
 import qualified Data.Set as Set
@@ -29,16 +28,17 @@ import           Facet.Carrier.Readline.Haskeline
 import qualified Facet.Carrier.Throw.Inject as I
 import           Facet.Carrier.Write.General
 import qualified Facet.Carrier.Write.Inject as I
-import           Facet.Core.Module
-import           Facet.Core.Term (Expr)
-import           Facet.Core.Type as T hiding (eval)
 import           Facet.Driver
 import qualified Facet.Elab as Elab
 import qualified Facet.Elab.Term as Elab
 import qualified Facet.Elab.Type as Elab
 import           Facet.Eval as E
+import           Facet.Functor.Synth
 import           Facet.Graph
+import           Facet.Interface as I
 import           Facet.Lens
+import           Facet.Module
+import           Facet.Module as Module (Module(..))
 import           Facet.Name as Name
 import qualified Facet.Notice as Notice
 import           Facet.Notice.Elab
@@ -46,12 +46,17 @@ import           Facet.Notice.Parser
 import           Facet.Parser as Parser
 import           Facet.Pretty
 import           Facet.Print as Print hiding (meta)
+import           Facet.Quote
 import           Facet.REPL.Parser
 import           Facet.Snoc
 import           Facet.Source (Source(..), sourceFromString)
 import           Facet.Style as Style
-import qualified Facet.Surface as S
-import           Facet.Syntax
+import qualified Facet.Surface.Term.Expr as S
+import qualified Facet.Surface.Type.Expr as S
+import           Facet.Syntax as S hiding (ann)
+import           Facet.Term.Expr (Term)
+import           Fresnel.Lens (Lens', lens)
+import           Fresnel.Setter ((.~))
 import           Prelude hiding (span, unlines)
 import           Silkscreen as S hiding (Ann, line)
 import           System.Console.ANSI
@@ -63,11 +68,11 @@ import           Text.Parser.Token hiding (brackets, comma)
 
 repl :: [FilePath] -> IO ExitCode
 repl searchPaths
-  = handle @IOError (\ e -> ExitFailure 1 <$ print e)
+  = handle @IOError (\ e -> ExitFailure 1 <$ Prelude.print e)
   . fmap (const ExitSuccess)
   . runReadlineWithHistory
   . evalState (defaultREPLState & target_.searchPaths_ .~ Set.fromList searchPaths)
-  . evalState quietOptions
+  . evalState (quietOptions @Print)
   . evalEmpty
   $ loop
 
@@ -107,7 +112,7 @@ defaultPromptFunction _ = pure $ setTitleCode "facet" <> "\STX" <> bold <> cyan 
   plain = setSGRCode [] <> "\STX"
 
 
-loop :: (Has (Empty :+: Input :+: Output :+: State Options :+: State REPL) sig m, MonadIO m) => m ()
+loop :: (Has (Empty :+: Input :+: Output :+: State (Options Print) :+: State REPL) sig m, MonadIO m) => m ()
 loop = do
   -- FIXME: handle interrupts
   resp <- prompt
@@ -156,7 +161,7 @@ path' :: TokenParsing p => p FilePath
 path' = stringLiteral <|> some (satisfy (not . isSpace))
 
 
-newtype Action = Action { runAction :: forall sig m . (Has (Empty :+: Error (Notice.Notice (Doc Style)) :+: Output :+: Reader Source :+: State Options :+: State REPL :+: I.Write (Notice.Notice (Doc Style))) sig m, MonadFail m, MonadIO m) => m () }
+newtype Action = Action { runAction :: forall sig m . (Has (Empty :+: Error (Notice.Notice (Doc Style)) :+: Output :+: Reader Source :+: State (Options Print) :+: State REPL :+: I.Write (Notice.Notice (Doc Style))) sig m, MonadFail m, MonadIO m) => m () }
 
 
 showPaths, showModules, showTargets :: Action
@@ -168,9 +173,9 @@ showPaths   = Action $ do
   unless (null searchPaths)
     $ outputDocLn $ nest 2 $ pretty ("search paths:" :: Text) <\> unlines (map pretty searchPaths)
 
-showModules = Action $ uses (target_.modules_) (unlines . map (\ (name, (path, _)) -> prettyMName name <> maybe mempty ((space <>) . S.parens . pretty) path) . Map.toList . getGraph) >>= outputDocLn
+showModules = Action $ uses (target_.modules_) (unlines . map (\ (name, (path, _)) -> pretty name <> maybe mempty ((space <>) . S.parens . pretty) path) . Map.toList . getGraph) >>= outputDocLn
 
-showTargets = Action $ uses (target_.targets_) (unlines . map prettyMName . toList) >>= outputDocLn
+showTargets = Action $ uses (target_.targets_) (unlines . map pretty . toList) >>= outputDocLn
 
 
 addPath, removePath :: FilePath -> Action
@@ -180,7 +185,7 @@ addPath path = Action $ target_.searchPaths_ %= Set.insert path
 removePath path = Action $ target_.searchPaths_ %= Set.delete path
 
 
-addTarget, removeTarget :: [MName] -> Action
+addTarget, removeTarget :: [QName] -> Action
 
 addTarget targets = Action $ do
   target_.targets_ %= Set.union (Set.fromList targets)
@@ -193,32 +198,32 @@ removeTarget targets = Action $ target_.targets_ %= (Set.\\ Set.fromList targets
 showType, showEval :: S.Ann S.Expr -> Action
 
 showType e = Action $ do
-  e ::: _T <- runElab $ Elab.elabSynthTerm (Elab.synth (Elab.synthExpr e))
+  e :==> _T <- runElab $ Elab.elabSynthTerm (Elab.runErr (Elab.synthExpr e))
   opts <- get
-  outputDocLn (getPrint (ann (printExpr opts mempty e ::: printType opts mempty _T)))
+  outputDocLn (getPrint (ann (Print.print opts mempty e ::: Print.print opts mempty _T)))
 
 showEval e = Action $ do
-  e' ::: _T <- runElab $ Elab.elabSynthTerm $ locally Elab.sig_ (T.singleton (T.Interface (["Effect", "Console"]:.:U "Output") Nil) :) $ Elab.synth (Elab.synthExpr e)
+  e' :==> _T <- runElab $ Elab.elabSynthTerm $ Elab.runErr $ locally Elab.sig_ (I.singleton (I.Interface ["Effect", "Console", "Output"] Nil) :) $ Elab.synthExpr e
   e'' <- runElab $ runEvalMain e'
   opts <- get
-  outputDocLn (getPrint (ann (printExpr opts mempty e'' ::: printType opts mempty _T)))
+  outputDocLn (getPrint (ann (Print.print opts mempty e'' ::: Print.print opts mempty _T)))
 
-runEvalMain :: (Has (Error (Notice.Notice (Doc Style)) :+: Output :+: Reader Graph :+: Reader Module :+: State Options) sig m, MonadFail m) => Expr -> m Expr
-runEvalMain e = runEval (E.quoteV 0 =<< eval mempty hdl e) pure
-  where
-  hdl = [(write, Handler handle)]
-  write = fromList ["Effect", "Console"] :.: U "write"
-  handle (FromList [o]) k = do
-    E.VString s <- o hdl
-    outputText s *> k unit
-  handle _              _ = unhandled
-  unhandled = throwError $ Notice.Notice (Just Notice.Error) [] (fillSep @(Doc Style) [reflow "unhandled effect operator"]) []
+runEvalMain :: (Has (Error (Notice.Notice (Doc Style)) :+: Output :+: Reader Graph :+: Reader Module :+: State (Options Print)) sig m, MonadFail m) => Term -> m Term
+runEvalMain e = runEval (runQuoter  0 . quote =<< runReader mempty (eval e)) pure
+  -- where
+  -- hdl = [(write, Handler handle)]
+  -- write = fromList ["Effect", "Console"] :.: U "write"
+  -- handle (FromList [o]) k = do
+  --   E.VString s <- o hdl
+  --   outputText s *> k unit
+  -- handle _              _ = unhandled
+  -- unhandled = throwError $ Notice.Notice (Just Notice.Error) [] (fillSep @(Doc Style) [reflow "unhandled effect operator"]) []
 
 showKind :: S.Ann S.Type -> Action
 showKind _T = Action $ do
-  _T ::: _K <- runElab $ Elab.elabSynthType (Elab.isType (Elab.synthType _T))
+  _T :==> _K <- runElab $ Elab.elabSynthType (Elab.runErr (Elab.synthType _T))
   opts <- get
-  outputDocLn (getPrint (ann (printType opts mempty _T ::: printKind mempty _K)))
+  outputDocLn (getPrint (ann (Print.print opts mempty _T ::: Print.print opts mempty _K)))
 
 
 helpDoc :: Doc Style
@@ -238,9 +243,9 @@ prompt = do
   p <- liftIO $ fn line
   fmap (sourceFromString Nothing line) <$> getInputLine p
 
-runElab :: Has (State Options :+: State REPL) sig m => I.WriteC (Notice.Notice (Doc Style)) Elab.Warn (I.ThrowC (Notice.Notice (Doc Style)) Elab.Err (ReaderC MName (ReaderC Module (ReaderC Graph m)))) a -> m a
+runElab :: Has (State (Options Print) :+: State REPL) sig m => I.WriteC (Notice.Notice (Doc Style)) Elab.Warn (I.ThrowC (Notice.Notice (Doc Style)) Elab.Err (ReaderC QName (ReaderC Module (ReaderC Graph m)))) a -> m a
 runElab m = do
   graph <- use (target_.modules_)
-  localDefs@Module{ name } <- use localDefs_
+  localDefs <- use localDefs_
   opts <- get
-  runReader graph . runReader localDefs . runReader name . rethrowElabErrors opts . rethrowElabWarnings $ m
+  runReader graph . runReader localDefs . runReader (Module.name localDefs) . rethrowElabErrors opts . rethrowElabWarnings $ m

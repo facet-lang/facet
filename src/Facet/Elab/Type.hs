@@ -2,134 +2,103 @@
 module Facet.Elab.Type
 ( -- * Types
   tvar
-, _Type
-, _Interface
-, _String
+, Facet.Elab.Type._String
 , forAll
-, synthKind
 , synthType
   -- * Judgements
-, checkIsType
-, IsType(..)
-, mapIsType
+, switch
 ) where
 
 import           Control.Algebra
-import           Control.Effect.Lens (views)
+import           Control.Effect.Reader
 import           Control.Effect.Throw
 import           Control.Monad (unless)
-import           Data.Bifunctor (first)
-import           Data.Functor (($>))
-import           Facet.Core.Module
-import           Facet.Core.Pattern
-import           Facet.Core.Type
 import           Facet.Elab
+import           Facet.Functor.Check
+import           Facet.Functor.Synth
+import           Facet.Graph (Graph)
+import           Facet.Interface
+import           Facet.Kind
+import           Facet.Lens (views)
+import           Facet.Module
 import           Facet.Name
-import           Facet.Semiring (Few(..), one, zero)
 import           Facet.Snoc
-import qualified Facet.Surface as S
-import           Facet.Syntax
-import           GHC.Stack
+import qualified Facet.Surface.Type.Expr as S
+import           Facet.Syntax as S hiding (context_)
+import qualified Facet.Type.Expr as TX
 
-tvar :: (HasCallStack, Has (Throw Err) sig m) => QName -> IsType m TExpr
-tvar n = IsType $ views context_ (lookupInContext n) >>= \case
-  [(n', q, CK _K)] -> use n' q $> (TVar (Free (Right n')) ::: _K)
-  _                -> resolveQ n >>= \case
-    q :=: DData      _ _K -> pure $ TVar (Global q) ::: _K
-    q :=: DInterface _ _K -> pure $ TVar (Global q) ::: _K
-    _                     -> freeVariable n
+tvar :: (Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason) sig m) => QName -> m (TX.Type :==> Kind)
+tvar n = views typeContext_ (lookupInTypeContext n) >>= \case
+  [(n', _K)] -> pure (TX.Var (Bound (Right n')) :==> _K)
+  _          -> resolveDef n >>= \case
+    DSubmodule _ _K -> pure $ TX.Var (Free n) :==> _K
+    _               -> freeVariable n
 
-ivar :: (HasCallStack, Has (Throw Err) sig m) => QName -> IsType m RName
-ivar n = IsType $ resolveQ n >>= \case
-    q :=: DInterface _ _K -> pure $ q ::: _K
-    _                     -> freeVariable n
-
-
-_Type :: IsType m Kind
-_Type = IsType $ pure $ KType ::: KType
-
-_Interface :: IsType m Kind
-_Interface = IsType $ pure $ KInterface ::: KType
-
-_String :: IsType m TExpr
-_String = IsType $ pure $ TString ::: KType
+ivar :: (Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason) sig m) => QName -> m (QName :==> Kind)
+ivar n = resolveDef n >>= \case
+    DSubmodule (SInterface _) _K -> pure $ n :==> _K
+    _                            -> freeVariable n
 
 
-forAll :: (HasCallStack, Has (Throw Err) sig m) => Name ::: IsType m Kind -> IsType m TExpr -> IsType m TExpr
-forAll (n ::: t) b = IsType $ do
-  t' <- checkIsType (t ::: KType)
-  b' <- (zero, pvar (n ::: CK t')) |- checkIsType (b ::: KType)
-  pure $ TForAll n t' b' ::: KType
-
-arrow :: (HasCallStack, Has (Throw Err) sig m) => (a -> b -> c) -> IsType m a -> IsType m b -> IsType m c
-arrow mk a b = IsType $ do
-  a' <- checkIsType (a ::: KType)
-  b' <- checkIsType (b ::: KType)
-  pure $ mk a' b' ::: KType
+_String :: Applicative m => m (TX.Type :==> Kind)
+_String = pure $ TX.String :==> KType
 
 
-app :: (HasCallStack, Has (Throw Err) sig m) => (a -> b -> c) -> IsType m a -> IsType m b -> IsType m c
-app mk f a = IsType $ do
-  f' ::: _F <- isType f
-  (_ ::: _A, _B) <- assertTypeConstructor _F
+forAll :: (Has (Reader ElabContext) sig m, Has (Throw ErrReason) sig m) => Name ::: Kind -> m (TX.Type :==> Kind) -> m (TX.Type :==> Kind)
+forAll (n ::: t) b = do
+  b' <- n :==> t ||- switch b <==: KType
+  pure $ TX.ForAll n t b' :==> KType
+
+arrow :: (Has (Reader ElabContext) sig m, Has (Throw ErrReason) sig m) => (a -> b -> c) -> m (a :==> Kind) -> m (b :==> Kind) -> m (c :==> Kind)
+arrow mk a b = do
+  a' <- switch a <==: KType
+  b' <- switch b <==: KType
+  pure $ mk a' b' :==> KType
+
+
+app :: (Has (Reader ElabContext) sig m, Has (Throw ErrReason) sig m) => (a -> b -> c) -> m (a :==> Kind) -> m (b :==> Kind) -> m (c :==> Kind)
+app mk f a = do
+  f' :==> _F <- f
+  (_, _A, _B) <- assertTypeConstructor _F
   -- FIXME: assert that the usage is zero
-  a' <- checkIsType (a ::: _A)
-  pure $ mk f' a' ::: _B
+  a' <- switch a <==: _A
+  pure $ mk f' a' :==> _B
 
 
-comp :: (HasCallStack, Has (Throw Err) sig m) => [IsType m (Interface TExpr)] -> IsType m TExpr -> IsType m TExpr
-comp s t = IsType $ do
-  s' <- traverse (checkIsType . (::: KInterface)) s
+comp :: (Has (Reader ElabContext) sig m, Has (Throw ErrReason) sig m) => [m (Interface TX.Type :==> Kind)] -> m (TX.Type :==> Kind) -> m (TX.Type :==> Kind)
+comp s t = do
+  s' <- traverse ((<==: KInterface) . switch) s
   -- FIXME: polarize types and check that this is a value type being returned
-  t' <- checkIsType (t ::: KType)
-  pure $ TComp (fromInterfaces s') t' ::: KType
+  t' <- switch t <==: KType
+  pure $ TX.Comp (fromInterfaces s') t' :==> KType
 
 
-synthKind :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Kind -> IsType m Kind
-synthKind (S.Ann s _ e) = mapIsType (pushSpan s) $ case e of
-  S.KArrow n a b -> arrow (KArrow n) (synthKind a) (synthKind b)
-  S.KType        -> _Type
-  S.KInterface   -> _Interface
+synthType :: (Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason) sig m) => S.Ann S.Type -> m (TX.Type :==> Kind)
+synthType (S.Ann s _ e) = pushSpan s $ case e of
+  S.TVar n        -> tvar n
+  S.TString       -> Facet.Elab.Type._String
+  S.TForAll n t b -> forAll (n ::: t) (synthType b)
+  S.TArrow  n a b -> arrow (TX.Arrow n) (synthType a) (synthType b)
+  S.TComp s t     -> comp (map synthInterface s) (synthType t)
+  S.TApp f a      -> app TX.App (synthType f) (synthType a)
 
-
-synthType :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Type -> IsType m TExpr
-synthType (S.Ann s _ e) = mapIsType (pushSpan s) $ case e of
-  S.TVar n          -> tvar n
-  S.TString         -> _String
-  S.TForAll n t b   -> forAll (n ::: synthKind t) (synthType b)
-  S.TArrow  n q a b -> arrow (TArrow n (maybe Many interpretMul q)) (synthType a) (synthType b)
-  S.TComp s t       -> comp (map synthInterface s) (synthType t)
-  S.TApp f a        -> app TApp (synthType f) (synthType a)
-  where
-  interpretMul = \case
-    S.Zero -> zero
-    S.One  -> one
-
-synthInterface :: (HasCallStack, Has (Throw Err) sig m) => S.Ann S.Interface -> IsType m (Interface TExpr)
-synthInterface (S.Ann s _ (S.Interface (S.Ann sh _ h) sp)) = IsType $ pushSpan s $ do
+synthInterface :: (Has (Reader ElabContext) sig m, Has (Reader Graph) sig m, Has (Reader Module) sig m, Has (Throw ErrReason) sig m) => S.Ann (S.Interface (S.Ann S.Type)) -> m (Interface TX.Type :==> Kind)
+synthInterface (S.Ann s _ (S.Interface h sp)) = pushSpan s $ do
   -- FIXME: check that the application actually result in an Interface
-  h' ::: _ <- pushSpan sh (isType (ivar h))
-  sp' <- foldl' (liftA2 (:>)) (pure Nil) (checkIsType . (::: KType) . synthType <$> sp)
-  pure $ Interface h' sp' ::: KInterface
+  h' :==> _ <- ivar h
+  sp' <- foldl' (liftA2 (:>)) (pure Nil) ((<==: KType) . switch . synthType <$> sp)
+  pure $ Interface h' sp' :==> KInterface
 
 
 -- Assertions
 
-assertTypeConstructor :: (HasCallStack, Has (Throw Err) sig m) => Kind -> Elab m (Maybe Name ::: Kind, Kind)
-assertTypeConstructor = assertMatch (\case{ CK (KArrow n t b) -> pure (n ::: t, b) ; _ -> Nothing }) "_ -> _" . CK
+assertTypeConstructor :: Has (Throw ErrReason) sig m => Kind -> m (Maybe Name, Kind, Kind)
+assertTypeConstructor = assertMatch mismatchKinds _KArrow "_ -> _"
 
 
 -- Judgements
 
-checkIsType :: (HasCallStack, Has (Throw Err) sig m) => IsType m a ::: Kind -> Elab m a
-checkIsType (m ::: _K) = do
-  a ::: _KA <- isType m
-  a <$ unless (_KA == _K) (couldNotUnify (Exp (CK _K)) (Act (CK _KA)))
-
-newtype IsType m a = IsType { isType :: Elab m (a ::: Kind) }
-
-instance Functor (IsType m) where
-  fmap f (IsType m) = IsType (first f <$> m)
-
-mapIsType :: (Elab m (a ::: Kind) -> Elab m (b ::: Kind)) -> IsType m a -> IsType m b
-mapIsType f = IsType . f . isType
+switch :: (Has (Reader ElabContext) sig m, Has (Throw ErrReason) sig m) => m (a :==> Kind) -> Kind <==: m a
+switch m = Check $ \ _K -> do
+  a :==> _KA <- m
+  a <$ unless (_KA == _K) (couldNotUnifyKinds (Exp _K) (Act _KA))

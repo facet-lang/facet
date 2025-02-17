@@ -70,26 +70,24 @@ common common
 library
   import: common
   exposed-modules:
-    Facet.Carrier.Error.Lens
+    Facet.Carrier.CallStack.Stack
+    Facet.Carrier.Error.Optic
     Facet.Carrier.Output.IO
     Facet.Carrier.Parser.Church
     Facet.Carrier.Profile.Flat
     Facet.Carrier.Profile.Identity
     Facet.Carrier.Profile.Tree
     Facet.Carrier.Readline.Haskeline
-    Facet.Carrier.State.Lens
+    Facet.Carrier.State.Optic
     Facet.Carrier.Throw.Inject
     Facet.Carrier.Time.System
     Facet.Carrier.Write.General
     Facet.Carrier.Write.Inject
     Facet.CLI
     Facet.Context
-    Facet.Core.Module
-    Facet.Core.Pattern
-    Facet.Core.Term
-    Facet.Core.Type
     Facet.Diff
     Facet.Driver
+    Facet.Effect.CallStack
     Facet.Effect.Parser
     Facet.Effect.Profile
     Facet.Effect.Readline
@@ -97,40 +95,63 @@ library
     Facet.Effect.Time.System
     Facet.Effect.Write
     Facet.Elab
+    Facet.Elab.Sequent
     Facet.Elab.Term
     Facet.Elab.Type
     Facet.Env
     Facet.Eval
     Facet.Flag
     Facet.Format
+    Facet.Functor.Check
+    Facet.Functor.Compose
+    Facet.Functor.Synth
     Facet.Graph
+    Facet.Interface
+    Facet.Kind
     Facet.Lens
     Facet.Lexer
+    Facet.Module
     Facet.Name
-    Facet.Norm
     Facet.Notice
     Facet.Notice.Elab
     Facet.Notice.Parser
     Facet.Parser
     Facet.Parser.Table
+    Facet.Pattern
+    Facet.Pattern.Column
     Facet.Pretty
     Facet.Print
+    Facet.Print.Options
+    Facet.Quote
     Facet.REPL
     Facet.REPL.Parser
     Facet.Run
+    Facet.Scope
     Facet.Semialign
-    Facet.Semiring
+    Facet.Sequent.Expr
+    Facet.Sequent.Pattern
+    Facet.Sequent.Type
     Facet.Snoc
     Facet.Snoc.NonEmpty
     Facet.Source
+    Facet.Source.Reference
     Facet.Span
     Facet.Style
     Facet.Subst
-    Facet.Surface
+    Facet.Surface.Module
+    Facet.Surface.Term.Expr
+    Facet.Surface.Type.Class
+    Facet.Surface.Type.Expr
     Facet.Syntax
+    Facet.Term.Class
+    Facet.Term.Expr
+    Facet.Term.Norm
     Facet.Timing
+    Facet.Type.Class
+    Facet.Type.Expr
+    Facet.Type.Norm
+    Facet.TypeContext
     Facet.Unify
-    Facet.Usage
     Facet.Vars
   other-modules:
     Paths_facet
@@ -138,20 +159,20 @@ library
     Paths_facet
   build-depends:
     , ansi-terminal
-    , base >= 4.14 && < 4.21
+    , base >= 4.14 && < 5
     , charset
     , colour
     , containers
     , directory
     , exceptions ^>= 0.10
     , filepath
+    , fresnel
     , fused-effects
-    , fused-effects-lens
     , haskeline ^>= 0.8.1
-    , lens
     , optparse-applicative
     , parsers
     , prettyprinter
+    , profunctors
     , semialign
     , silkscreen
     , terminal-size
@@ -178,8 +199,9 @@ test-suite test
     , facet
     , hedgehog ^>= 1.5
     , parsers
-  ghc-options:
-    -Wno-missing-signatures
+  if (impl(ghc >= 9.2))
+    ghc-options:
+      -Wno-missing-signatures
 
 
 executable facetc

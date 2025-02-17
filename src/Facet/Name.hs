@@ -1,31 +1,38 @@
+{-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE UndecidableInstances #-}
 module Facet.Name
 ( Index(..)
 , Level(..)
-, levelToIndex
-, indexToLevel
+, DeBruijn(..)
 , Meta(..)
 , __
-, MName
-, prettyMName
 , QName(..)
-, RName(..)
-, toQ
-, LName(..)
+, (//)
+, q
+, qlast
+, qlocal
+, fromSnoc
+, toSnoc
 , Name(..)
 , Assoc(..)
 , Op(..)
+, formatOp
 , OpN(..)
+, formatOpN
 ) where
 
-import           Data.Foldable (foldr', toList)
+import           Data.Foldable (foldr')
 import           Data.Functor.Classes (showsUnaryWith)
+import           Data.List (intercalate)
 import qualified Data.List.NonEmpty as NE
-import           Data.String (IsString(..))
-import           Data.Text (Text)
+import           Data.Text (Text, pack, unpack)
 import qualified Data.Text as T
+import           Facet.Pretty (subscript, subscriptWith)
 import           Facet.Snoc
-import           Facet.Snoc.NonEmpty
+import qualified Facet.Snoc.NonEmpty as SNE
+import           GHC.Exts
 import qualified Prettyprinter as P
 import           Silkscreen
 
@@ -43,11 +50,25 @@ newtype Level = Level { getLevel :: Int }
 instance Show Level where
   showsPrec p = showsUnaryWith showsPrec "Level" p . getLevel
 
-levelToIndex :: Level -> Level -> Index
-levelToIndex (Level d) (Level level) = Index $ d - level - 1
 
-indexToLevel :: Level -> Index -> Level
-indexToLevel (Level d) (Index index) = Level $ d - index - 1
+class DeBruijn lv ix | lv -> ix, ix -> lv where
+  toIndexed :: Level -> lv -> ix
+  toLeveled :: Level -> ix -> lv
+
+instance DeBruijn Level Index where
+  toIndexed (Level d) (Level level) = Index $ d - level - 1
+  toLeveled (Level d) (Index index) = Level $ d - index - 1
+
+instance DeBruijn lv ix => DeBruijn (Either e lv) (Either e ix) where
+  toIndexed = fmap . toIndexed
+  toLeveled = fmap . toLeveled
+
+
+newtype Used = Used { getUsed :: Level }
+  deriving (Enum, Eq, Num, Ord)
+
+instance Show Used where
+  showsPrec p = showsUnaryWith showsPrec "Used" p . getUsed
 
 
 newtype Meta = Meta { getMeta :: Int }
@@ -55,59 +76,74 @@ newtype Meta = Meta { getMeta :: Int }
 
 
 __ :: Name
-__ = U T.empty
-
-
-type MName = NonEmpty Text
-
-prettyMName :: Printer a => MName -> a
-prettyMName (ns:|>n) = foldr' (surround dot . pretty) (pretty n) ns
+__ = T T.empty
 
 
 -- | Qualified names, consisting of a module name and declaration name.
-data QName = Snoc Text :. Name -- FIXME: use Name on the lhs so we can accommodate datatypes with operator names
+newtype QName = QName { getQName :: SNE.NonEmpty Name }
   deriving (Eq, Ord)
+
+instance IsList QName where
+  type Item QName = Name
+  fromList = QName . fromList
+  toList = toList . getQName
+
+instance IsString QName where
+  fromString = QName . SNE.fromSnoc . go Nil
+    where
+    go accum s = let (name, rest) = span (/= '.') s in case rest of
+      '.':s' -> go (accum :> T (pack name)) s'
+      _      -> accum :> T (pack name)
+
+instance Pretty QName where
+  pretty (QName (ns SNE.:|> n)) = foldr' (surround dot . pretty) (pretty n) ns
 
 instance Show QName where
-  showsPrec p (m :. n) = showParen (p > 9) $ shows (T.intercalate "." (toList m)) . showString ":." . showsPrec 10 n
+  showsPrec _ (QName components) = showString (intercalate "." (map show (toList components)))
 
-instance P.Pretty QName where
-  pretty (m :. n) = foldr' (surround dot . pretty) (pretty n) m
+(//) :: QName -> Name -> QName
+q // n = QName (getQName q SNE.|> n)
+
+infixl 5 //
+
+q :: Name -> QName
+q = QName . (Nil SNE.:|>)
+
+qlast :: QName -> Name
+qlast (QName (_ SNE.:|> l)) = l
+
+qlocal :: QName -> Maybe Name
+qlocal (QName (Nil SNE.:|> n)) = Just n
+qlocal _                       = Nothing
+
+fromSnoc :: Snoc Name -> QName
+fromSnoc = QName . SNE.fromSnoc
+
+toSnoc :: QName -> Snoc Name
+toSnoc = SNE.toSnoc . getQName
 
 
--- | Resolved names.
-data RName = MName :.: Name
+-- | Declaration names; a choice of textual or operator names.
+data Name
+  = T Text
+  | O Op
+  | G Text Int
   deriving (Eq, Ord)
 
-instance Show RName where
-  showsPrec p (m :.: n) = showParen (p > 9) $ shows (T.intercalate "." (toList m)) . showString ":.:" . showsPrec 10 n
-
-instance P.Pretty RName where
-  pretty (m :.: n) = foldr' (surround dot . pretty) (pretty n) m
-
--- | Weaken an 'RName' to a 'QName'. This is primarily used for performing lookups in the graph starting from an 'RName' where the stronger structure is not required.
-toQ :: RName -> QName
-toQ (m :.: n) = toSnoc m :. n
-
-
--- | Local names, consisting of a 'Level' or 'Index' to a pattern in an 'Env' or 'Context' and a 'Name' bound by said pattern.
-data LName v = LName v Name
-  deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
-
-
--- | Declaration names; a choice of expression, constructor, term, or operator names.
-data Name
-  = U Text
-  | O Op
-  deriving (Eq, Ord, Show)
-
 instance IsString Name where
-  fromString = U . fromString
+  fromString = T . fromString
 
 instance P.Pretty Name where
   pretty = \case
-    U n -> P.pretty n
-    O o -> P.pretty o
+    T n   -> P.pretty n
+    O o   -> P.pretty o
+    G n i -> P.pretty n <> subscript i
+
+instance Show Name where
+  showsPrec p = \case
+    T n   -> showString (unpack n)
+    O o   -> showsPrec p o
+    G n i -> showString (unpack n) . subscriptWith (.) showChar id i
 
 
 -- | Associativity of an infix operator.
@@ -120,16 +156,22 @@ data Op
   | Postfix Text
   | Infix   Text
   | Outfix Text Text
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord)
+
+instance Show Op where
+  showsPrec _ = formatOp (\ a b -> a . showChar ' ' . b) (showString . unpack) (showChar '_')
+
+formatOp :: (a -> a -> a) -> (Text -> a) -> a -> Op -> a
+formatOp (<+>) pretty place = \case
+  Prefix   s -> pretty s <+> place
+  Postfix  s -> place <+> pretty s
+  Infix    s -> place <+> pretty s <+> place
+  Outfix s e -> pretty s <+> place <+> pretty e
 
 -- FIXME: specify relative precedences
 
 instance P.Pretty Op where
-  pretty = \case
-    Prefix   s -> P.pretty s <+> place
-    Postfix  s -> place <+> P.pretty s
-    Infix    s -> place <+> P.pretty s <+> place
-    Outfix s e -> P.pretty s <+> place <+> P.pretty e
+  pretty = formatOp (<+>) P.pretty place
     where
     place = P.pretty '_'
 
@@ -145,3 +187,10 @@ data OpN
   deriving (Eq, Ord, Show)
 
 -- FIXME: can we treat this more compositionally instead? i.e. treat an n-ary prefix operator as a composition of individual prefix operators? Then each placeholder lines up with a unary operator corresponding to the type of the tail
+
+formatOpN :: (a -> a -> a) -> (Text -> a) -> a -> OpN -> a
+formatOpN (<+>) pretty place = \case
+  PrefixN   s ss        -> foldl' (<+>) (comp s) (map comp ss) where comp s = pretty s <+> place
+  PostfixN  ee e        -> foldr' (<+>) (comp e) (map comp ee) where comp e = place <+> pretty e
+  InfixN    (m NE.:|mm) -> place <+> foldr' comp (pretty m) mm <+> place where comp s e = pretty s <+> place <+> e
+  OutfixN s mm e        -> foldr' comp (pretty e) (s : mm) where comp s e = pretty s <+> place <+> e

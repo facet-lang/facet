@@ -14,6 +14,9 @@ module Facet.Pretty
 , lower
 , upper
 , varFrom
+, subscript
+, subscriptWith
+, digits
   -- * Columnar layout
 , tabulate2
   -- * Rendering
@@ -100,6 +103,24 @@ upper = varFrom ['A'..'Z']
 
 varFrom :: Printer p => String -> Int -> p
 varFrom alpha i = pretty (toAlpha alpha i)
+
+
+subscript :: Printer p => Int -> p
+subscript = subscriptWith (<>) pretty mempty
+
+subscriptWith :: (s -> s -> s) -> (Char -> s) -> s -> Int -> s
+subscriptWith (<>) pretty mempty i = sign <> foldr ((<>) . pretty . (subscripts !!) . abs) mempty (digits i)
+  where
+  sign | i < 0     = pretty '₋'
+       | otherwise = mempty
+  subscripts = ['₀'..'₉']
+
+digits :: Int -> [Int]
+digits = go []
+  where
+  go ds i
+    | abs i < 10 = i:ds
+    | otherwise  = let (q, r) = i `quotRem` 10 in go (r:ds) q
 
 
 -- Columnar layout

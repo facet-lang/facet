@@ -9,7 +9,7 @@ module Facet.Snoc.NonEmpty
 , pattern FromList
 ) where
 
-import Data.Foldable (foldl', foldr')
+import Data.Foldable (foldr')
 import Facet.Snoc hiding (FromList)
 import GHC.Exts
 
@@ -17,6 +17,13 @@ data NonEmpty a = Snoc a :|> a
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
 infixl 5 :|>
+
+instance Semigroup (NonEmpty a) where
+  as <> (bs :|> b) = toSnoc as <> bs :|> b
+
+instance Applicative NonEmpty where
+  pure = (Nil :|>)
+  fs <*> as = fromSnoc (toSnoc fs <*> toSnoc as)
 
 (|>) :: NonEmpty a -> a -> NonEmpty a
 i :|> l |> l' = i :> l :|> l'

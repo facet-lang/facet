@@ -11,11 +11,10 @@ module Facet.Snoc
 ) where
 
 import Control.Applicative
-import Data.Foldable (foldl', foldr')
+import Data.Foldable (foldr')
 import Data.Functor.Classes
 import Data.Semialign
 import Data.These
-import Facet.Semiring
 import GHC.Exts
 import GHC.Stack
 
@@ -35,9 +34,6 @@ instance Semigroup (Snoc a) where
 
 instance Monoid (Snoc a) where
   mempty = Nil
-
-instance Semiring r => LeftModule r (Snoc r) where
-  (><<) = scaleDefault
 
 instance Semialign Snoc where
   align Nil     Nil     = Nil

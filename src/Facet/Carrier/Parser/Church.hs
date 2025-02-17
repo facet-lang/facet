@@ -26,13 +26,13 @@ import Control.Algebra
 import Control.Effect.Cut
 import Control.Effect.NonDet
 import Control.Effect.Throw
-import Control.Lens (Lens', lens, (%~), (&), (.~))
 import Control.Monad (ap)
 import Control.Monad.Fail as Fail
 import Control.Monad.Fix
 import Control.Monad.IO.Class
 import Control.Monad.Trans.Class
 import Data.Coerce (coerce)
+import Data.Function ((&))
 import Data.Functor.Compose
 import Data.Functor.Identity
 import Data.List.NonEmpty (NonEmpty(..))
@@ -40,6 +40,8 @@ import Data.Set (Set, singleton)
 import Facet.Effect.Parser
 import Facet.Source as Source
 import Facet.Span as Span
+import Fresnel.Lens (Lens', lens)
+import Fresnel.Setter ((%~), (.~))
 import Text.Parser.Char (CharParsing(..))
 import Text.Parser.Combinators
 import Text.Parser.Token (TokenParsing)
@@ -55,7 +57,7 @@ runParserWithFile path p = do
 {-# INLINE runParserWithFile #-}
 
 runParserWithSource :: Has (Throw (Source, Err)) sig m => Source -> ParserC m a -> m a
-runParserWithSource src@(Source _ _ _ (Line line _ _:|_)) = runParser (const pure) failure failure input
+runParserWithSource src@(Source _ _ (Line line _ _:|_)) = runParser (const pure) failure failure input
   where
   input = Input (Pos line 0) (contents src)
   failure = throwError . (,) src
