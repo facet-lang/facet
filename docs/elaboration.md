@@ -126,7 +126,7 @@ This judgement is used to elaborate syntax where we need to know the type in adv
 Γ ⊢ M ~~> V ==> τ
 ```
 
-This judgement is used to elaborate syntax where we can deduce the type from the term itselr, perhaps requiring that we are able to deduce some or all of it from its components.
+This judgement is used to elaborate syntax where we can deduce the type from the term itself, perhaps requiring that we are able to deduce some or all of it from its components.
 
 
 ### Syntax- vs. type-directed
